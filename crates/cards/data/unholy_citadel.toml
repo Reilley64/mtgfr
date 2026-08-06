@@ -1,0 +1,26 @@
+# Black legendary creatures you control have "bands with other legendary creatures." (Any legendary creatures can
+# attack in a band as long as at least one has "bands with other legendary creatures." Bands are blocked as a group.
+# If at least two legendary creatures you control, one of which has "bands with other legendary creatures," are
+# blocking or being blocked by the same creature, you divide that creature's combat damage, not its controller, among
+# any of the creatures it's being blocked by or is blocking.)
+name = "Unholy Citadel"
+otags = ["cycle-leg-banding-land", "gives-banding", "keyword-anthem", "manaless-land", "synergy-black", "synergy-legendary", "utility-land"]
+sets = ["leg"]
+id = "d410027b-1c22-461e-939d-06a2c851352e"
+default_print = "9de534ff-fb48-4692-bd0f-dd237ca28502"
+oracle = "Black legendary creatures you control have \"bands with other legendary creatures.\" (Any legendary creatures can attack in a band as long as at least one has \"bands with other legendary creatures.\" Bands are blocked as a group. If at least two legendary creatures you control, one of which has \"bands with other legendary creatures,\" are blocking or being blocked by the same creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
+
+# No `produces`: this is a land with no mana ability at all — the static grant below is the whole card.
+[kind]
+type = "land"
+
+# Black legendary creatures you control have "bands with other legendary creatures."
+[[abilities]]
+timing = "static"
+
+# Black legendary creatures you control have "bands with other legendary creatures."
+[[abilities.effects]]
+type = "static"
+mode = "filtered_anthem"
+keywords = [{ bands_with = "legendary" }]
+filter = { types = ["creature"], color = "black", legendary = true, controller = "you" }

@@ -243,6 +243,9 @@ pub(crate) fn project_event(
         Event::RegenerationShieldsExpired { object } => {
             VisibleEvent::RegenerationShieldsExpired { object }
         }
+        Event::CantBeRegeneratedThisTurnMarked { object } => {
+            VisibleEvent::CantBeRegeneratedThisTurnMarked { object }
+        }
         Event::LostSummoningSickness { object } => VisibleEvent::LostSummoningSickness { object },
         Event::CountersPlaced {
             object,
@@ -294,17 +297,50 @@ pub(crate) fn project_event(
             toughness,
             keywords: _,
             source_name: _,
+            // Engine bookkeeping for the End of Combat sweep (Glyph of Destruction, Jade Statue) —
+            // the client reads the boosted P/T off the snapshot, so the duration isn't projected.
+            ends_at_end_of_combat: _,
         } => VisibleEvent::TempBoost {
             object,
             power,
             toughness,
         },
-        Event::TempBoostsEnded { object } => VisibleEvent::TempBoostsEnded { object },
+        // A durationless keyword grant is the same "re-read this object" signal to the client as
+        // a `TempBoost`, and like `TempBoost`'s own keywords the list itself stays off the wire —
+        // the next snapshot carries the object's new keyword set.
+        Event::KeywordsGrantedIndefinitely { object, .. } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
+        Event::TempBoostsEnded { object, .. } => VisibleEvent::TempBoostsEnded { object },
+        // Gabriel Angelfire's "until your next upkeep" grant and its start-of-upkeep sweep ride the
+        // same two wire events as the indefinite grant above — the keyword list stays off the wire.
+        Event::KeywordsGrantedUntilNextUpkeep { object, .. } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
+        Event::UpkeepStartDurationsEnded { object } => VisibleEvent::TempBoostsEnded { object },
         // A copy-effect exception keyword rider (CR 707.2 — "except it has haste/myriad") is a
         // keyword-status change, so it surfaces to the client the same as a `TempBoost`: a
         // re-snapshot signal, with no P/T delta. The client reads the object's live keyword set
         // from the fresh snapshot each delta (same rationale as `TempBoost`'s dropped `keywords`).
         Event::CopyRiderKeywordsGranted { object, .. } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
+        // Stangg's twin pairing and Wood Elemental's as-enters X are both engine bookkeeping the
+        // client never names — but each changes how an object reads, so they reuse the same
+        // "re-read this object" cue as the keyword grants above. `TwinLinked` announces one side;
+        // both halves enter together, so one cue re-snapshots the pair.
+        Event::TwinLinked { a, .. } => VisibleEvent::TempBoost {
+            object: a,
+            power: 0,
+            toughness: 0,
+        },
+        Event::EnteredWithXSet { object, .. } => VisibleEvent::TempBoost {
             object,
             power: 0,
             toughness: 0,
@@ -329,6 +365,9 @@ pub(crate) fn project_event(
             types: _,
             subtypes: _,
             colors: _,
+            // Engine bookkeeping for the End of Combat sweep (Jade Statue), same as
+            // `BasePtSetUntilEndOfTurn` above.
+            ends_at_end_of_combat: _,
         } => VisibleEvent::TypesAddedUntilEndOfTurn { object },
         // ponytail: the set characteristics aren't threaded onto the wire event, same rationale as
         // `TypesAddedUntilEndOfTurn` above — the client's per-object state comes from a fresh
@@ -351,6 +390,29 @@ pub(crate) fn project_event(
         // `AddedSubtypes` above — the client's per-object state comes from a fresh snapshot each
         // delta.
         Event::BasePtSetIndefinite { object, .. } => VisibleEvent::BasePtSetIndefinite { object },
+        // ponytail: Halfdane's borrowed body and Sentinel's toughness set both project as
+        // `BasePtSetIndefinite`, and Transmutation's switch and its end-of-upkeep sweep as the
+        // `TempBoost`/`TempBoostsEnded` pair — every one of them says "re-read this object's P/T",
+        // which is all the client does with any of them. Give them their own `VisibleEvent`s if the
+        // log ever needs to name the duration.
+        Event::BasePtSetUntilEndOfNextUpkeep { object, .. }
+        | Event::BaseToughnessSetIndefinite { object, .. } => {
+            VisibleEvent::BasePtSetIndefinite { object }
+        }
+        // ponytail: projected as the "re-read this object" bookkeeping boost — a land's mana
+        // credit is read from a fresh snapshot each delta, so the client shows nothing new here.
+        // Give it its own `VisibleEvent` if the log ever needs to name the rewrite.
+        Event::LandProducesColorlessInsteadOf { land, .. } => VisibleEvent::TempBoost {
+            object: land,
+            power: 0,
+            toughness: 0,
+        },
+        Event::PtSwitchedUntilEndOfTurn { object } => VisibleEvent::TempBoost {
+            object,
+            power: 0,
+            toughness: 0,
+        },
+        Event::UpkeepDurationsEnded { object } => VisibleEvent::TempBoostsEnded { object },
         // ponytail: the copied def isn't threaded onto the wire event, same rationale as
         // `AddedSubtypes` above — the client's per-object state comes from a fresh snapshot each
         // delta.
@@ -358,10 +420,7 @@ pub(crate) fn project_event(
         // ponytail: the stripped keywords aren't threaded onto the wire event, same rationale as
         // `TempBoost` above — the client's per-object keyword state comes from a fresh snapshot
         // each delta.
-        Event::KeywordsStripped {
-            object,
-            keywords: _,
-        } => VisibleEvent::KeywordsStripped { object },
+        Event::KeywordsStripped { object, .. } => VisibleEvent::KeywordsStripped { object },
         // ponytail: an Aura grounding its host is the same "this object's keywords changed, re-read
         // it" cue as the until-end-of-turn strip above, so it reuses that wire event rather than
         // adding one — neither the duration nor the Aura that carries it is on the wire, and the
@@ -430,6 +489,14 @@ pub(crate) fn project_event(
             object,
             defender: defender.0,
         },
+        // "Your next upkeep" is the same "a delayed trigger is waiting" signal to the client as the
+        // unscoped timing — the step it waits for stays off the wire either way.
+        Event::DelayedTriggerScheduledForYourNextUpkeep {
+            controller, source, ..
+        } => VisibleEvent::DelayedTriggerScheduled {
+            controller: controller.0,
+            source,
+        },
         Event::DelayedTriggerScheduled {
             controller, source, ..
         } => VisibleEvent::DelayedTriggerScheduled {
@@ -464,6 +531,16 @@ pub(crate) fn project_event(
                 source,
             }
         }
+        // Reincarnation's "when that creature dies this turn" watch is a CR 603.7 delayed trigger
+        // like any other, so it rides the two generic delayed-trigger wire events rather than
+        // minting a pair of its own — the payoff itself surfaces as the effect events it produces.
+        Event::DiesThisTurnWatchArmed {
+            controller, source, ..
+        } => VisibleEvent::DelayedTriggerScheduled {
+            controller: controller.0,
+            source,
+        },
+        Event::DiesThisTurnWatchConsumed { .. } => VisibleEvent::DelayedTriggersFired,
         Event::CombatDamageCopyArmed {
             controller,
             source,
@@ -531,11 +608,10 @@ pub(crate) fn project_event(
         Event::BlockerDeclared { blocker, attacker } => {
             VisibleEvent::BlockerDeclared { blocker, attacker }
         }
-        Event::CombatDamageDivided {
-            attacker,
-            assignment,
-        } => VisibleEvent::CombatDamageDivided {
-            attacker,
+        // The engine's `source` is the dividing creature — usually the attacker, but under CR
+        // 702.22k a blocker divides too. The view's field keeps its wire name.
+        Event::CombatDamageDivided { source, assignment } => VisibleEvent::CombatDamageDivided {
+            attacker: source,
             assignment: assignment.pairs(),
         },
         Event::SpellDamageDivided {
@@ -565,6 +641,9 @@ pub(crate) fn project_event(
         }
         Event::ChannelColorlessManaGranted { player } => {
             VisibleEvent::ChannelColorlessManaGranted { player: player.0 }
+        }
+        Event::SpendManaAsAnyTypeGranted { player } => {
+            VisibleEvent::SpendManaAsAnyTypeGranted { player: player.0 }
         }
         Event::CommanderDamageDealt {
             source,
@@ -848,6 +927,7 @@ pub(crate) fn project_event(
             VisibleEvent::DrewFromEmptyLibrary { player: player.0 }
         }
         Event::PlayerLost { player } => VisibleEvent::PlayerLost { player: player.0 },
+        Event::GameDrawn => VisibleEvent::GameDrawn,
         Event::CitysBlessingGained { player } => {
             VisibleEvent::CitysBlessingGained { player: player.0 }
         }

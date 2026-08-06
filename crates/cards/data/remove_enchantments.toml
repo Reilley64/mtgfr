@@ -1,0 +1,52 @@
+# Return to your hand all enchantments you both own and control, all Auras you own attached to
+# permanents you control, and all Auras you own attached to attacking creatures your opponents
+# control. Then destroy all other enchantments you control, all other Auras attached to permanents
+# you control, and all other Auras attached to attacking creatures your opponents control.
+name = "Remove Enchantments"
+otags = ["hate-enchantment", "mass-removal", "sweeper-enchantment"]
+sets = ["leg"]
+id = "fa879d99-3d2b-4a9a-a17f-d5ac109f8f44"
+default_print = "bf2e3a8a-b386-474d-b8e9-4c2d56a2b742"
+oracle = "Return to your hand all enchantments you both own and control, all Auras you own attached to permanents you control, and all Auras you own attached to attacking creatures your opponents control. Then destroy all other enchantments you control, all other Auras attached to permanents you control, and all other Auras attached to attacking creatures your opponents control."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# Return to your hand all enchantments you both own and control, all Auras you own attached to
+# permanents you control, and all Auras you own attached to attacking creatures your opponents
+# control. Then destroy all other enchantments you control, all other Auras attached to permanents
+# you control, and all other Auras attached to attacking creatures your opponents control.
+[[abilities]]
+timing = "spell"
+
+# The card names one set of enchantments three ways and then splits it: the ones you own go back to
+# hand, everything else in the set is destroyed. A `PermanentFilter` is a conjunction of axes, so
+# each of the three clauses is its own step — and because the returns run first, "all **other**"
+# needs no exclusion of its own: a permanent already in its owner's hand can't match a later step.
+[[abilities.effects]]
+type = "sequence"
+steps = [
+    # Return to your hand all enchantments you both own and control,
+    { type = "zone", mode = "return_all_to_hand", filter = { types = "enchantment", controller = "you", owner = "you" } },
+    # all Auras you own attached to permanents you control,
+    { type = "zone", mode = "return_all_to_hand", filter = { subtypes = [
+        "Aura",
+    ], owner = "you", attached_to = { controller = "you" } } },
+    # and all Auras you own attached to attacking creatures your opponents control.
+    { type = "zone", mode = "return_all_to_hand", filter = { subtypes = [
+        "Aura",
+    ], owner = "you", attached_to = { types = "creature", controller = "opponent", attacking = true } } },
+    # Then destroy all other enchantments you control,
+    { type = "destroy", mode = "all", filter = { types = "enchantment", controller = "you" } },
+    # all other Auras attached to permanents you control,
+    { type = "destroy", mode = "all", filter = { subtypes = [
+        "Aura",
+    ], attached_to = { controller = "you" } } },
+    # and all other Auras attached to attacking creatures your opponents control.
+    { type = "destroy", mode = "all", filter = { subtypes = [
+        "Aura",
+    ], attached_to = { types = "creature", controller = "opponent", attacking = true } } },
+]

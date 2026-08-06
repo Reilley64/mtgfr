@@ -25,6 +25,7 @@ import { CopyBoardLog } from "./log-commands";
 import {
   BoardPointerUp,
   CancelActionClicked,
+  CombatBandToggled,
   DiscardChosen,
   DiscardCostConfirmed,
   GyExileChosen,
@@ -1574,7 +1575,100 @@ test("confirm attackers submits engine-required goad attacks when local staging 
     kind: "declare_attackers",
     player: 0,
     attackers: [{ attacker: 7, defender: 1 }],
+    // Every attack but a banding one declares no band, and maps to plain `Intent::DeclareAttackers`.
+    bands: [],
   });
+});
+
+// CR 702.22c: banding creatures declared as a band ride along on the same declaration. The band
+// panel toggles are the only way a human (rather than an engine test) can send one.
+test("banding two staged attackers submits them as a band on the attack declaration", () => {
+  const bander = creature(30, 0, { has_haste: true, keywords: ["bands_with:legendary"] });
+  const partner = creature(31, 0, { has_haste: true });
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareAttackers,
+      objects: [bander, partner],
+      combat: {
+        attackers: [],
+        blocks: [],
+        attackers_declared: false,
+        blockers_declared: [],
+        blocked_attackers: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+        } as ActionView,
+      ],
+    }),
+  );
+  const staged: BoardModel = {
+    ...initialBoardModel(),
+    combatAttackers: [
+      { attacker: bander.id, defender: 1 },
+      { attacker: partner.id, defender: 1 },
+    ],
+  };
+  const [withBander] = updateBoard(staged, CombatBandToggled({ attackerId: bander.id }), gameFold, "T1");
+  const [banded] = updateBoard(withBander, CombatBandToggled({ attackerId: partner.id }), gameFold, "T1");
+  expect(banded.combatBand).toEqual([bander.id, partner.id]);
+
+  const [confirmed, commands] = updateBoard(banded, PrimaryClicked(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "declare_attackers",
+    player: 0,
+    attackers: [
+      { attacker: bander.id, defender: 1 },
+      { attacker: partner.id, defender: 1 },
+    ],
+    bands: [{ members: [bander.id, partner.id] }],
+  });
+  expect(confirmed.combatBand).toEqual([]);
+});
+
+test("un-banding back to one member submits the attack with no band", () => {
+  const bander = creature(30, 0, { has_haste: true, keywords: ["banding"] });
+  const partner = creature(31, 0, { has_haste: true, keywords: ["banding"] });
+  const gameFold = fold(
+    state({
+      step: STEP.DeclareAttackers,
+      objects: [bander, partner],
+      combat: {
+        attackers: [],
+        blocks: [],
+        attackers_declared: false,
+        blockers_declared: [],
+        blocked_attackers: [],
+      },
+      actions: [
+        {
+          id: 1,
+          kind: "declare_attackers",
+          label: testMessageRef("Attack"),
+          needs_target: false,
+          section: "combat",
+          declare_for: [0],
+        } as ActionView,
+      ],
+    }),
+  );
+  const banded: BoardModel = {
+    ...initialBoardModel(),
+    combatAttackers: [
+      { attacker: bander.id, defender: 1 },
+      { attacker: partner.id, defender: 1 },
+    ],
+    combatBand: [bander.id, partner.id],
+  };
+  const [pared] = updateBoard(banded, CombatBandToggled({ attackerId: partner.id }), gameFold, "T1");
+  const [, commands] = updateBoard(pared, PrimaryClicked(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toMatchObject({ kind: "declare_attackers", bands: [] });
 });
 
 test("pointer combat drop on opponent life orb stages an attacker", () => {

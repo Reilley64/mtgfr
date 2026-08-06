@@ -56,9 +56,53 @@ pub enum PumpEffect {
         keywords: &'static [Keyword],
     },
 
+    /// "Target creature loses `keywords` (and every keyword in `families`)" — the targeted,
+    /// CR 613.1f-layered keyword removal the Legends lands and their two creatures print:
+    /// Hammerheim's "all landwalk abilities", Radjan Spirit's "flying", Tolaria's "banding and all
+    /// \"bands with other\" abilities", Shelkin Brownie's "all \"bands with other\" abilities",
+    /// Urborg's "first strike or swampwalk", and Elder Land Wurm's own "it loses defender".
+    ///
+    /// `until_end_of_turn` is the *special* case, not the default: Elder Land Wurm's blocks trigger
+    /// has no duration at all, so the loss is indefinite unless the card says otherwise.
+    ///
+    /// `choose_one` is CR 609.4's resolution-time pick between the listed `keywords` (Urborg's
+    /// "first strike **or** swampwalk"): the ability's target is locked at activation and its
+    /// controller names one of the keywords when it resolves, not when it goes on the stack — which
+    /// is what separates it from a printed "Choose one —" (CR 601.2b). Peeled to the mode pause
+    /// before this ever reaches the pump minter.
+    ///
+    /// Unlike [`StripKeywordsFromOpponentsCreatures`](Self::StripKeywordsFromOpponentsCreatures)
+    /// the loss is *not* "and can't have": a grant with a later timestamp beats it (CR 613.7).
+    TargetLosesKeywords {
+        target: TargetSpec,
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        keywords: &'static [Keyword],
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        families: &'static [KeywordFamily],
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        until_end_of_turn: bool,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        choose_one: bool,
+    },
+
     GrantChosenColorProtectionUntilEndOfTurn {
         target: TargetSpec,
     },
+
+    /// Giant Slug's "this creature gains landwalk of the chosen type until the end of that turn."
+    /// The land-type twin of [`GrantChosenColorProtectionUntilEndOfTurn`](Self::GrantChosenColorProtectionUntilEndOfTurn):
+    /// a preceding [`ChoiceEffect::ChooseBasicLandType`](crate::ChoiceEffect) step in the same
+    /// [`Effect::Sequence`](crate::Effect::Sequence) has already stored the pick on the source's
+    /// own [`Permanent::chosen_subtype`](crate::Permanent), so the [`Keyword::Landwalk`](crate::Keyword)
+    /// isn't known until resolution and is leaked fresh there. Targetless — "this creature" is the
+    /// source itself, which for Giant Slug is also the permanent holding the choice.
+    GrantChosenLandwalkSelfUntilEndOfTurn,
 
     /// The old "Radiance" keyword action's batch twin of
     /// [`GrantChosenColorProtectionUntilEndOfTurn`](Self::GrantChosenColorProtectionUntilEndOfTurn)
@@ -132,6 +176,50 @@ pub enum PumpEffect {
             serde(default, deserialize_with = "de::static_slice")
         )]
         keywords: &'static [Keyword],
+        /// "Gets +10/+0 **until end of combat**" (CR 511.3 — Glyph of Destruction): the shorter
+        /// of the two durations a pump can print, and the same knob Jade Statue's
+        /// [`AnimateSelfUntilEndOfTurn`](Self::AnimateSelfUntilEndOfTurn) spells. Defaults to
+        /// `false`, which is the until-end-of-turn wording the mode is named for; `true` moves the
+        /// wear-off from the cleanup step to the end of combat step.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        ends_at_end_of_combat: bool,
+        /// Part Water's "**X target creatures** gain islandwalk until end of turn" (CR 601.2c) —
+        /// the same target-count axis [`ControlEffect::TapTarget`](crate::ControlEffect) carries
+        /// for Winter Blast's "tap X target creatures". Defaults to the single target every other
+        /// pump in the pool takes.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: TargetCount,
+    },
+
+    /// "That creature gains flying" (Cocoon) — a keyword grant with **no printed duration**, so it
+    /// lasts as long as the object does (CR 400.7) rather than wearing off at cleanup. The
+    /// durationless twin of [`Self::PumpUntilEndOfTurn`]'s keyword half; it grants no P/T, because
+    /// nothing in the pool sets an indefinite boost this way. Distinct from an
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] keyword grant, which only holds while the
+    /// granting Aura is still attached — Cocoon is sacrificed by the very ability that grants this.
+    GrantKeywordsIndefinitely {
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
+        keywords: &'static [Keyword],
+    },
+
+    /// "Gabriel Angelfire gains that ability until your next upkeep" — a keyword grant on the
+    /// ability's own source (no target) on the one duration that ends at the *start* of an upkeep
+    /// rather than at its end. Strictly shorter than Halfdane's
+    /// [`SetOwnBasePtFromTargetUntilEndOfNextUpkeep`](Self::SetOwnBasePtFromTargetUntilEndOfNextUpkeep):
+    /// the previous grant is already gone by the time the next upkeep's trigger resolves, which is
+    /// what makes each upkeep's choice replace the last one without any explicit removal.
+    ///
+    /// `choose_one` is CR 609.4's resolution-time pick among the listed `keywords` ("choose flying,
+    /// first strike, trample, or rampage 3"), the same shape
+    /// [`TargetLosesKeywords`](Self::TargetLosesKeywords) uses for Urborg — not a printed
+    /// "Choose one —" (CR 601.2b/603.3d), which a triggered ability would decide as it goes on the
+    /// stack. Peeled to the mode pause before this ever reaches the pump minter.
+    GrantSelfKeywordsUntilNextUpkeep {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
+        keywords: &'static [Keyword],
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        choose_one: bool,
     },
 
     SetBasePtCreaturesYouControlUntilEndOfTurn {
@@ -149,6 +237,45 @@ pub enum PumpEffect {
 
     SetOwnBasePtFromAmount {
         amount: Amount,
+    },
+
+    /// "Change this creature's base toughness to 1 plus the power of target creature blocking or
+    /// blocked by this creature" (Sentinel), "…to 1 plus the number of creature cards in your
+    /// graveyard" (Wall of Tombstones): the base-*toughness*-only, indefinite sibling of
+    /// [`SetOwnBasePtFromAmount`](Self::SetOwnBasePtFromAmount). The ability's own source is what
+    /// changes; `target` is only there for an `amount` that reads off a target (Sentinel's
+    /// `target_power`) and is `TargetSpec::None` otherwise.
+    ///
+    /// Layer 7b (CR 613.3(7b)), so counters and pumps still ride above it, and — being indefinite
+    /// with its own timestamp — a second activation simply outranks the first (CR 613.7).
+    SetOwnBaseToughnessFromAmount {
+        amount: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        target: TargetSpec,
+    },
+
+    /// "Change Halfdane's base power and toughness to the power and toughness of target creature
+    /// other than Halfdane until the end of your next upkeep": a layer-7b set on the ability's own
+    /// source, snapshotting the target's *effective* P/T as the ability resolves (CR 613.4b), on
+    /// the only duration in the pool that outlives cleanup without being indefinite.
+    SetOwnBasePtFromTargetUntilEndOfNextUpkeep {
+        target: TargetSpec,
+    },
+
+    /// "When this creature dies, change the base power and toughness of all creatures that dealt
+    /// damage to it this turn to 0/2" (Brine Hag): a layer-7b set with no duration, on every
+    /// creature the source's turn-scoped damage tally recorded as a dealer (CR 603.10a — the tally
+    /// is last-known information by the time this resolves from the graveyard).
+    SetBasePtCreaturesThatDamagedSourceThisTurn {
+        power: i32,
+        toughness: i32,
+    },
+
+    /// "Switch target creature's power and toughness until end of turn" (Transmutation): CR 613.4e,
+    /// applied after every other P/T layer rather than as a base set — a switch over a −0/−2
+    /// counter on a 6/4 gives a 2/6, not a 4/4.
+    SwitchPtUntilEndOfTurn {
+        target: TargetSpec,
     },
 
     StripKeywordsFromOpponentsCreatures {
@@ -186,9 +313,35 @@ pub enum PumpEffect {
     /// on the stack or a permanent, and registers the layer-5 SET / writes [`Spell::set_color`]
     /// through [`Event::ColorSet`]. The reminder text ("its mana symbols remain unchanged") needs
     /// no modelling — colors are read from `colors_of`, never re-derived from the pips.
+    ///
+    /// The Legends colour-wash cycle (Dwarven Song, Heaven's Gate, Sea Kings' Blessing, Sylvan
+    /// Paradise, Touch of Darkness) is the same SET with the two other axes turned on: `count`
+    /// carries "one or more target creatures" (CR 601.2c) and `until_end_of_turn` its printed
+    /// duration. Alchor's Tomb turns on the third — a `color` of `None` is "the color of your
+    /// choice", picked by the ability's controller at resolution (CR 609.3) through the shared
+    /// `PendingChoice::ChooseColor` picker rather than authored here.
+    /// Colorless is never a candidate: CR 105.1 says colorless is not a color.
     TargetBecomesColor {
         target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        color: Option<Color>,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: TargetCount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        until_end_of_turn: bool,
+    },
+
+    /// Aisling Leprechaun's "that creature becomes green. (This effect lasts indefinitely.)" —
+    /// [`TargetBecomesColor`](Self::TargetBecomesColor)'s no-duration layer-5 SET aimed at a block
+    /// pair's other half instead of a chosen target (CR 613.3c). "That creature" is not a target
+    /// (CR 115.1), so `creature` is baked in when the trigger is placed, the same slot
+    /// [`DestroyEffect::ThatCreature`](crate::DestroyEffect) and
+    /// [`MiscEffect::ThatCreatureCantAttackNextOwnTurn`](crate::MiscEffect) take off the same
+    /// block pair.
+    ThatCreatureBecomesColor {
         color: Color,
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        creature: Option<ObjectId>,
     },
 
     /// "Target land becomes a Forest until this creature leaves the battlefield" (Gaea's Liege) —

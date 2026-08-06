@@ -1,0 +1,26 @@
+# {T}: Add {R}.
+# {T}: Target creature loses all landwalk abilities until end of turn.
+name = "Hammerheim"
+otags = ["activated-ability", "cycle-leg-legendary-land", "hate-landwalk", "removes-landwalk", "repeatable-crime", "utility-land"]
+sets = ["leg", "ltc", "me3"]
+id = "c7476beb-7923-4994-8476-bc69187ecb72"
+default_print = "773acde9-504c-4065-95e0-f96428f05a7d"
+oracle = "{T}: Add {R}.\n{T}: Target creature loses all landwalk abilities until end of turn."
+legendary = true
+
+[kind]
+type = "land"
+produces = "red"
+
+# {T}: Target creature loses all landwalk abilities until end of turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Target creature loses all landwalk abilities until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "target_loses_keywords"
+target = "creature"
+families = ["landwalk"]
+until_end_of_turn = true

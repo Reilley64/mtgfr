@@ -83,6 +83,7 @@ impl Game {
             );
         }
         let Some(PendingChoice::ChooseTarget {
+            controller,
             source,
             effect,
             legal,
@@ -97,6 +98,10 @@ impl Game {
         else {
             return Err(Reject::IllegalChoice);
         };
+        // Everything past the answer itself runs under the *ability's* controller, which is only
+        // sometimes `player`: The Abyss lets the upkeep player pick the victim, but the trigger
+        // is still the enchantment controller's (see `PendingChoice::ChooseTarget::controller`).
+        let player = controller;
         if effect.is_none() {
             return self
                 .choose_spell_targets_answer(player, source, clause, count, &legal, targets);
@@ -326,7 +331,7 @@ impl Game {
             if self.permanent(id).kind_counters[kind as usize] == 0 {
                 continue;
             }
-            let n = self.kind_counters_after_replacements(placer, id, 1);
+            let n = self.kind_counters_after_replacements(placer, id, kind, 1);
             if n > 0 {
                 self.push_apply(
                     events,
@@ -547,5 +552,28 @@ impl Game {
         // Chain into the next independent target clause, if any, before the CR 601.2d split runs.
         self.advance_spell_target_clauses(spell, clause as usize + 1, anchor, chooser, &mut events);
         Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::ChooseDamageSource`]: `chosen` is the damage-ledger dealer the
+    /// rest of this resolution sizes its amount off (Backdraft's "one of those sorcery spells").
+    /// The pick is mandatory and must be one of the offered candidates — the choice is only
+    /// raised when two or more exist, so `None` is never a legal answer. Mutates no board state,
+    /// only the resolution frame the following step reads, so it mints no events.
+    pub(crate) fn answer_choose_damage_source(
+        &mut self,
+        _player: PlayerId,
+        chosen: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseDamageSource { candidates, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        let Some(chosen) = chosen.filter(|id| candidates.contains(id)) else {
+            return Err(Reject::IllegalChoice);
+        };
+        self.finish_answer();
+        self.resolution_frame.chosen_damage_source = Some(chosen);
+        Ok(Vec::new())
     }
 }

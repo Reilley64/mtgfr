@@ -1,0 +1,19 @@
+# Token: Wolves of the Hunt
+# Sources: master_of_the_hunt.toml
+# Legends predates printed token cards, so no Scryfall printing exists for this token — there has
+# never been a 1/1 green Wolf token product under this name. `id` is a locally synthetic,
+# non-UUID lookup key (fidelity increment #97's token-id convention for pre-token-era tokens)
+# rather than a fabricated Scryfall id — `default_print` is left empty.
+name = "Wolves of the Hunt"
+id = "leg-token-wolves-of-the-hunt"
+colors = ["green"]
+subtypes = ["Wolf"]
+oracle = "Bands with other creatures named Wolves of the Hunt"
+# "bands with other creatures named Wolves of the Hunt" — the band's [quality] is this token's own
+# name (CR 702.22b), so a pack of them attacks, and is blocked, as one band.
+keywords = [{ bands_with = { named = "Wolves of the Hunt" } }]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

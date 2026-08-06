@@ -33,8 +33,8 @@ pub use dto::{
 };
 pub use event::{DeltaEnvelope, VisibleEvent, redact, spectator_redact};
 pub use intent::{
-    IntentEnvelope, WireAttack, WireBlock, WireDamage, WireIntent, WireModeChoice, WireSpellDamage,
-    WireTarget, to_intent, to_intent_for_seat,
+    IntentEnvelope, WireAttack, WireBand, WireBlock, WireDamage, WireIntent, WireModeChoice,
+    WireSpellDamage, WireTarget, to_intent, to_intent_for_seat,
 };
 pub use snapshot::{
     DeltaCompose, SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible, compose_delta,

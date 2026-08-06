@@ -40,11 +40,17 @@ impl Game {
             }
             // Brainstorm's "put two cards from your hand on top of your library in any order"
             // pauses on an ordered card-pick choice over the controller's own hand.
-            Effect::Choice(ChoiceEffect::PutFromHandOnTop { count }) => pending::raise(
+            Effect::Choice(ChoiceEffect::PutFromHandOnTop {
+                count,
+                drawn_this_turn,
+                life_per_declined,
+            }) => pending::raise(
                 self,
                 pending::ChoiceRequest::PutFromHandOnTop {
                     player: controller,
                     count,
+                    drawn_this_turn,
+                    life_per_declined,
                 },
             ),
             // "You may put a land from hand onto the battlefield" pauses on a card-pick choice
@@ -74,8 +80,33 @@ impl Game {
                     subtypes,
                     keep,
                     defender,
+                    round: None,
+                    permanent_cards: false,
                 },
             ),
+            // Eureka: "Starting with you, each player may put a permanent card from their hand onto
+            // the battlefield. Repeat this process until no one puts a card onto the battlefield."
+            // The same offer as above, widened to permanent cards and carrying the lap queue —
+            // `Game::offer_next_in_put_round` re-raises it for each seat in turn until a whole lap
+            // declines. Nothing put out this way is sacrificed, so `keep`.
+            Effect::Choice(ChoiceEffect::EachPlayerMayPutPermanentFromHandRepeating) => {
+                let lap = self.turn_order_from(controller);
+                let Some((&first, rest)) = lap.split_first() else {
+                    return;
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::PutCreatureFromHand {
+                        player: first,
+                        source,
+                        subtypes: &[],
+                        keep: true,
+                        defender: None,
+                        round: Some(rest.to_vec()),
+                        permanent_cards: true,
+                    },
+                )
+            }
             // Illusionary Mask's "you may cast a creature card in hand … face down as a 2/2"
             // pauses on a card-pick choice over the hand creatures whose mana cost the mana
             // spent on this ability's `{X}` could pay (`ctx.spent_mana`, CR 107.3).

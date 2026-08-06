@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { VisibleState } from "~/wire/types";
+import type { ObjectView, VisibleState } from "~/wire/types";
 import {
+  bandCandidates,
   canArmEndTurn,
   combatStagingClearsOnStepChange,
   handleCombatDrop,
   mergeRequiredAttacks,
   primaryActionIntent,
   stagedAttackersForDisplay,
+  stagedBands,
 } from "./combat-staging";
 import type { RenderCard } from "./layout";
 import { ZONE } from "./layout";
@@ -139,6 +141,46 @@ describe("primaryActionIntent", () => {
       kind: "pass_priority",
       player: 2,
     });
+  });
+});
+
+describe("bandCandidates", () => {
+  const object = (id: number, keywords: string[] = []): ObjectView => ({ id, keywords }) as ObjectView;
+  const attack = (id: number) => ({ attacker: id, defender: 1 });
+
+  it("offers every staged attacker once one of them can band", () => {
+    // CR 702.22c: a "bands with other legendary" band may include a legendary creature that has no
+    // banding keyword itself, so the plain attacker is offered too — the engine judges legality.
+    const objects = [object(3, ["bands_with:legendary"]), object(4), object(9)];
+    expect(bandCandidates(objects, [attack(3), attack(4)])).toEqual([3, 4]);
+  });
+
+  it("stays closed for an ordinary attack with no banding creature in it", () => {
+    expect(bandCandidates([object(3), object(4)], [attack(3), attack(4)])).toEqual([]);
+  });
+
+  it("stays closed for a lone banding attacker — a one-creature band is no band", () => {
+    expect(bandCandidates([object(3, ["banding"])], [attack(3)])).toEqual([]);
+  });
+});
+
+describe("stagedBands", () => {
+  const attackers = [
+    { attacker: 3, defender: 1 },
+    { attacker: 4, defender: 1 },
+  ];
+
+  it("submits the toggled members as one band", () => {
+    expect(stagedBands([3, 4], attackers)).toEqual([{ members: [3, 4] }]);
+  });
+
+  it("submits no band at all when fewer than two members remain", () => {
+    expect(stagedBands([3], attackers)).toEqual([]);
+    expect(stagedBands([], attackers)).toEqual([]);
+  });
+
+  it("drops a member that was un-staged as an attacker after being banded", () => {
+    expect(stagedBands([3, 4], [attackers[0]])).toEqual([]);
   });
 });
 

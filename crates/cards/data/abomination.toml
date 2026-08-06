@@ -1,0 +1,30 @@
+# Whenever this creature blocks or becomes blocked by a green or white creature, destroy that
+# creature at end of combat.
+name = "Abomination"
+otags = ["block-trigger", "delayed-trigger", "hate-blocker", "hate-green", "hate-white", "old-blocking-deathtouch", "single-english-word-name", "synergy-blocker-self", "type-errata-name-self"]
+sets = ["4bb", "4ed", "leg", "ren"]
+id = "2c57c4e9-0a46-45d6-92db-9203fb722b60"
+default_print = "a363bc91-8278-448e-9d5c-564e4b51eb62"
+oracle = "Whenever this creature blocks or becomes blocked by a green or white creature, destroy that creature at end of combat."
+subtypes = ["Horror"]
+
+[cost]
+generic = 3
+black = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 6
+
+# Whenever this creature blocks or becomes blocked by a green or white creature, destroy that
+# creature at end of combat.
+[[abilities]]
+timing = "blocks_or_becomes_blocked_by"
+filter = { types = "creature", color = { any_of = { colors = ["green", "white"] } } }
+
+# destroy that creature at end of combat
+[[abilities.effects]]
+type = "destroy"
+mode = "that_creature"
+at = "end_combat"

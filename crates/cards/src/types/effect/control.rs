@@ -16,6 +16,16 @@ pub enum ControlEffect {
 
     Equip,
 
+    /// Enchantment Alteration: "Attach target Aura attached to a creature or land to another
+    /// permanent of that type." `target` names the Aura (clause 0), `second` the new host (clause
+    /// 1, CR 601.2c) — "of that type" is not a static filter, so `second`'s declared type mask is
+    /// intersected with the Aura's *current* host's types (and that host itself dropped, "another")
+    /// when clause 1's legal set is read. See `Game::narrow_move_aura_second_clause`.
+    MoveAura {
+        target: TargetSpec,
+        second: TargetSpec,
+    },
+
     ExchangeAllCreaturesUntilEndOfTurn {
         target: TargetSpec,
     },
@@ -23,6 +33,29 @@ pub enum ControlEffect {
     ExchangeControl {
         first: TargetSpec,
         second: TargetSpec,
+        /// Gauntlets of Chaos: "target permanent an opponent controls **that shares one of those
+        /// types with it**" — the second clause's legality depends on the first target, so its
+        /// declared type mask is intersected with the first target's own card types when the
+        /// second clause's legal set is read (CR 601.2c). `false` (Vedalken Plotter, Chromeshell
+        /// Crab) leaves the second filter exactly as written.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        second_shares_type_with_first: bool,
+        /// Gauntlets of Chaos: "If those permanents are exchanged this way, destroy all Auras
+        /// attached to them" — a rider on the swap, so it only happens when both permanents were
+        /// actually exchanged (CR 608.2b cancels the swap, and this with it).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        destroy_attached_auras: bool,
+    },
+
+    /// Juxtapose: "You and target player exchange control of the creature you each control with the
+    /// greatest mana value. Then exchange control of artifacts the same way." An exchange whose two
+    /// permanents are *chosen*, not targeted (CR 701.10) — one per seat, the greatest printed mana
+    /// value among the permanents that seat controls matching `types`. `target` names the other
+    /// seat; the first is the resolving controller. Nothing happens unless both seats have one
+    /// (CR 701.10c).
+    ExchangeGreatestManaValue {
+        target: TargetSpec,
+        types: TypeSet,
     },
 
     GainControl {
@@ -30,6 +63,18 @@ pub enum ControlEffect {
     },
 
     GainControlAllUntilEndOfTurn {
+        filter: PermanentFilter,
+    },
+
+    /// "Gain control of all creatures blocking this creature **for as long as you control this
+    /// creature**" (The Wretched, CR 611.2b) — the filtered, condition-scoped mass steal:
+    /// [`GainControlAllUntilEndOfTurn`](Self::GainControlAllUntilEndOfTurn)'s filter with
+    /// [`GainControlWhile`](Self::GainControlWhile)'s duration instead of a turn. Each match is
+    /// handed over under its own `ControlCondition`, so control reverts by the same state-based
+    /// sweep the single-target form uses the moment the source leaves or changes hands. Unlike
+    /// Insurrection's turn-scoped form it neither untaps nor grants haste — The Wretched prints
+    /// neither.
+    GainControlAllWhile {
         filter: PermanentFilter,
     },
 
@@ -67,6 +112,12 @@ pub enum ControlEffect {
 
     RevertAllCreaturesToOwners,
 
+    /// A tap sweep over whatever `filter` matches — Dread Cacodemon's "tap all other creatures you
+    /// control" (`controller = "you"`) or Arena of the Ancients' table-wide "tap all legendary
+    /// creatures" (the default [`FilterController::Any`](crate::FilterController)). The seat
+    /// restriction lives entirely in the filter, unlike
+    /// [`TapAllTargetPlayerControls`](Self::TapAllTargetPlayerControls), which reads the seat off a
+    /// chosen target instead.
     TapAll {
         filter: PermanentFilter,
     },
@@ -80,6 +131,15 @@ pub enum ControlEffect {
         filter: PermanentFilter,
     },
 
+    /// "Tap all creatures blocking target attacking creature" (Feint) — [`TapAll`](Self::TapAll)
+    /// narrowed to one attacker's blockers instead of a board-wide filter. The chosen attacker is
+    /// the target; the creatures actually tapped are whatever is blocking it at resolution
+    /// (CR 509.1a's declared blocks), so a blocker removed from combat since is not swept up.
+    /// Tapping a blocker does not un-block anything (CR 509.1h).
+    TapBlockersOfTarget {
+        target: TargetSpec,
+    },
+
     /// "Tap this creature" as an *effect* (Demonic Hordes' unpaid-upkeep penalty), not as the
     /// `{T}` in an activation cost — the source taps itself on resolution, with nothing chosen and
     /// nothing targeted. A permanent that has already left the battlefield taps nothing.
@@ -89,6 +149,23 @@ pub enum ControlEffect {
         target: TargetSpec,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         count: TargetCount,
+    },
+
+    /// "An opponent gains control of them" (Rohgahh of Kher Keep's unpaid upkeep) —
+    /// [`TargetOpponentGainsControl`](Self::TargetOpponentGainsControl)'s untargeted sweep: the
+    /// set is whatever `filter` matches at resolution rather than a permanent chosen when the
+    /// ability went on the stack, and "an opponent" is a plain choice the effect's controller
+    /// makes as it resolves (CR 601.2c targets nothing here), collapsing on its own when only one
+    /// opponent is alive. One opponent takes the whole sweep — the clause is "them", not "each of
+    /// them".
+    OpponentGainsControlAll {
+        filter: PermanentFilter,
+        /// Whether the source itself joins the swept set — Rohgahh's "tap **Rohgahh** and all
+        /// creatures named Kobolds of Kher Keep, then an opponent gains control of **them**". The
+        /// source is named, not described, so no [`PermanentFilter`] can pick it up beside the
+        /// others.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        with_source: bool,
     },
 
     TargetOpponentGainsControl {

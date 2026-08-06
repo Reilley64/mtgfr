@@ -1,9 +1,9 @@
 # Wire backwards compatibility
 
 Durable rules for the proto / gRPC wire contract during a rolling deploy. See
-[wire-protocol-and-visibility](superpowers/specs/2026-07-20-wire-protocol-and-visibility.md),
-[lobby-table-routing-and-live-game](superpowers/specs/2026-07-20-lobby-table-routing-and-live-game.md),
-[production-topology-and-operations](superpowers/specs/2026-07-20-production-topology-and-operations.md).
+[wire-protocol](../openspec/specs/wire-protocol/spec.md),
+[lobby-and-live-game](../openspec/specs/lobby-and-live-game/spec.md),
+[production-and-ops](../openspec/specs/production-and-ops/spec.md).
 
 ## Why this exists
 

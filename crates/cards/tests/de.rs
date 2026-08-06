@@ -212,6 +212,7 @@ fn target_count_parses_scalar_and_table_forms() {
             multikicker_scaled: false,
             kicked_scaled: false,
             main_phase_scaled: false,
+            unbounded: false,
         }
     );
 
@@ -235,6 +236,7 @@ max = 3
             multikicker_scaled: false,
             kicked_scaled: false,
             main_phase_scaled: false,
+            unbounded: false,
         }
     );
 
@@ -261,6 +263,7 @@ total_mv_max = "x"
             multikicker_scaled: false,
             kicked_scaled: false,
             main_phase_scaled: false,
+            unbounded: false,
         }
     );
 

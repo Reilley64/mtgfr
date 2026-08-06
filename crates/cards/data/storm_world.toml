@@ -1,0 +1,28 @@
+# At the beginning of each player's upkeep, this enchantment deals X damage to that player, where
+# X is 4 minus the number of cards in their hand.
+name = "Storm World"
+otags = ["burn-player-each", "symmetrical", "triggered-ability"]
+sets = ["leg", "me3"]
+id = "868f4ab2-a846-4ad0-8720-95fd234dd36b"
+default_print = "cdf0afa6-7003-454d-9b8a-e3328aaf29ed"
+oracle = "At the beginning of each player's upkeep, this enchantment deals X damage to that player, where X is 4 minus the number of cards in their hand."
+world = true
+
+[cost]
+red = 1
+
+[kind]
+type = "enchantment"
+
+# At the beginning of each player's upkeep, this enchantment deals X damage to that player, where
+# X is 4 minus the number of cards in their hand.
+[[abilities]]
+timing = "each_upkeep"
+
+# this enchantment deals X damage to that player, where X is 4 minus the number of cards in their
+# hand.
+[[abilities.effects]]
+type = "damage"
+mode = "to_players"
+who = "triggering_player"
+amount = { left = 4, op = "subtract", right = "cards_in_your_hand" }

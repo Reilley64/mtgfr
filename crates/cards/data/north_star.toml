@@ -1,0 +1,30 @@
+# {4}, {T}: For one spell this turn, you may spend mana as though it were mana of any type to pay
+# that spell's mana cost. (Additional costs are still paid normally.)
+name = "North Star"
+sets = ["leg", "me3"]
+id = "9109437a-da80-463f-a92a-77d693d05d91"
+default_print = "daac2a6b-27c8-4567-9e0c-7b262628d331"
+otags = ["activated-ability", "mana-fixing", "mana-filter"]
+oracle = "{4}, {T}: For one spell this turn, you may spend mana as though it were mana of any type to pay that spell's mana cost. (Additional costs are still paid normally.)"
+approximates = "The relaxation is spent by the next spell its controller casts rather than by a spell they pick, and it widens the five colors into each other but not colorless {C} pips."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {4}, {T}: For one spell this turn, you may spend mana as though it were mana of any type to pay
+# that spell's mana cost.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 4
+
+# For one spell this turn, you may spend mana as though it were mana of any type to pay that
+# spell's mana cost.
+[[abilities.effects]]
+type = "misc"
+mode = "grant_spend_mana_as_any_type_for_one_spell_this_turn"

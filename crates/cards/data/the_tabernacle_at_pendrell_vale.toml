@@ -1,0 +1,29 @@
+# All creatures have "At the beginning of your upkeep, destroy this creature unless you pay {1}."
+name = "The Tabernacle at Pendrell Vale"
+otags = ["symmetrical", "triggered-ability", "upkeep-cost", "utility-land"]
+sets = ["leg"]
+id = "69b409b3-fa16-4c79-8b46-215a7036ed46"
+default_print = "64bc9b1d-5818-4d9e-b771-e49af4ff9a5c"
+oracle = "All creatures have \"At the beginning of your upkeep, destroy this creature unless you pay {1}.\""
+legendary = true
+
+[kind]
+type = "land"
+
+# All creatures have "At the beginning of your upkeep, destroy this creature unless you pay {1}."
+# The grant is filter-scoped rather than attached, so the granted trigger belongs to each creature:
+# "your" is that creature's controller's upkeep and "this creature" is the creature itself, never
+# the Tabernacle.
+[[abilities]]
+timing = "static"
+
+# All creatures have "At the beginning of your upkeep, destroy this creature unless you pay {1}."
+[[abilities.effects]]
+type = "static"
+mode = "grant_activated_ability"
+filter = { types = "creature" }
+granted_ability = { trigger = { upkeep = {} }, effects = [
+  { type = "choice", mode = "pay_or_else", cost = { generic = 1 }, otherwise = [
+    { type = "destroy", mode = "target", target = "this" },
+  ] },
+] }

@@ -3,7 +3,7 @@
 Source: `docs/decklists/witherbloom_pestilence.md` (official Wizards `soc` precon list, cross-checked
 against live pool files and the current sacrifice / recursion / lifegain paths). Commander:
 **Dina, Essence Brewer**. Backlog:
-[witherbloom-pestilence-increments.md](witherbloom-pestilence-increments.md).
+Engine increments for this grind all landed; backlog file removed.
 
 Intake counts: 80 faithful / 1 approximated / 0 expressible / 3 needing engine work.
 The classifier returned 83 A / 1 B / 0 missing, but the Witherbloom re-audit demoted three cards to

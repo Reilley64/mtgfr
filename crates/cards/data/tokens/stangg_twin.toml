@@ -1,0 +1,26 @@
+# Token: Stangg Twin
+# Sources: stangg.toml
+name = "Stangg Twin"
+id = "48419100-a3d7-44c1-95cc-486a4ef066af"
+default_print = "edc84f49-86e9-43a2-b98c-a59b1e0c72ed"
+legendary = true
+colors = ["red", "green"]
+subtypes = ["Human", "Warrior"]
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# Sacrifice Stangg when that token leaves the battlefield. (Printed on Stangg, not on the token —
+# it is a delayed trigger Stangg's enters-the-battlefield ability creates. Modeled as an ability of
+# the token itself, since the token is minted paired with Stangg and can never outlive that pairing:
+# same trigger condition, same effect, one fewer moving part than a delayed trigger armed with the
+# token's id.)
+[[abilities]]
+timing = "this_leaves_battlefield"
+
+# Sacrifice Stangg
+[[abilities.effects]]
+type = "sacrifice"
+mode = "linked_twin"

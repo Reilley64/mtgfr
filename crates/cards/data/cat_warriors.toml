@@ -1,0 +1,18 @@
+# Forestwalk (This creature can't be blocked as long as defending player controls a Forest.)
+name = "Cat Warriors"
+otags = ["eponymous", "french-vanilla-walker"]
+sets = ["5ed", "6ed", "bchr", "chr", "leg"]
+id = "cee3d8e5-f26f-4f47-8a7b-9ac07ebf9025"
+default_print = "90823485-83cd-4260-b860-7f05d8588905"
+oracle = "Forestwalk (This creature can't be blocked as long as defending player controls a Forest.)"
+subtypes = ["Cat", "Warrior"]
+keywords = [{ landwalk = "forest" }]
+
+[cost]
+generic = 1
+green = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

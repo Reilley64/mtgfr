@@ -145,40 +145,211 @@ impl Game {
             .collect()
     }
 
-    /// Draw `remaining` cards for `player` one at a time, each individually replaceable by dredge
-    /// (CR 702.52 — every draw is its own event, CR 121.2). Pauses on the first draw for which
-    /// `player` has an eligible dredger, raising [`PendingChoice::ChooseDredge`] carrying `remaining`;
-    /// [`Game::answer_choose_dredge`] resolves that one draw and re-enters here for `remaining - 1`,
-    /// re-checking eligibility against the now-live graveyard/library. When no dredger qualifies the
-    /// rest draw in one batch — no un-milled draw can newly create a dredger, so batching there is
-    /// equivalent to drawing them singly. `from_draw_step` is threaded onto the pause to pick the
-    /// answer handler's resume path.
-    pub(crate) fn draw_with_dredge(
+    /// Who controls a draw-replacing Chains of Mephistopheles, if one is on the battlefield —
+    /// "If a player would draw a card except the first one they draw in each of their draw steps,
+    /// that player discards a card instead." (CR 614). It replaces *every* player's draws, whoever
+    /// controls it, so unlike [`Game::controls_static`] this scan isn't player-scoped. The
+    /// controller is what stamps the substituted discard's cause (Psychic Purge reads it — the
+    /// discard is caused by Chains' own static ability, not by whatever asked for the draw).
+    ///
+    /// ponytail: two Chains behave as one — the first found is the cause, and a second copy
+    ///   neither doubles the replacement (CR 614.5 already exempts the draw it grants) nor gets a
+    ///   say in the cause. Return the full set and pause on the ordering if a real deck runs two.
+    pub(crate) fn chains_controller(&self) -> Option<PlayerId> {
+        self.battlefield().into_iter().find_map(|id| {
+            self.functional_abilities(id)
+                .iter()
+                .any(|ability| {
+                    ability.timing == Timing::Static
+                        && matches!(
+                            ability.effect,
+                            Effect::Static(
+                                StaticEffect::DrawsAfterTheFirstEachDrawStepBecomeDiscardThenDraw
+                            )
+                        )
+                })
+                .then(|| self.controller_of(id))
+        })
+    }
+
+    /// Whether the draw `player` is about to take is Chains of Mephistopheles' exempt one —
+    /// "the first one they draw in each of their draw steps". A draw in any other step, or one
+    /// `player` takes during *someone else's* draw step, is never exempt.
+    fn is_first_draw_of_own_draw_step(&self, player: PlayerId) -> bool {
+        self.step == Step::Draw
+            && self.active_player == player
+            && self.players[player.0 as usize].draws_this_draw_step == 0
+    }
+
+    /// The one draw funnel: draw for each seat in `seats` (in the order given, `count` cards
+    /// each), every draw individually replaceable, then run `after`.
+    ///
+    /// Each draw is its own event (CR 121.2) and may be replaced by dredge (CR 702.52) or by
+    /// Chains of Mephistopheles' discard (CR 614) — both of which *pause* for an answer, so the
+    /// batch can't run to completion here. It parks in [`ResumeState::draw_batch`] and the
+    /// answering handler re-enters [`Game::run_draw_batch`]; whatever the caller meant to do after
+    /// the draws rides along as `after` rather than following this call.
+    ///
+    /// ponytail: one batch at a time — a second call while one is parked replaces it. Nothing
+    /// reaches here from inside a batch: a draw only applies events, and `apply` merely *enqueues*
+    /// the triggers it fires. Make `draw_batch` a stack if a replacement ever draws re-entrantly.
+    pub(crate) fn draw_with_replacements(
         &mut self,
-        player: PlayerId,
-        remaining: u32,
-        from_draw_step: bool,
+        seats: Vec<(PlayerId, u32)>,
+        after: DrawAfter,
         events: &mut Vec<Event>,
     ) {
-        if remaining == 0 {
-            return;
+        self.resume.draw_batch = Some(DrawBatch {
+            seats,
+            after,
+            paused: false,
+        });
+        self.run_draw_batch(events);
+    }
+
+    /// Draw out the parked [`DrawBatch`], one draw at a time, until it is paid or a replacement
+    /// pauses. A no-op when no batch is parked, so an answer handler can call it unconditionally.
+    pub(crate) fn run_draw_batch(&mut self, events: &mut Vec<Event>) {
+        loop {
+            let Some(mut batch) = self.resume.draw_batch.take() else {
+                return;
+            };
+            batch.seats.retain(|&(_, count)| count > 0);
+            let Some(&(player, _)) = batch.seats.first() else {
+                self.finish_draw_batch(batch.after, batch.paused, events);
+                return;
+            };
+            // Charge the draw before taking it: a pause parks the batch as it stands, and the
+            // handler that resumes must not hand this seat the same draw twice.
+            batch.seats[0].1 -= 1;
+            self.resume.draw_batch = Some(batch);
+            if !self.draw_one_or_park(player, true, events) {
+                return;
+            }
+        }
+    }
+
+    /// [`Game::draw_one_with_replacements`], marking the parked batch as having paused so
+    /// [`Game::finish_draw_batch`] knows the interrupted caller is owed a resume.
+    fn draw_one_or_park(
+        &mut self,
+        player: PlayerId,
+        apply_chains: bool,
+        events: &mut Vec<Event>,
+    ) -> bool {
+        if self.draw_one_with_replacements(player, apply_chains, events) {
+            return true;
+        }
+        if let Some(batch) = &mut self.resume.draw_batch {
+            batch.paused = true;
+        }
+        false
+    }
+
+    /// Whatever the finished batch's caller owes next.
+    fn finish_draw_batch(&mut self, after: DrawAfter, paused: bool, events: &mut Vec<Event>) {
+        match after {
+            DrawAfter::Nothing => {}
+            // The step loop advances itself when the draw ran straight through; it bailed out at
+            // its own `pending_choice` check only if a replacement paused, so the step is ours to
+            // resume only then.
+            DrawAfter::DrawStep if paused => events.extend(self.advance_step()),
+            DrawAfter::DrawStep => {}
+            // Trade Secrets: "Target opponent draws two cards, then you draw up to four cards."
+            DrawAfter::TradeSecretsCaster {
+                caster,
+                opponent,
+                source,
+                max,
+            } => crate::pending::raise_choice(
+                self,
+                PendingChoice::MayDrawUpTo {
+                    player: caster,
+                    max,
+                    effect: Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat {
+                        count: Amount::Fixed(i32::from(max)),
+                    }),
+                    resume: MayDrawUpToResume::TradeSecretsRepeat { opponent, source },
+                },
+            ),
+            // Trade Secrets: "…Then that player may repeat this process as many times as they choose."
+            DrawAfter::TradeSecretsRepeat {
+                caster,
+                opponent,
+                source,
+                max,
+            } => crate::pending::raise_choice(
+                self,
+                PendingChoice::MayYesNo {
+                    player: opponent,
+                    source,
+                    effect: Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat {
+                        count: Amount::Fixed(i32::from(max)),
+                    }),
+                    resume: MayYesNoResume::TradeSecretsRepeat { caster, max },
+                },
+            ),
+        }
+    }
+
+    /// One draw for `player`, replacements applied. Returns `false` when a replacement raised a
+    /// pause instead of drawing — the answering handler finishes that draw and re-enters
+    /// [`Game::run_draw_batch`].
+    ///
+    /// `apply_chains` is CR 614.5: the draw Chains of Mephistopheles *itself* generates gets no
+    /// second visit from the replacement that generated it (dredge may still replace it — a
+    /// different effect).
+    /// ponytail: Chains is offered before dredge on a draw both could replace. CR 616.1 gives the
+    /// drawing player that ordering; add the ordering pause if a real deck ever runs both.
+    fn draw_one_with_replacements(
+        &mut self,
+        player: PlayerId,
+        apply_chains: bool,
+        events: &mut Vec<Event>,
+    ) -> bool {
+        if apply_chains
+            && self.chains_controller().is_some()
+            && !self.is_first_draw_of_own_draw_step(player)
+        {
+            let hand = self.hand_of(player);
+            // "If the player doesn't discard a card this way, they mill a card." — an empty hand
+            // is the only way to not discard, since the discard itself isn't optional.
+            if hand.is_empty() {
+                let evs = self.mill_events(player, 1);
+                self.apply_all(&evs);
+                events.extend(evs);
+                return true;
+            }
+            crate::pending::raise_choice(
+                self,
+                PendingChoice::DiscardCards {
+                    player,
+                    hand,
+                    count: 1,
+                    or_one_matching: None,
+                    draw_replacement: true,
+                },
+            );
+            return false;
         }
         let eligible = self.dredge_options(player);
-        if eligible.is_empty() {
-            let evs = self.draw_events(player, remaining);
-            self.apply_all(&evs);
-            events.extend(evs);
+        if !eligible.is_empty() {
+            crate::pending::raise_choice(self, PendingChoice::ChooseDredge { player, eligible });
+            return false;
+        }
+        let evs = self.draw_events(player, 1);
+        self.apply_all(&evs);
+        events.extend(evs);
+        true
+    }
+
+    /// The draw Chains of Mephistopheles owes after its discard — "If the player discards a card
+    /// this way, they draw a card." — followed by the rest of the interrupted batch.
+    pub(crate) fn finish_chains_draw(&mut self, player: PlayerId, events: &mut Vec<Event>) {
+        if !self.draw_one_or_park(player, false, events) {
             return;
         }
-        crate::pending::raise_choice(
-            self,
-            PendingChoice::ChooseDredge {
-                player,
-                eligible,
-                remaining: remaining as u8,
-                from_draw_step,
-            },
-        );
+        self.run_draw_batch(events);
     }
 
     /// The events for `player` drawing `count` cards — pure (the caller applies them).

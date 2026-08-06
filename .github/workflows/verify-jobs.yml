@@ -317,3 +317,23 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           echo "wire: main push — lint only (breaking vs origin/main is vacuous)."
+
+  verify-openspec:
+    name: Verify (openspec)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+
+      - uses: extractions/setup-just@v4
+
+      - name: Install OpenSpec CLI
+        run: npm install -g @fission-ai/openspec@1.7.0
+
+      - name: openspec validate
+        run: |
+          echo "openspec: validate living specs (+ active changes) under --strict"
+          just openspec-check

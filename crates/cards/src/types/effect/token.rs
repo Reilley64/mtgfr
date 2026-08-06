@@ -51,6 +51,13 @@ pub enum TokenEffect {
         attacking_context: Option<(PlayerId, PlayerId)>,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         must_attack_defender: bool,
+        /// "Create Stangg Twin … Exile that token when Stangg leaves the battlefield. Sacrifice
+        /// Stangg when that token leaves the battlefield." — pair the minted token with the
+        /// creating permanent, so each half's leaves-the-battlefield ability can name the other
+        /// ([`TargetSpec::LinkedTwin`](crate::TargetSpec), [`SacrificeEffect::LinkedTwin`]). The
+        /// two abilities themselves are printed on the two cards; this only ties the knot.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        link_as_twin: bool,
     },
 
     CreateCopy {

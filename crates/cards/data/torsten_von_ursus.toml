@@ -1,0 +1,18 @@
+# (no rules text — vanilla creature)
+name = "Torsten Von Ursus"
+otags = ["deprecated-legend-type"]
+sets = ["leg", "me3"]
+id = "633b8f22-0384-4f60-ba78-b52c2d82dfde"
+default_print = "e6687f36-dccf-499b-938d-0da3f442f635"
+legendary = true
+subtypes = ["Human", "Soldier"]
+
+[cost]
+generic = 3
+white = 1
+green = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5

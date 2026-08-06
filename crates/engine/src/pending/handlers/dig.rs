@@ -230,20 +230,6 @@ impl Game {
                 attackers,
             },
         );
-        // Every defender is done and no one is left to divide, so the blocks are final: the
-        // multi-block damage division `declare_blockers` would have asked for is asked here.
-        if self.pending_choice.is_none()
-            && let Some((attacker, blockers)) = self.next_undivided_multiblock()
-        {
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::AssignCombatDamage {
-                    player: self.damage_assigner(&blockers),
-                    attacker,
-                    blockers,
-                },
-            );
-        }
         Ok(events)
     }
 
@@ -949,6 +935,13 @@ impl Game {
             self.resume_clash(opponent, controller, source, &mut events);
             return Ok(events);
         }
+        // Rohgahh of Kher Keep: the same events-sink detour — the chosen opponent takes the swept
+        // set, one `ControlGained` apiece.
+        if let SplittingContinuation::GainControlOf { objects } = &then {
+            let mut events = Vec::new();
+            self.gain_control_of_all(opponent, &objects.clone(), &mut events);
+            return Ok(events);
+        }
         self.resume_splitting_opponent(opponent, controller, source, then);
         Ok(Vec::new())
     }
@@ -1008,6 +1001,11 @@ impl Game {
             SplittingContinuation::Clash => {
                 unreachable!("clash resumes via resume_clash, not resume_splitting_opponent")
             }
+            // Rohgahh of Kher Keep: needs an events sink too, so its raise site and its answer both
+            // route to `gain_control_of_all` and never reach here.
+            SplittingContinuation::GainControlOf { .. } => unreachable!(
+                "an opponent gaining control resumes via gain_control_of_all, not resume_splitting_opponent"
+            ),
         }
     }
 
@@ -1375,7 +1373,7 @@ impl Game {
                     tapped: false,
                 },
             );
-            self.maybe_pause_attach_deployed_aura(permanent, player);
+            self.maybe_pause_attach_deployed_aura(permanent, player, player);
         } else {
             self.push_apply(
                 &mut events,
@@ -1403,11 +1401,17 @@ impl Game {
     /// Aura stays unattached and the existing Aura-legality state-based action (CR 704.5m) sweeps
     /// it to the graveyard once this submission's SBA sweep runs; a hostless Equipment simply
     /// sits unattached, which is always legal for Equipment.
+    ///
+    /// `controller` is the perspective the host filter is read from (Equipment's "a creature
+    /// **you** control"); `chooser` is the seat that answers. They are the same seat for every
+    /// deployed Aura or Equipment — Takklemaggot's "**that creature's controller** chooses" is
+    /// the one card that parts them. Returns whether a choice was actually raised.
     pub(crate) fn maybe_pause_attach_deployed_aura(
         &mut self,
         deployed: ObjectId,
         controller: PlayerId,
-    ) {
+        chooser: PlayerId,
+    ) -> bool {
         let def = self.def_of(deployed);
         let (host_filter, optional) = match def.kind {
             CardKind::Aura => (
@@ -1422,22 +1426,26 @@ impl Game {
                 },
                 true,
             ),
-            _ => return,
+            _ => return false,
         };
         let candidates: Vec<ObjectId> = self
             .battlefield()
             .into_iter()
             .filter(|&id| self.permanent_matches(&host_filter, id, controller, Some(deployed)))
             .collect();
+        if candidates.is_empty() {
+            return false;
+        }
         pending::raise(
             self,
             pending::ChoiceRequest::ChooseAttachHost {
-                player: controller,
+                player: chooser,
                 attachment: deployed,
                 candidates,
                 optional,
             },
         );
+        true
     }
 
     /// Answer a [`PendingChoice::ChooseAttachHost`]: `host = Some(id)` attaches the deployed
@@ -1488,11 +1496,20 @@ impl Game {
     /// [`Effect::Zone(ZoneEffect::ReturnThisAuraAttachedTo)`]'s resolve arm uses — then pause on
     /// [`PendingChoice::ChooseAttachHost`] via
     /// [`Self::maybe_pause_attach_deployed_aura`], the same choose-host surface a deployed Aura
-    /// already uses (CR 303.4f). Guard-returns with no events if this Aura has since left the
-    /// graveyard (CR 603.10a last-known information — milled/exiled elsewhere in the meantime).
+    /// already uses (CR 303.4f). `chosen_by` names who answers that pause — the Aura's own side
+    /// by default, the dead host's controller for Takklemaggot. Guard-returns with no events if
+    /// this Aura has since left the graveyard (CR 603.10a last-known information —
+    /// milled/exiled elsewhere in the meantime).
+    ///
+    /// With no legal host the Aura ordinarily comes back unattached and the CR 704.5m sweep puts
+    /// it straight back in the graveyard. `hostless_returns_as_non_aura` is Takklemaggot's
+    /// exception: it stays, marked [`Permanent::returned_as_non_aura`] so the sweep skips it and
+    /// it drops the Aura subtype, and remembers the seat it will be pinging each upkeep.
     pub(crate) fn return_aura_from_graveyard_attached_to_chosen_host(
         &mut self,
         source: ObjectId,
+        chosen_by: PlayerSet,
+        hostless_returns_as_non_aura: bool,
         events: &mut Vec<Event>,
     ) {
         let card = self.current_id(source);
@@ -1500,12 +1517,29 @@ impl Game {
             return;
         }
         let owner = self.owner_of(card);
+        let chooser = match chosen_by {
+            PlayerSet::DyingEnchantedCreaturesController {
+                player: Some(player),
+            } => player,
+            _ => owner,
+        };
         let event = self.reanimate_event(card, owner, false);
         let Event::ReanimatedToBattlefield { permanent, .. } = event else {
             unreachable!("reanimate_event always returns a ReanimatedToBattlefield event")
         };
         self.push_apply(events, event);
-        self.maybe_pause_attach_deployed_aura(permanent, owner);
+        if self.maybe_pause_attach_deployed_aura(permanent, owner, chooser) {
+            return;
+        }
+        if !hostless_returns_as_non_aura {
+            return;
+        }
+        // Written straight onto the permanent rather than through an event, the same way the
+        // `RememberAsChosenOpponent` continuation writes Black Vise's chosen seat: both are
+        // per-object bookkeeping that dies with the object (CR 400.7), not a board fact.
+        let p = self.permanent_mut(permanent);
+        p.returned_as_non_aura = true;
+        p.chosen_opponent = Some(chooser);
     }
 
     /// Resolve [`Effect::Dig(DigEffect::RevealUntilExileCastFree)`] (Creative Technique's reveal-until-nonland

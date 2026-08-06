@@ -68,6 +68,12 @@ export function json(data: unknown, status = 200): Response {
   });
 }
 
+/** Sets the edge/browser TTL. Cloudflare's Cache Rule only marks a path eligible — this is the TTL. */
+export function cached(response: Response, cacheControl: string): Response {
+  response.headers.set("cache-control", cacheControl);
+  return response;
+}
+
 export function tableParam(event: H3Event): string | null {
   const table = event.context?.params?.table;
   if (typeof table !== "string" || table.length === 0) return null;

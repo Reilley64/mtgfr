@@ -3,7 +3,7 @@
 Source: `docs/decklists/quandrix_unlimited.md` (official Wizards `soc` precon list, cross-checked
 against live pool files and the current X-spell / counter / copy paths). Commander:
 **Zimone, Infinite Analyst**. Backlog:
-[quandrix-unlimited-increments.md](quandrix-unlimited-increments.md).
+Engine increments for this grind all landed; backlog file removed.
 
 Intake counts: 87 faithful / 0 approximated / 0 expressible / 0 needing engine work.
 The prior Quandrix re-audit filed two D-items — `Open the Way`'s player-count X cap and
@@ -130,8 +130,8 @@ None. All 87 Quandrix nonbasics are already in the pool.
 
 ## D. In pool, not yet faithful; needs engine work (0)
 
-None. Both prior Quandrix residuals landed; see
-[quandrix-unlimited-increments.md](quandrix-unlimited-increments.md).
+None. Both prior Quandrix residuals landed; engine increments for this grind all
+landed and the backlog file was removed.
 
 ## Closed re-audit notes
 

@@ -1,0 +1,30 @@
+# {T}: Target creature loses all "bands with other" abilities until end of turn.
+name = "Shelkin Brownie"
+otags = ["activated-ability", "hate-banding", "removes-banding", "repeatable-crime", "type-errata"]
+sets = ["leg"]
+id = "507ce455-bd02-49f9-bf64-4b2d21ffe0ea"
+default_print = "fddcc557-871d-425b-b4ee-bc0c9bc717aa"
+oracle = "{T}: Target creature loses all \"bands with other\" abilities until end of turn."
+subtypes = ["Ouphe"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Target creature loses all "bands with other" abilities until end of turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Target creature loses all "bands with other" abilities until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "target_loses_keywords"
+target = "creature"
+families = ["bands_with"]
+until_end_of_turn = true

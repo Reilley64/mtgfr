@@ -53,4 +53,23 @@ pub enum LifeEffect {
     /// controller, and the only one that reads a life total to size itself — so both live in the
     /// variant rather than in an [`Amount`] and a [`PlayerSet`] nothing else would use.
     SourceOwnerLosesHalfTheirLife,
+
+    /// Glyph of Life: "Choose target Wall creature. Whenever that creature is dealt damage by an
+    /// attacking creature this turn, you gain that much life." A CR 603.7 delayed *repeatable*
+    /// watch on the chosen creature rather than a one-shot gain — the amount isn't known when this
+    /// resolves, so no [`Amount`] can size it. Armed onto
+    /// `DelayedTriggers::pending_attacker_damage_life` and fired from the creature-damage
+    /// choke; it watches the damage's *recipient*, which is what separates it from
+    /// [`Trigger::EnchantedCreatureDealsDamage`](crate::Trigger)'s dealer-side twin (Spirit Link).
+    /// Expires at the same next-Untap "this turn" boundary the prevention shields use.
+    GainWhenTargetIsDamagedByAttackerThisTurn { target: TargetSpec },
+
+    /// "Exchange life totals with target opponent" (Mirror Universe). CR 118.7: the exchange is
+    /// a single event for each player, not a gain/loss loop that watchers count twice — resolved
+    /// as one [`Event::LifeChanged`](crate::Event::LifeChanged) per player, sized off the
+    /// difference. No [`Amount`] — the swapped values *are* the amount.
+    Exchange {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        who: PlayerSet,
+    },
 }

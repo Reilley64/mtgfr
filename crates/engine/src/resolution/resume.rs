@@ -8,6 +8,50 @@
 use super::SequenceCont;
 use crate::{ObjectId, PlayerId};
 
+/// What runs once an interrupted draw batch finishes every seat it owes.
+///
+/// Every draw in the game is drawn one event at a time through
+/// [`Game::run_draw_batch`](crate::Game::run_draw_batch), because either replacement it may meet
+/// — dredge (CR 702.52) or Chains of Mephistopheles' discard (CR 614) — pauses mid-batch for an
+/// answer. Whatever the batch's caller meant to do *after* the draws therefore can't just follow
+/// the call; it rides here and runs when the last seat is paid.
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum DrawAfter {
+    /// A mid-resolution draw: any sequence tail is resumed by
+    /// [`Game::resume_deferred_sequence`](crate::Game::resume_deferred_sequence) as usual.
+    #[default]
+    Nothing,
+    /// The draw step's turn-based draw — resume the interrupted step transition.
+    DrawStep,
+    /// Trade Secrets: the opponent's two draws are followed by the caster's "up to `max`".
+    TradeSecretsCaster {
+        caster: PlayerId,
+        opponent: PlayerId,
+        source: ObjectId,
+        max: u8,
+    },
+    /// Trade Secrets: the caster's "up to `max`" is followed by the opponent's repeat offer.
+    TradeSecretsRepeat {
+        caster: PlayerId,
+        opponent: PlayerId,
+        source: ObjectId,
+        max: u8,
+    },
+}
+
+/// A draw batch parked mid-way through by a draw replacement's pause.
+///
+/// `seats` is the still-unpaid work in the order it must happen — `seats[0]` is the seat whose
+/// draw is being answered right now, and its count has already had that draw taken off it.
+#[derive(Clone)]
+pub(crate) struct DrawBatch {
+    pub(crate) seats: Vec<(PlayerId, u32)>,
+    pub(crate) after: DrawAfter,
+    /// Whether any draw in this batch actually paused. The draw step's caller advances the step
+    /// itself when nothing paused, so `after` must not advance it a second time.
+    pub(crate) paused: bool,
+}
+
 /// Parked mid-resolution work waiting for the current pause to clear.
 ///
 /// Drain order in [`Game::resume_deferred_sequence`] (bit-identical to the prior
@@ -24,6 +68,12 @@ pub(crate) struct ResumeState {
     pub(crate) demonstrate_opponent_copy: Option<(PlayerId, ObjectId)>,
     /// Instant/sorcery that paused mid-body and still needs to leave the stack.
     pub(crate) spell_finish: Option<ObjectId>,
+    /// A draw batch a draw replacement paused mid-way through (dredge, or Chains of
+    /// Mephistopheles' discard). Unlike the riders above this one is *not* drained by
+    /// [`Game::resume_deferred_sequence`](crate::Game::resume_deferred_sequence): the replacement's
+    /// own answer handler resumes it, because the rest of the batch has to be drawn before the
+    /// effect that asked for it moves on.
+    pub(crate) draw_batch: Option<DrawBatch>,
 }
 
 impl ResumeState {
@@ -52,6 +102,33 @@ impl ResumeState {
             .is_some_and(|(opponent, spell)| opponent == player || removed(spell))
         {
             self.demonstrate_opponent_copy = None;
+        }
+        // A departed seat draws nothing more (CR 800.4a), and a follow-up owed to or by them has
+        // nobody left to answer it. The batch's other seats still get theirs.
+        if let Some(batch) = &mut self.draw_batch {
+            batch.seats.retain(|&(seat, _)| seat != player);
+            if batch.after.names(player) {
+                batch.after = DrawAfter::Nothing;
+            }
+            if batch.seats.is_empty() && batch.after == DrawAfter::Nothing {
+                self.draw_batch = None;
+            }
+        }
+    }
+}
+
+impl DrawAfter {
+    /// Whether this follow-up needs `player` — a Trade Secrets leg owed to or by a seat that has
+    /// left the game can't run.
+    fn names(self, player: PlayerId) -> bool {
+        match self {
+            DrawAfter::Nothing | DrawAfter::DrawStep => false,
+            DrawAfter::TradeSecretsCaster {
+                caster, opponent, ..
+            }
+            | DrawAfter::TradeSecretsRepeat {
+                caster, opponent, ..
+            } => caster == player || opponent == player,
         }
     }
 }

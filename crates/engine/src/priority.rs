@@ -116,15 +116,32 @@ impl Game {
         // A quitter can't answer the decision the game is parked on, so drop it. Everything the
         // unanswered effect would have done is forfeited — better than deadlocking three seats on
         // one that has closed the tab.
-        if self
+        let abandoned = self
             .pending_choice
             .as_ref()
             .is_some_and(|c| c.player() == player)
-        {
-            self.pending_choice = None;
-        }
-        let events = vec![Event::PlayerLost { player }];
+            .then(|| self.pending_choice.take())
+            .flatten();
+        let mut events = vec![Event::PlayerLost { player }];
         self.apply_all(&events);
+        // The combat damage step's turn-based action is not the quitter's to forfeit, though: it
+        // belongs to the game, and the other seats' attackers and blockers are waiting on it. Finish
+        // the batch for whoever is left rather than skipping every point of damage in it (CR 510.1).
+        // The quitter's own creatures have already left with them (CR 800.4a), so their attacker
+        // divides nothing.
+        if matches!(abandoned, Some(PendingChoice::AssignCombatDamage { .. })) {
+            self.divide_or_deal_combat_damage(
+                self.step == Step::FirstStrikeCombatDamage,
+                &mut events,
+            );
+        }
+        // A parked draw batch isn't the quitter's to forfeit either. Their own replacement answer
+        // is gone with them and `ResumeState::clear_for_removed` has already dropped their seat, but
+        // the seats behind them are still owed their draws — and a batch parked on the draw step
+        // still owes the turn its advance. A no-op when nothing is parked.
+        if abandoned.is_some() {
+            self.run_draw_batch(&mut events);
+        }
         events
     }
 
@@ -1432,7 +1449,11 @@ impl Game {
                 keep: None,
                 from_color: crate::ColorFilter::Any,
                 from_source: None,
+                any_recipient: false,
                 combat_only: false,
+                from_filter: None,
+                from_relation: None,
+                persistent: false,
                 gain_life: false,
                 redirect_to: None,
             });
@@ -1650,26 +1671,14 @@ impl Game {
             })
     }
 
-    /// The draw step's own draw, dredge replacement and all (CR 702.52). Returns after raising
-    /// [`PendingChoice::ChooseDredge`] when a dredger is eligible — `answer_choose_dredge` then
-    /// performs the draw or the mill+return and resumes the step loop. Shared with
-    /// [`Game::answer_may`], which lands here when Island Sanctuary's skip is declined.
+    /// The draw step's own draw, replacements and all — dredge (CR 702.52), Chains of
+    /// Mephistopheles (CR 614; this is the one draw its "except the first one they draw in each of
+    /// their draw steps" exempts, as long as nothing has drawn in this draw step yet). Returns
+    /// with a pause live when a replacement raised one; the answering handler finishes the draw
+    /// and resumes the step loop via [`DrawAfter::DrawStep`]. Shared with [`Game::answer_may`],
+    /// which lands here when Island Sanctuary's skip is declined.
     pub(crate) fn draw_step_draw(&mut self, player: PlayerId, events: &mut Vec<Event>) {
-        let dredgers = self.dredge_options(player);
-        if !dredgers.is_empty() {
-            crate::pending::raise_choice(
-                self,
-                PendingChoice::ChooseDredge {
-                    player,
-                    eligible: dredgers,
-                    remaining: 1,
-                    from_draw_step: true,
-                },
-            );
-            return;
-        }
-        let drawn = self.draw_card(player);
-        events.extend(drawn);
+        self.draw_with_replacements(vec![(player, 1)], DrawAfter::DrawStep, events);
     }
 
     /// The automatic actions performed as a step begins (untap, draw, cleanup).
@@ -1812,6 +1821,20 @@ impl Game {
                 }
             }
             Step::Upkeep => {
+                // Gabriel Angelfire's "until your next upkeep": the duration ends as this step
+                // begins, before the upkeep's own triggers are placed — so the grant this upkeep is
+                // about to make never overlaps the one it replaces. The end-of-upkeep sweep for
+                // Halfdane's longer wording lives in the `Step::Draw` arm below.
+                let starting: BTreeSet<ObjectId> = self
+                    .modifier_provenance
+                    .modifiers
+                    .iter()
+                    .filter(|m| m.duration == ModifierDuration::UntilNextUpkeep { player: active })
+                    .map(|m| m.host)
+                    .collect();
+                for id in starting {
+                    self.push_apply(events, Event::UpkeepStartDurationsEnded { object: id });
+                }
                 // Suspend (CR 702.62d): at the start of its owner's upkeep, remove one time
                 // counter from each of that player's suspended cards. When the last is removed
                 // the owner may cast it from exile without paying its mana cost (CR 702.62e) —
@@ -1899,8 +1922,45 @@ impl Game {
                         self.queue_self_sacrifice_trigger(id);
                     }
                 }
+                // Glyph of Delusion's granted "At the beginning of your upkeep, remove a glyph
+                // counter from this creature." The counter is the effect (see
+                // [`CounterKind::Glyph`]) — the Glyph is an instant with nothing left on the
+                // battlefield to hang a real triggered ability off, so the tick runs here beside
+                // suspend's and vanishing's, over the active player's own creatures ("*your*
+                // upkeep" — the creature's controller, who is the one whose untap step it misses).
+                for id in self.controlled_battlefield(active) {
+                    if self.counters_of_kind(id, CounterKind::Glyph) == 0 {
+                        continue;
+                    }
+                    self.push_apply(
+                        events,
+                        Event::KindCountersPlaced {
+                            object: id,
+                            kind: CounterKind::Glyph,
+                            count: -1,
+                        },
+                    );
+                }
             }
             Step::Draw => {
+                // Halfdane's "until the end of your next upkeep" (CR 613.3(7b)): the upkeep step
+                // just ended, so sweep here — the first sweep a set sees only arms it, the next
+                // one takes it off. See `Event::UpkeepDurationsEnded`.
+                let expiring: BTreeSet<ObjectId> = self
+                    .modifier_provenance
+                    .modifiers
+                    .iter()
+                    .filter(|m| {
+                        matches!(
+                            m.duration,
+                            ModifierDuration::EndOfNextUpkeep { player, .. } if player == active
+                        )
+                    })
+                    .map(|m| m.host)
+                    .collect();
+                for id in expiring {
+                    self.push_apply(events, Event::UpkeepDurationsEnded { object: id });
+                }
                 // The starting player skips their first draw step in a two-player game (CR 103.8a);
                 // in multiplayer no one skips (CR 103.8c). `begin_first_turn` arms the flag from the
                 // seat count; spend it here so only that first draw is skipped.
@@ -1934,11 +1994,20 @@ impl Game {
             // postcombat), and "each player's" resolves in that player's own turn, so only the
             // active player's counters fire here.
             Step::Main1 => self.perform_rad_counter_mill(active, events),
-            // The two combat damage steps deal their own batch (CR 510.5). The between-steps
+            // The two combat damage steps divide and then deal their own batch (CR 510.1, CR 510.5)
+            // — a multi-block division pauses the step until it's answered. The between-steps
             // SBA sweep and death triggers are handled by `submit` after this step, and a (CR 704, CR 603, CR 104.3)
             // priority window opens between them. (CR 117)
-            Step::FirstStrikeCombatDamage => self.combat_damage_substep(true, events),
-            Step::CombatDamage => self.combat_damage_substep(false, events),
+            Step::FirstStrikeCombatDamage => self.divide_or_deal_combat_damage(true, events),
+            Step::CombatDamage => {
+                // CR 510.4: a double striker divides *again* in the normal batch — the split it
+                // chose for the first-strike batch is not carried over. Clearing the whole table
+                // is safe because nothing but the two batches ever writes it, and only creatures
+                // that still deal this batch are asked (`owes_a_division`). Without a first-strike
+                // batch the table is already empty and this is a no-op.
+                self.combat.damage.clear();
+                self.divide_or_deal_combat_damage(false, events)
+            }
             Step::EndCombat => {
                 // Clockwork Beast's "At end of combat, if this creature attacked or blocked this
                 // combat" (CR 511.1) — queued *before* the clear below, which is what the
@@ -1949,11 +2018,11 @@ impl Game {
                 if self.combat.attackers_declared {
                     self.push_apply(events, Event::CombatCleared);
                 }
-                // Jade Statue's "becomes a 3/6 Golem artifact creature until end of combat" — the
-                // only duration in the pool shorter than a turn, swept here instead of at cleanup.
-                // ponytail: `TempBoostsEnded` ends *every* until-EOT effect on the Statue, so a
-                // pump cast on it mid-combat ends early too. Narrow enough to live with; split the
-                // event if a second end-of-combat card ever lands.
+                // Jade Statue's "becomes a 3/6 Golem artifact creature until end of combat" and
+                // Glyph of Destruction's "+10/+0 until end of combat" — the durations in the pool
+                // shorter than a turn, swept here instead of at cleanup. `end_of_combat_only`
+                // keeps this sweep to exactly those: an until-end-of-turn pump cast on the same
+                // permanent mid-combat is untouched and lives to cleanup (CR 511.3 / 514.2).
                 let animated: BTreeSet<ObjectId> = self
                     .modifier_provenance
                     .modifiers
@@ -1962,7 +2031,13 @@ impl Game {
                     .map(|m| m.host)
                     .collect();
                 for id in animated {
-                    self.push_apply(events, Event::TempBoostsEnded { object: id });
+                    self.push_apply(
+                        events,
+                        Event::TempBoostsEnded {
+                            object: id,
+                            end_of_combat_only: true,
+                        },
+                    );
                 }
             }
             Step::Cleanup => {
@@ -1981,11 +2056,17 @@ impl Game {
                     .modifier_provenance
                     .modifiers
                     .iter()
-                    .filter(|m| m.duration != ModifierDuration::Indefinite)
+                    .filter(|m| m.duration.ends_at_cleanup())
                     .map(|m| m.host)
                     .collect();
                 for id in boosted {
-                    self.push_apply(events, Event::TempBoostsEnded { object: id });
+                    self.push_apply(
+                        events,
+                        Event::TempBoostsEnded {
+                            object: id,
+                            end_of_combat_only: false,
+                        },
+                    );
                 }
 
                 // Regeneration shields last only "this turn" (CR 701.15b) — any unused one expires.
@@ -2145,6 +2226,7 @@ mod tests {
             },
             legendary: false,
             snow: false,
+            world: false,
             uncounterable: false,
             enchant: None,
             enchant_graveyard: false,
@@ -2170,6 +2252,8 @@ mod tests {
             cast_only_before_combat_damage: false,
             cast_only_during_declare_blockers: false,
             cast_only_during_declare_attackers: false,
+            cast_only_after_upkeep: false,
+            cast_only_after_combat: false,
             approximates: None,
             oracle: None,
             sets: empty_slice(),

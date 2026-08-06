@@ -1,0 +1,29 @@
+# Enchant creature
+# Prevent all combat damage that would be dealt to and dealt by enchanted creature.
+name = "Gaseous Form"
+otags = ["damage-prevention"]
+sets = ["4bb", "4ed", "5ed", "6ed", "btd", "ema", "leg", "plst", "ren", "tmp", "tpr"]
+id = "896af9a9-12a2-4dd6-957c-e52150b5f3a2"
+default_print = "c5464250-a6a9-4399-a67f-2488073794e9"
+oracle = "Enchant creature\nPrevent all combat damage that would be dealt to and dealt by enchanted creature."
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "aura"
+
+# Prevent all combat damage that would be dealt to and dealt by enchanted creature.
+[[abilities]]
+timing = "static"
+
+# Prevent all combat damage that would be dealt to and dealt by enchanted creature.
+[[abilities.effects]]
+type = "static"
+mode = "prevent_damage"
+combat_only = true
+to_self = true
+by_self = true
+attached = true

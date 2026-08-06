@@ -102,8 +102,15 @@ impl Game {
                 | Event::TempBoost { object, .. }
                 | Event::BasePtSetUntilEndOfTurn { object, .. }
                 | Event::BasePtSetIndefinite { object, .. }
+                | Event::BasePtSetUntilEndOfNextUpkeep { object, .. }
+                | Event::BaseToughnessSetIndefinite { object, .. }
+                | Event::PtSwitchedUntilEndOfTurn { object }
+                | Event::UpkeepDurationsEnded { object }
+                | Event::UpkeepStartDurationsEnded { object }
+                | Event::KeywordsGrantedUntilNextUpkeep { object, .. }
                 | Event::TypesAddedUntilEndOfTurn { object, .. }
-                | Event::TempBoostsEnded { object }
+                | Event::TempBoostsEnded { object, .. }
+                | Event::KeywordsGrantedIndefinitely { object, .. }
                 | Event::KeywordsStripped { object, .. }
                 // The host named here is the one whose keyword set just shrank; the Aura carrying
                 // the loss has no keywords of its own to recompute.

@@ -61,6 +61,11 @@ pub struct CostToml {
     /// black mana on X" is `x_color = "black"`. The chosen value is paid as colored pips of
     /// that color instead of as generic. Absent for every other `{X}` cost, where any mana pays.
     pub x_color: Option<Color>,
+    /// A card-defined value for `{X}` (CR 107.3b) — Voodoo Doll's "X is the number of pin
+    /// counters on this artifact" is `x = 2, x_defined = { per_counter_of_kind = "pin" }`. The
+    /// activating player announces nothing; the activation gate resolves this amount instead.
+    /// Absent for every ordinary `{X}` cost, where the player chooses X.
+    pub x_defined: Option<Amount>,
     /// Hybrid mana pips (CR 107.4e — `{a/b}`): a list of two-color arrays, one per
     /// hybrid symbol (`hybrid = [["black", "green"]]` for one `{B/G}`).
     pub hybrid: Vec<[Color; 2]>,
@@ -116,6 +121,7 @@ impl From<CostToml> for Cost {
             colorless: cost.colorless,
             x: cost.x.into(),
             x_color: cost.x_color,
+            x_defined: cost.x_defined,
             hybrid: intern(hybrid),
             phyrexian: intern(cost.phyrexian),
             additional: cost.additional,

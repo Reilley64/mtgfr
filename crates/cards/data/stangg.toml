@@ -1,0 +1,44 @@
+# When Stangg enters, create Stangg Twin, a legendary 3/4 red and green Human Warrior creature
+# token. Exile that token when Stangg leaves the battlefield. Sacrifice Stangg when that token
+# leaves the battlefield.
+name = "Stangg"
+sets = ["a25", "bchr", "chr", "leg", "me3", "plst"]
+id = "739eac91-3029-4ce7-9885-0af3ddea472e"
+default_print = "a23f846e-b5e6-48c2-afea-c9be7fc8b7c3"
+oracle = "When Stangg enters, create Stangg Twin, a legendary 3/4 red and green Human Warrior creature token. Exile that token when Stangg leaves the battlefield. Sacrifice Stangg when that token leaves the battlefield."
+otags = ["delayed-trigger", "deprecated-legend-type", "triggered-ability", "type-errata"]
+subtypes = ["Human", "Warrior"]
+legendary = true
+
+[cost]
+generic = 4
+red = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# When Stangg enters, create Stangg Twin, a legendary 3/4 red and green Human Warrior creature
+# token. … Sacrifice Stangg when that token leaves the battlefield.
+[[abilities]]
+timing = "etb"
+
+# create Stangg Twin, a legendary 3/4 red and green Human Warrior creature token. `link_as_twin`
+# pairs the two permanents so each half can name the other; the "sacrifice Stangg" delayed trigger
+# rides on the token profile as its own leaves-the-battlefield ability (see tokens/stangg_twin.toml).
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "48419100-a3d7-44c1-95cc-486a4ef066af"
+link_as_twin = true
+
+# Exile that token when Stangg leaves the battlefield.
+[[abilities]]
+timing = "this_leaves_battlefield"
+
+# Exile that token
+[[abilities.effects]]
+type = "exile"
+mode = "linked_twin"

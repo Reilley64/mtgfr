@@ -483,9 +483,9 @@
     "family": "choice",
     "mode": "join_forces_pay_mana"
   },
-  "keyword_anthem_static": {
+  "filtered_anthem_static": {
     "family": "static",
-    "mode": "keyword_anthem"
+    "mode": "filtered_anthem"
   },
   "level_up": {
     "family": "counters",

@@ -147,6 +147,7 @@ impl Game {
                         toughness: 0,
                         keywords: &[Keyword::Haste],
                         source_name,
+                        ends_at_end_of_combat: false,
                     });
                 }
                 events
@@ -184,6 +185,7 @@ impl Game {
                         toughness: 0,
                         keywords: &[Keyword::Haste],
                         source_name,
+                        ends_at_end_of_combat: false,
                     });
                 }
                 events
@@ -204,6 +206,25 @@ impl Game {
                 .map(|object| Event::ControlGained {
                     object,
                     controller: self.owner_of(object),
+                })
+                .collect(),
+            // The Wretched (CR 611.2b): `GainControlAllUntilEndOfTurn`'s filtered sweep handed over
+            // under `GainControlWhile`'s condition instead of a turn — no untap, no haste, the card
+            // prints neither. `blocking_source = true` needs the source passed to the filter, which
+            // is how "blocking **this** creature" resolves to the right attacker. Each match gets
+            // its own `ControlCondition`, so `check_conditioned_control_reversions` hands them all
+            // back the moment the source leaves the battlefield or changes controller.
+            ControlEffect::GainControlAllWhile { filter } => self
+                .battlefield()
+                .into_iter()
+                .filter(|&id| self.permanent_matches(&filter, id, controller, Some(source)))
+                .map(|object| Event::ConditionedControlGained {
+                    object,
+                    controller,
+                    condition: crate::ControlCondition {
+                        source,
+                        needs_tapped: false,
+                    },
                 })
                 .collect(),
             ControlEffect::GainControlWhile {
@@ -245,18 +266,30 @@ impl Game {
                 .filter_map(|object| self.tap_change(object, false))
                 .collect(),
 
-            // Dread Cacodemon: "tap all other creatures you control" — the tap-side mirror of
-            // `UntapAll` just above. `filter.other` (already set by the card's TOML) relies on
-            // `permanent_matches`'s `Some(source)` to exclude Dread's own permanent id.
+            // Dread Cacodemon's "tap all other creatures you control" and Arena of the Ancients'
+            // table-wide "tap all legendary creatures" — the tap-side mirror of `UntapAll` just
+            // above. The seat restriction is the filter's own `controller` axis, so a card that
+            // says "all" reaches across the table. `filter.other` (Dread's) relies on
+            // `permanent_matches`'s `Some(source)` to exclude the source's own permanent id.
             ControlEffect::TapAll { filter } => self
                 .battlefield()
                 .into_iter()
-                .filter(|&id| {
-                    self.controller_of(id) == controller
-                        && self.permanent_matches(&filter, id, controller, Some(source))
-                })
+                .filter(|&id| self.permanent_matches(&filter, id, controller, Some(source)))
                 .filter_map(|object| self.tap_change(object, true))
                 .collect(),
+
+            // Feint's "tap all creatures blocking target attacking creature": `TapAll` narrowed
+            // to one attacker's declared blockers instead of a filter sweep. Tapping them does not
+            // un-block anything (CR 509.1h) — the fog rider beside it is what saves the attacker.
+            ControlEffect::TapBlockersOfTarget { .. } => {
+                let Some(Target::Object(attacker)) = target else {
+                    return Vec::new();
+                };
+                self.blockers_of(attacker)
+                    .into_iter()
+                    .filter_map(|object| self.tap_change(object, true))
+                    .collect()
+            }
 
             // Mana Short's "tap all lands target player controls": `TapAll` aimed at the chosen
             // seat instead of your own. `you` for the filter is still that player — Power Sink's
@@ -286,6 +319,71 @@ impl Game {
                 .collect(),
 
             _ => unreachable!("control family mint received a non-family effect"),
+        }
+    }
+
+    /// Rohgahh of Kher Keep's "then an opponent gains control of them": the swept set is read at
+    /// resolution (plus the source itself when `with_source`, which no filter can name), the
+    /// controller picks one opponent to hand *all* of it to, and a table with a single opponent
+    /// left skips the pause. Handing the set over is [`Self::resolve_target_opponent_gains_control`]'s
+    /// `ControlGained` per permanent.
+    pub(crate) fn resolve_opponent_gains_control_all(
+        &mut self,
+        ctx: ResolveCtx,
+        filter: PermanentFilter,
+        with_source: bool,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            controller, source, ..
+        } = ctx;
+        let mut objects: Vec<ObjectId> = self
+            .battlefield()
+            .into_iter()
+            .filter(|&id| self.permanent_matches(&filter, id, controller, Some(source)))
+            .collect();
+        if with_source && self.as_permanent(source).is_some() && !objects.contains(&source) {
+            objects.push(source);
+        }
+        if objects.is_empty() {
+            return;
+        }
+        let legal: Vec<PlayerId> = self.living_players().filter(|&p| p != controller).collect();
+        match legal.as_slice() {
+            // ponytail: no opponent left to hand them to — unreachable in a real game.
+            [] => {}
+            [only] => self.gain_control_of_all(*only, &objects, events),
+            _ => pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseSplittingOpponent {
+                    player: controller,
+                    source,
+                    legal,
+                    then: SplittingContinuation::GainControlOf { objects },
+                },
+            ),
+        }
+    }
+
+    /// Hand `objects` to `recipient` — the tail of [`Self::resolve_opponent_gains_control_all`],
+    /// reached directly when one opponent is left and through the chooser's answer otherwise.
+    pub(crate) fn gain_control_of_all(
+        &mut self,
+        recipient: PlayerId,
+        objects: &[ObjectId],
+        events: &mut Vec<Event>,
+    ) {
+        for &object in objects {
+            if self.as_permanent(object).is_none() {
+                continue;
+            }
+            self.push_apply(
+                events,
+                Event::ControlGained {
+                    object,
+                    controller: recipient,
+                },
+            );
         }
     }
 
@@ -331,7 +429,16 @@ impl Game {
     /// `ControlGained` events (CR 800.4a: the swap outranks any earlier steal), leaving
     /// ownership untouched (CR 108.3). Both must still be on the battlefield — an exchange
     /// needs both, so a target that has left since (CR 608.2b) cancels the whole swap.
-    pub(crate) fn resolve_exchange_control(&mut self, ctx: ResolveCtx, events: &mut Vec<Event>) {
+    ///
+    /// `destroy_attached_auras` is Gauntlets of Chaos' rider: "If those permanents are exchanged
+    /// this way, destroy all Auras attached to them." The early returns above are exactly that
+    /// "if" — a cancelled swap reaches no destruction.
+    pub(crate) fn resolve_exchange_control(
+        &mut self,
+        ctx: ResolveCtx,
+        destroy_attached_auras: bool,
+        events: &mut Vec<Event>,
+    ) {
         let ResolveCtx {
             target,
             targets_second,
@@ -346,21 +453,148 @@ impl Game {
         if self.as_permanent(first).is_none() || self.as_permanent(second).is_none() {
             return;
         }
-        let first_controller = self.controller_of(first);
-        let second_controller = self.controller_of(second);
+        self.swap_control(first, second, events);
+        if !destroy_attached_auras {
+            return;
+        }
+        for aura in [first, second]
+            .into_iter()
+            .flat_map(|host| self.attachments(host))
+            .filter(|&id| matches!(self.def_of(id).kind, CardKind::Aura))
+            .collect::<Vec<_>>()
+        {
+            self.destroy_permanent(aura, events);
+        }
+    }
+
+    /// Enchantment Alteration: "Attach target Aura attached to a creature or land to another
+    /// permanent of that type." Clause 0 is the Aura (`ctx.target`), clause 1 the new host
+    /// (`ctx.targets_second`, chosen at announcement — CR 601.2c). Either target having left the
+    /// battlefield since (CR 608.2b) drops the whole move, and the attach is still gated on the
+    /// Aura's own enchant restriction and the host's protection (CR 303.4f/702.16e) — clause 1's
+    /// legality was narrowed to the *old* host's types, which a type-changing effect in response
+    /// can outdate.
+    pub(crate) fn resolve_move_aura(&mut self, ctx: ResolveCtx, events: &mut Vec<Event>) {
+        let ResolveCtx {
+            target,
+            targets_second,
+            ..
+        } = ctx;
+        let Some(aura) = target.and_then(Target::object_id) else {
+            return;
+        };
+        let Some(Target::Object(host)) = targets_second.iter().next() else {
+            return;
+        };
+        if self.as_permanent(aura).is_none() || self.as_permanent(host).is_none() {
+            return;
+        }
+        if !self.noncast_attach_legal(aura, host) {
+            return;
+        }
+        self.push_apply(
+            events,
+            Event::AttachedTo {
+                object: aura,
+                host: Some(host),
+            },
+        );
+    }
+
+    /// Juxtapose (CR 701.10): "You and target player exchange control of the creature you each
+    /// control with the greatest mana value" — an exchange of two *chosen* permanents rather than
+    /// two targeted ones. One permanent per seat: the greatest printed mana value among the
+    /// permanents that seat controls whose types intersect `types`. Nothing happens unless both
+    /// seats have one (CR 701.10c — an exchange of one object isn't an exchange), and nothing
+    /// happens when the chosen player is the resolving controller (both reads land on the same
+    /// permanent).
+    ///
+    /// Juxtapose runs this twice — creatures, then artifacts — as two `Sequence` steps. The second
+    /// step reads the board `run_sequence` has already applied the first step's swap to, which is
+    /// what "then exchange control of artifacts the same way" wants: an artifact creature that just
+    /// crossed the table is one of the *recipient's* artifacts by then.
+    pub(crate) fn resolve_exchange_greatest_mana_value(
+        &mut self,
+        ctx: ResolveCtx,
+        types: TypeSet,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            controller, target, ..
+        } = ctx;
+        let Some(Target::Player(other)) = target else {
+            return;
+        };
+        if other == controller {
+            return;
+        }
+        let Some(mine) = self.greatest_mana_value_permanent(controller, types) else {
+            return;
+        };
+        let Some(theirs) = self.greatest_mana_value_permanent(other, types) else {
+            return;
+        };
+        self.swap_control(mine, theirs, events);
+    }
+
+    /// The permanent `player` controls with the greatest printed mana value among those whose card
+    /// types (CR 613.4, post-layer) intersect `types`, or `None` when they control none.
+    ///
+    /// ponytail: "If two or more permanents a player controls are tied for greatest, their
+    /// controller chooses one of them" is resolved deterministically here — `max_by_key` keeps the
+    /// last maximum, so the most recently created of a tied group wins. Exactly one of the tied
+    /// group is exchanged either way; only *which* one is unfaithful. Upgrade path: a
+    /// `PendingChoice` per tied seat, which is what Juxtapose's `approximates` note and
+    /// leg-increments #124 track.
+    fn greatest_mana_value_permanent(&self, player: PlayerId, types: TypeSet) -> Option<ObjectId> {
+        self.battlefield()
+            .into_iter()
+            .filter(|&id| self.controller_of(id) == player)
+            .filter(|&id| self.effective_types(id).intersects(types))
+            .max_by_key(|&id| self.def_of(id).mana_value())
+    }
+
+    /// Hand `a` to `b`'s controller and `b` to `a`'s, as two freshly-timestamped `ControlGained`
+    /// events (CR 800.4a) that leave ownership alone (CR 108.3).
+    fn swap_control(&mut self, a: ObjectId, b: ObjectId, events: &mut Vec<Event>) {
+        let a_controller = self.controller_of(a);
+        let b_controller = self.controller_of(b);
         self.push_apply(
             events,
             Event::ControlGained {
-                object: first,
-                controller: second_controller,
+                object: a,
+                controller: b_controller,
             },
         );
         self.push_apply(
             events,
             Event::ControlGained {
-                object: second,
-                controller: first_controller,
+                object: b,
+                controller: a_controller,
             },
         );
+    }
+
+    /// Destroy one permanent, honoring indestructible, an available regeneration shield
+    /// (CR 701.15b) and tokens' ceasing to exist — the single-permanent form of
+    /// `DestroyEffect::All`'s per-permanent choreography (CR 704).
+    fn destroy_permanent(&mut self, id: ObjectId, events: &mut Vec<Event>) {
+        if self.has_keyword(id, Keyword::Indestructible) {
+            return;
+        }
+        if self.regeneration_shield_available(id) {
+            self.push_apply(events, Event::Regenerated { object: id });
+            return;
+        }
+        let event = match self.objects[id as usize] {
+            Object::Permanent(ref p) if p.token => Event::TokenCeasedToExist {
+                token: id,
+                controller: p.owner,
+                def: p.def,
+            },
+            Object::Permanent(_) => self.graveyard_or_command(id, self.next_object_id()),
+            _ => return,
+        };
+        self.push_apply(events, event);
     }
 }

@@ -23,6 +23,12 @@ impl Game {
         if !is_partition(&top, &bottom, &cards) {
             return Err(Reject::IllegalChoice); // not a split of exactly the shown cards
         }
+        // A look-only pause (Visions) decides nothing: the answer names the cards it saw and the
+        // library is left exactly as it was — the order the answer happens to carry is ignored.
+        if rest_dest == ArrangeRest::LookOnly {
+            self.finish_answer();
+            return Ok(Vec::new());
+        }
         if rest_dest == ArrangeRest::Nowhere && !bottom.is_empty() {
             // "Put them back in any order" — there is nowhere else to put one.
             return Err(Reject::IllegalChoice);
@@ -150,7 +156,7 @@ impl Game {
         if selected.len() == 1
             && let Some(permanent) = deployed
         {
-            self.maybe_pause_attach_deployed_aura(permanent, player);
+            self.maybe_pause_attach_deployed_aura(permanent, player, player);
         }
 
         // Every non-selected looked-at card goes to `rest`, in a random order (CR "in a random
@@ -357,39 +363,40 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::ChooseColor`] — either an as-enters choice (CR 614.12/700.9-style
-    /// — Flickering Ward: stores `color` on `source`'s indefinite [`Permanent::chosen_color`]) or
-    /// a resolution-time color-SET (CR 613.3c — Wild Mongrel: stores it on `source`'s
-    /// as an until-end-of-turn registered color SET instead, per the pause's `until_end_of_turn`
-    /// flag). Any of the five colors is a legal answer (no game-state legality to violate), so
-    /// `color` is taken as given. `_player` isn't needed beyond `submit`'s choice-gate actor check.
+    /// Answer a [`PendingChoice::ChooseColor`] — the pause's [`ChosenColorUse`] says which of the
+    /// three callers asked: an as-enters choice remembered on `source` (CR 614.12/700.9-style —
+    /// Flickering Ward's [`Permanent::chosen_color`]), or a CR 613.3c layer-5 color SET on
+    /// `source` with the duration the card printed (Wild Mongrel until end of turn, Alchor's Tomb
+    /// indefinitely). Any of the five colors is a legal answer (no game-state legality to
+    /// violate), so `color` is taken as given. `_player` isn't needed beyond `submit`'s
+    /// choice-gate actor check.
     pub(crate) fn choose_color(
         &mut self,
         _player: PlayerId,
         color: Color,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::ChooseColor {
-            source,
-            until_end_of_turn,
-            ..
-        }) = self.pending_choice.clone()
+        let Some(PendingChoice::ChooseColor { source, use_, .. }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
         self.finish_answer();
 
         let mut events = Vec::new();
-        let event = if until_end_of_turn {
-            Event::ColorSet {
+        let event = match use_ {
+            ChosenColorUse::Remember => Event::ColorChosen {
+                object: source,
+                color,
+            },
+            ChosenColorUse::SetUntilEndOfTurn => Event::ColorSet {
                 object: source,
                 color,
                 until_end_of_turn: true,
-            }
-        } else {
-            Event::ColorChosen {
+            },
+            ChosenColorUse::SetIndefinitely => Event::ColorSet {
                 object: source,
                 color,
-            }
+                until_end_of_turn: false,
+            },
         };
         self.push_apply_effect_event(&mut events, event);
         Ok(events)
@@ -644,6 +651,8 @@ impl Game {
             source,
             keep,
             defender,
+            round,
+            permanent_cards,
             ..
         }) = self.pending_choice.clone()
         else {
@@ -656,6 +665,7 @@ impl Game {
 
         let mut events = Vec::new();
         let Some(from) = choice else {
+            self.offer_next_in_put_round(player, source, round, false, keep, permanent_cards);
             return Ok(events);
         };
         let permanent = self.next_object_id();
@@ -692,6 +702,7 @@ impl Game {
                     toughness: 0,
                     keywords: HASTE,
                     source_name: self.source_name_of(source),
+                    ends_at_end_of_combat: false,
                 },
             );
             self.push_apply(
@@ -706,7 +717,51 @@ impl Game {
                 },
             );
         }
+        self.offer_next_in_put_round(player, source, round, true, keep, permanent_cards);
         Ok(events)
+    }
+
+    /// Eureka's "Repeat this process until no one puts a card onto the battlefield": raise the next
+    /// seat's offer, if the lap is still running. `round` is the queue of seats still owed one after
+    /// `player` (`None` for Cauldron Dance / Kaalia's single offer, which never repeats). A seat that
+    /// `acted` puts every other seat back in the queue ahead of itself, so the process can only end
+    /// once a whole lap has passed with nobody acting; a decline just moves to the next seat, and an
+    /// empty queue ends it. `raise` skips seats holding nothing eligible on its own.
+    fn offer_next_in_put_round(
+        &mut self,
+        player: PlayerId,
+        source: ObjectId,
+        round: Option<Vec<PlayerId>>,
+        acted: bool,
+        keep: bool,
+        permanent_cards: bool,
+    ) {
+        let Some(declined) = round else {
+            return;
+        };
+        let lap = match acted {
+            true => {
+                let mut lap = self.turn_order_from(player);
+                lap.rotate_left(1);
+                lap
+            }
+            false => declined,
+        };
+        let Some((&next, rest)) = lap.split_first() else {
+            return;
+        };
+        pending::raise(
+            self,
+            pending::ChoiceRequest::PutCreatureFromHand {
+                player: next,
+                source,
+                subtypes: &[],
+                keep,
+                defender: None,
+                round: Some(rest.to_vec()),
+                permanent_cards,
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::ChooseDredge`] (CR 702.52). `dredger == Some(id)` replaces the draw:
@@ -723,8 +778,6 @@ impl Game {
         let Some(PendingChoice::ChooseDredge {
             player: chooser,
             eligible,
-            remaining,
-            from_draw_step,
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
@@ -762,16 +815,11 @@ impl Game {
                 events.extend(drawn);
             }
         }
-        // A draw-step pause draws exactly one card (`remaining == 1`) and resumes the step-transition
-        // loop it interrupted. A mid-resolution "draw N" re-enters the draw loop for the remaining
-        // draws — each re-checks dredge eligibility against the now-live graveyard/library (CR 702.52),
-        // pausing again or drawing the rest; its sequence tail is resumed by `resume_deferred_sequence`
-        // after this returns (once the batch stops pausing).
-        if from_draw_step {
-            events.extend(self.advance_step());
-        } else {
-            self.draw_with_dredge(player, remaining as u32 - 1, false, &mut events);
-        }
+        // This draw is settled either way; the rest of the batch it interrupted draws on, each
+        // remaining draw re-checking dredge eligibility against the now-live graveyard/library
+        // (CR 702.52). Whatever the batch's caller owes afterwards — the draw step's own
+        // transition, Trade Secrets' next leg — rides on the batch and runs when it is paid.
+        self.run_draw_batch(&mut events);
         Ok(events)
     }
 

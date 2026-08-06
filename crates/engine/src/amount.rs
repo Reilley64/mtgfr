@@ -41,6 +41,12 @@ impl Game {
                 .mana_value() as i32,
             Amount::PerCounterOnSource => self.plus_counters(source),
             Amount::PerCounterOfKindOnSource { kind } => self.counters_of_kind(source, kind) as i32,
+            // Venarian Gold reads the counters on what it enchants, not on itself; an Aura that
+            // has come unattached counts nothing.
+            Amount::PerCounterOfKindOnAttached { kind } => self
+                .as_permanent(source)
+                .and_then(|p| p.attached_to)
+                .map_or(0, |host| self.counters_of_kind(host, kind) as i32),
             Amount::YourLifeTotal => self.players[controller.0 as usize].life,
             Amount::LifeGainedThisTurn => {
                 self.players[controller.0 as usize].life_gained_this_turn as i32
@@ -152,6 +158,11 @@ impl Game {
             Amount::SacrificedCreatureToughness => panic!(
                 "Amount::SacrificedCreatureToughness must be contextualized to Fixed before resolving"
             ),
+            // A placeholder [`contextualize_discard_effect`] must have already rewritten to
+            // `Fixed` before the ability reaches the stack — see the variant's own doc comment.
+            Amount::DiscardCostWasLand(_) => panic!(
+                "Amount::DiscardCostWasLand must be contextualized to Fixed before resolving"
+            ),
             // A placeholder [`contextualize_effect`] must have already rewritten to `Fixed` at
             // trigger placement — see the variant's own doc comment.
             Amount::DyingEnchantedCreatureToughness => panic!(
@@ -216,6 +227,19 @@ impl Game {
             Amount::CountersRemovedThisWay => {
                 self.resolution_frame.counters_removed_this_way as i32
             }
+            // Rampage N (CR 702.23a): `per` for each creature blocking the source beyond the first.
+            // Read here, as the trigger resolves, which is CR 702.23b's "calculated only once per
+            // combat" — `blockers_of` sees only the blockers still on the battlefield, and nothing
+            // re-reads it afterwards.
+            Amount::BlockersBeyondFirst { per } => {
+                per * self.blockers_of(source).len().saturating_sub(1) as i32
+            }
+            // Wall of Caltrops' co-blocker count reads the *other* creature in the block, which
+            // only `TriggerContext::blocking_partner` knows — so `Game::compare_operand` answers
+            // it at trigger placement (CR 603.4) and this path has nothing to read.
+            // ponytail: `0` rather than a panic, matching `TriggeringSpellManaValue`'s placeholder
+            // — no effect resolves this amount today; give it a partner-carrying frame if one does.
+            Amount::CreaturesBlockingThatCreature { .. } => 0,
             // Reads the mana value the preceding `Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue)`
             // step snapshotted (Surge to Victory's team +X/+0 pump); `0` if unset — unreachable in
             // practice, since a fizzled target drops the whole ability before this reads.
@@ -310,8 +334,31 @@ impl Game {
                 }
             }
             Amount::CardsDiscardedThisWay => self.resolution_frame.cards_discarded_this_way as i32,
+            Amount::DamageDealtThisWay => self.resolution_frame.damage_dealt_this_way as i32,
+            // Blazing Effigy's "damage dealt to this creature this turn by other sources named
+            // Blazing Effigy": the ledger rows aimed at this object, from a *different* object
+            // whose card shares its name. `def_of` still answers for a source that has since
+            // changed zones, so a dead Effigy's hits still count (CR 603.10a).
+            Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame => {
+                let name = self.def_of(source).name;
+                self.damage_dealt_this_turn
+                    .iter()
+                    .filter(|&&(dealer, recipient, _)| {
+                        dealer != source
+                            && recipient == Target::Object(source)
+                            && self.def_of(dealer).name == name
+                    })
+                    .map(|&(_, _, amount)| amount)
+                    .sum()
+            }
             Amount::CreaturesSacrificedThisWay => {
                 self.resolution_frame.creatures_sacrificed_this_way as i32
+            }
+            Amount::DamageDealtByChosenSorceryThisTurn => {
+                let Some(chosen) = self.resolution_frame.chosen_damage_source else {
+                    return 0;
+                };
+                self.damage_dealt_this_turn_by(chosen)
             }
         }
     }
@@ -328,6 +375,47 @@ impl Game {
     ) -> u32 {
         self.resolve_amount(amount, controller, source, target, x)
             .max(0) as u32
+    }
+
+    /// Every row this turn's damage ledger holds for `dealer`, totalled. One spell can deal
+    /// damage in several rows (Breath of Darigaaz hits each seat, Syphon Soul each opponent), and
+    /// a card that reads "the damage dealt by" that spell means its whole output.
+    pub(crate) fn damage_dealt_this_turn_by(&self, dealer: ObjectId) -> i32 {
+        self.damage_dealt_this_turn
+            .iter()
+            .filter(|&&(who, _, _)| who == dealer)
+            .map(|&(_, _, dealt)| dealt)
+            .sum()
+    }
+
+    /// The sorcery spells `player` cast this turn that actually dealt damage — the candidates
+    /// Backdraft's "one of those sorcery spells this turn" picks from. In ledger order (the order
+    /// they first dealt damage), deduplicated, so a multi-row sorcery is offered once.
+    ///
+    /// ponytail: "cast by" is read as [`Game::controller_of`], which is the owner once the sorcery
+    /// has hit its graveyard — a sorcery cast off *another* player's library or hand lands in the
+    /// wrong seat's candidate list. The engine keeps only a per-player
+    /// `sorcery_cast_this_turn` flag, not a caster per cast object; recording the caster is the
+    /// upgrade path.
+    pub(crate) fn damaging_sorceries_cast_by(&self, player: PlayerId) -> Vec<ObjectId> {
+        let mut sorceries: Vec<ObjectId> = Vec::new();
+        for &(dealer, _, _) in &self.damage_dealt_this_turn {
+            if sorceries.contains(&dealer) {
+                continue;
+            }
+            if !matches!(
+                self.def_of(dealer).kind,
+                CardKind::Spell {
+                    speed: SpellSpeed::Sorcery,
+                    ..
+                }
+            ) || self.controller_of(dealer) != player
+            {
+                continue;
+            }
+            sorceries.push(dealer);
+        }
+        sorceries
     }
 
     /// How many permanents (battlefield) or cards (graveyard) match `filter`. On the battlefield

@@ -64,6 +64,16 @@ proto-breaking:
 [doc("proto-lint + proto-breaking")]
 proto-check: proto-lint proto-breaking
 
+# ── Docs / OpenSpec ───────────────────────────────────────────────────────────────────
+
+[doc("Validate OpenSpec living specs and active changes (strict)")]
+openspec-check:
+    openspec validate --all --strict --no-interactive
+
+[doc("Sync vendored Card-Forge/forge at .repos/forge from upstream (commit the diff)")]
+forge:
+    ./scripts/sync-forge.sh
+
 # ── Client ───────────────────────────────────────────────────────────────────────────
 
 [group('client')]
@@ -181,6 +191,10 @@ cards-toml-validate *args:
 cards-toml-validate-pool:
     @just cards-toml-validate crates/cards/data/*.toml
     @just cards-toml-validate --token crates/cards/data/tokens/*.toml
+
+[doc("Cross-check a fidelity report against the card pool and its increment backlog")]
+fidelity-audit slug:
+    python3 tooling/fidelity_report_audit.py {{ slug }}
 
 [doc("Scan engine for likely missing CR citations (advisory)")]
 engine-cr-scan:

@@ -1,0 +1,37 @@
+# {2}{G}{G}: Create a 1/1 green Wolf creature token named Wolves of the Hunt. It has "bands with
+# other creatures named Wolves of the Hunt." (Any creatures named Wolves of the Hunt can attack in
+# a band as long as at least one has "bands with other creatures named Wolves of the Hunt." Bands
+# are blocked as a group. If at least two creatures named Wolves of the Hunt you control, one of
+# which has "bands with other creatures named Wolves of the Hunt," are blocking or being blocked by
+# the same creature, you divide that creature's combat damage, not its controller, among any of the
+# creatures it's being blocked by or is blocking.)
+name = "Master of the Hunt"
+otags = ["activated-ability", "repeatable-creature-tokens", "unprinted-token"]
+sets = ["leg"]
+id = "cdf89ad2-ce08-4708-88c2-8acdc861526d"
+default_print = "4e6bf56e-2d74-4e4d-a667-885853979377"
+oracle = "{2}{G}{G}: Create a 1/1 green Wolf creature token named Wolves of the Hunt. It has \"bands with other creatures named Wolves of the Hunt.\" (Any creatures named Wolves of the Hunt can attack in a band as long as at least one has \"bands with other creatures named Wolves of the Hunt.\" Bands are blocked as a group. If at least two creatures named Wolves of the Hunt you control, one of which has \"bands with other creatures named Wolves of the Hunt,\" are blocking or being blocked by the same creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"
+subtypes = ["Human"]
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# {2}{G}{G}: Create a 1/1 green Wolf creature token named Wolves of the Hunt. It has "bands with
+# other creatures named Wolves of the Hunt."
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 2, green = 2 }
+
+# Create a 1/1 green Wolf creature token named Wolves of the Hunt. It has "bands with other
+# creatures named Wolves of the Hunt."
+[[abilities.effects]]
+type = "token"
+mode = "create"
+token = "leg-token-wolves-of-the-hunt"
+count = 1

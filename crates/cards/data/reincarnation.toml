@@ -1,0 +1,30 @@
+# Choose target creature. When that creature dies this turn, return a creature card from its
+# owner's graveyard to the battlefield under the control of that creature's owner.
+name = "Reincarnation"
+otags = ["delayed-trigger", "reanimate-creature", "single-target-instant-sorcery"]
+sets = ["c13", "leg", "me3"]
+id = "7ee379cd-b3fb-487b-846c-eab02902de79"
+default_print = "969c104e-daf4-480d-99a2-dd93c498b48e"
+oracle = "Choose target creature. When that creature dies this turn, return a creature card from its owner's graveyard to the battlefield under the control of that creature's owner."
+
+[cost]
+generic = 1
+green = 2
+
+[kind]
+type = "instant"
+
+# Choose target creature. When that creature dies this turn, return a creature card from its
+# owner's graveyard to the battlefield under the control of that creature's owner.
+[[abilities]]
+timing = "spell"
+
+# Choose target creature. When that creature dies this turn, …
+[[abilities.effects]]
+type = "misc"
+mode = "schedule_when_target_dies_this_turn"
+then = [
+    # … return a creature card from its owner's graveyard to the battlefield under the control of
+    # that creature's owner.
+    { type = "choice", mode = "may_return_from_graveyard", filter = "creature", mandatory = true, reincarnate = true },
+]

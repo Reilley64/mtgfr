@@ -1,0 +1,11 @@
+# `Effect` is ~9 KiB and `Ability` ~11 KiB — wide enums whose size is the widest variant, grown a
+# card at a time across every grind wave. A test that asserts a hundred card shapes therefore holds
+# a hundred multi-KiB locals in one frame and blows a test thread's default 2 MiB stack, which
+# aborts as SIGABRT with no assertion to point at. Cargo hands this to every process it runs,
+# nextest included.
+#
+# ponytail: raising the ceiling, not lowering the height. The real fix is boxing the widest
+# `ChoiceEffect` / `MiscEffect` variants so `Effect` shrinks to a pointer-ish size — worth doing when
+# it starts costing memory at runtime rather than only stack in tests.
+[env]
+RUST_MIN_STACK = "16777216"

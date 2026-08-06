@@ -148,9 +148,19 @@ message WireIntentActivateAbility {
   uint32 x = 7;
 }
 
+// One declared attacking band (CR 702.22c): every member must also appear in the declaration's
+// `attackers`, and no creature may be in two bands. A wrapper message rather than a bare repeated
+// field because proto3 has no repeated-of-repeated.
+message WireBand {
+  repeated uint32 members = 1;
+}
+
 message WireIntentDeclareAttackers {
   uint32 player = 1;
   repeated WireAttack attackers = 2;
+  // Declared attacking bands (CR 702.22c); empty for every attack that has no band, which is
+  // every attack but a banding one.
+  repeated WireBand bands = 3;
 }
 
 message WireIntentDeclareBlockers {

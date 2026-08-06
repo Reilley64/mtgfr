@@ -1,0 +1,36 @@
+# {5}: At the beginning of your next upkeep, choose a basic land type. This creature gains
+# landwalk of the chosen type until the end of that turn. (It can't be blocked as long as
+# defending player controls a land of that type.)
+name = "Giant Slug"
+sets = ["bchr", "chr", "leg"]
+id = "1ce7f356-1f9b-44dc-9b05-f7b1ecc5d755"
+default_print = "d78999ab-2ccc-41ec-b808-18e40702d1c3"
+oracle = "{5}: At the beginning of your next upkeep, choose a basic land type. This creature gains landwalk of the chosen type until the end of that turn. (It can't be blocked as long as defending player controls a land of that type.)"
+subtypes = ["Slug"]
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {5}: At the beginning of your next upkeep, choose a basic land type. This creature gains
+# landwalk of the chosen type until the end of that turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 5 }
+
+# At the beginning of your next upkeep, choose a basic land type. This creature gains landwalk
+# of the chosen type until the end of that turn.
+[[abilities.effects]]
+type = "misc"
+mode = "schedule_at_next_upkeep"
+who = "you"
+your_upkeep = true
+then = { type = "sequence", steps = [
+  { type = "choice", mode = "choose_basic_land_type" },
+  { type = "pump", mode = "grant_chosen_landwalk_self_until_end_of_turn" },
+] }

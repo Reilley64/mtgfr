@@ -41,14 +41,23 @@ enum ReplacementEffect {
         /// prevent the whole event however big it is.
         per_point: bool,
     },
-    PreventCombatDamage {
+    PreventDamage {
         object: ObjectId,
         to_self: bool,
         by_self: bool,
+        combat_only: bool,
+        source_filter: Option<PermanentFilter>,
+        source_relation: Option<SourceRelation>,
     },
     PreventNoncombatDamageToOtherCreaturesYouControl {
         source: ObjectId,
         controller: PlayerId,
+    },
+    ReplaceDamageToYou {
+        controller: PlayerId,
+        source_filter: SpellFilter,
+        at_least: i32,
+        becomes: i32,
     },
     CounterReplacement {
         source: ObjectId,
@@ -96,6 +105,19 @@ impl ReplacementRegistry {
                 if ability.timing != Timing::Static {
                     continue;
                 }
+                // "As long as you control another creature, …" (Bronze Horse) — a static ability's
+                // `condition` reads as its CR 613 "as long as" gate, re-checked every time the
+                // registry is built, so the shield turns off the moment the condition stops
+                // holding. `None` on every other replacement static here.
+                if let Some(condition) = ability.condition
+                    && !game.ability_condition_holds(
+                        condition,
+                        source,
+                        TriggerContext::of(controller),
+                    )
+                {
+                    continue;
+                }
                 match ability.effect {
                     Effect::Static(StaticEffect::PreventDamageToSelfRemovingCounter) => {
                         effects.push(ReplacementEffect::PreventDamageToSelfRemovingCounter {
@@ -118,11 +140,32 @@ impl ReplacementRegistry {
                             per_point: true,
                         });
                     }
-                    Effect::Static(StaticEffect::PreventCombatDamage { to_self, by_self }) => {
-                        effects.push(ReplacementEffect::PreventCombatDamage {
-                            object: source,
+                    Effect::Static(StaticEffect::PreventDamage {
+                        to_self,
+                        by_self,
+                        combat_only,
+                        source_filter,
+                        source_relation,
+                        attached,
+                    }) => {
+                        // Gaseous Form / Demonic Torment: the shield is worded about "enchanted
+                        // creature", so it stands on this Aura's host rather than on the Aura
+                        // itself. An unattached Aura shields nothing (CR 303.4 — it would already
+                        // be in the graveyard).
+                        let shielded = match attached {
+                            false => source,
+                            true => match game.attached_to(source) {
+                                Some(host) => host,
+                                None => continue,
+                            },
+                        };
+                        effects.push(ReplacementEffect::PreventDamage {
+                            object: shielded,
                             to_self,
                             by_self,
+                            combat_only,
+                            source_filter,
+                            source_relation,
                         });
                     }
                     Effect::Static(
@@ -134,6 +177,18 @@ impl ReplacementRegistry {
                                 controller,
                             },
                         );
+                    }
+                    Effect::Static(StaticEffect::ReplaceDamageToYou {
+                        source: source_filter,
+                        at_least,
+                        becomes,
+                    }) => {
+                        effects.push(ReplacementEffect::ReplaceDamageToYou {
+                            controller,
+                            source_filter,
+                            at_least,
+                            becomes,
+                        });
                     }
                     Effect::Static(StaticEffect::CounterReplacement {
                         add,
@@ -270,20 +325,91 @@ impl ReplacementRegistry {
         })
     }
 
-    pub(crate) fn combat_damage_prevented_to_creature(&self, target: ObjectId) -> bool {
-        self.effects.iter().any(|effect| match effect {
-            ReplacementEffect::PreventCombatDamage {
+    /// Forethought Amulet's "If an instant or sorcery source would deal 3 or more damage to you,
+    /// it deals 2 damage to you instead" (CR 615.9): the damage `player` is about to take,
+    /// rewritten by every standing [`StaticEffect::ReplaceDamageToYou`] whose source gate and
+    /// threshold this hit clears. Returns `amount` unchanged when none applies.
+    ///
+    /// ponytail: two applicable rewrites would both fire, smallest last. CR 616.1 lets the
+    /// affected player order simultaneous replacements, and no board can hold two of these today
+    /// (one pool card prints it); the upgrade path is the same ordering choice
+    /// [`counter_replaced_amount`](Self::counter_replaced_amount) defers.
+    pub(crate) fn replaced_damage_to_player(
+        &self,
+        game: &Game,
+        player: PlayerId,
+        source: ObjectId,
+        amount: i32,
+    ) -> i32 {
+        let mut amount = amount;
+        for effect in &self.effects {
+            let ReplacementEffect::ReplaceDamageToYou {
+                controller,
+                source_filter,
+                at_least,
+                becomes,
+            } = effect
+            else {
+                continue;
+            };
+            if *controller != player || amount < *at_least {
+                continue;
+            }
+            // "an instant or sorcery **source**" — read off the damage source's own card, so a
+            // permanent source (or an ability's source permanent) never matches one.
+            if !game.spell_matches_filter(
+                *source_filter,
+                game.def_of(source),
+                None,
+                player,
+                Zone::Hand,
+            ) {
+                continue;
+            }
+            amount = *becomes;
+        }
+        amount
+    }
+
+    /// Whether a permanent's own [`StaticEffect::PreventDamage`] shield stands between `source`
+    /// and `target` right now (CR 615). `combat` says whether the damage being dealt is combat
+    /// damage, which is the only thing a `combat_only` shield stops.
+    pub(crate) fn damage_prevented_to_permanent(
+        &self,
+        game: &Game,
+        target: ObjectId,
+        source: ObjectId,
+        combat: bool,
+    ) -> bool {
+        self.effects.iter().any(|effect| {
+            let ReplacementEffect::PreventDamage {
                 object,
                 to_self: true,
+                combat_only,
+                source_filter,
+                source_relation,
                 ..
-            } => *object == target,
-            _ => false,
+            } = effect
+            else {
+                return false;
+            };
+            if *object != target || (*combat_only && !combat) {
+                return false;
+            }
+            // "… by enchanted creatures" / "… by Walls": read from the shielded permanent's own
+            // controller's perspective, with the shield's permanent as the filter's source.
+            if let Some(filter) = source_filter
+                && !game.permanent_matches(filter, source, game.controller_of(target), Some(target))
+            {
+                return false;
+            }
+            source_relation.is_none_or(|relation| game.source_relates(relation, source, target))
         })
     }
 
     pub(crate) fn combat_damage_prevented_by_source(&self, source: ObjectId) -> bool {
         self.effects.iter().any(|effect| match effect {
-            ReplacementEffect::PreventCombatDamage {
+            ReplacementEffect::PreventDamage {
                 object,
                 by_self: true,
                 ..
@@ -455,13 +581,13 @@ impl Game {
         // Lich's "If you would gain life, draw that many cards instead" (CR 614) — the one
         // replacement here that swaps the event out entirely rather than adjusting a number on
         // it, so it short-circuits: no `LifeChanged` is ever applied, and nothing watching life
-        // gain sees anything. Routed through `draw_with_dredge` like any other draw, so the
-        // replacement cards can themselves be dredged.
+        // gain sees anything. Routed through the draw funnel like any other draw, so the
+        // replacement cards meet dredge and Chains of Mephistopheles as ordinary draws do.
         if let Event::LifeChanged { player, amount, .. } = event
             && amount > 0
             && self.life_gain_becomes_draw(player)
         {
-            self.draw_with_dredge(player, amount as u32, false, events);
+            self.draw_with_replacements(vec![(player, amount as u32)], DrawAfter::Nothing, events);
             return;
         }
         let entry = match &event {

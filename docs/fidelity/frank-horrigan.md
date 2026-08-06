@@ -2,7 +2,7 @@
 
 Source: https://archidekt.com/decks/24351870/frank_horrigan (Archidekt deck 24351870, fetched
 2026-07-26). 79 unique non-basic cards + 2 basics (100 cards total).
-Commander: **Agent Frank Horrigan**. Backlog: [frank-horrigan-increments.md](frank-horrigan-increments.md).
+Commander: **Agent Frank Horrigan**. Engine increments for this grind all landed; backlog file removed.
 
 A Golgari infect/toxic/poison deck built around proliferate and +1/+1 counters. Its core
 mechanic — **poison counters on players** — does not exist anywhere in the engine at intake
@@ -85,8 +85,8 @@ increments #3, #20 slice 2, and #24, all of which mint -1/-1 counters.
 
 ## D. New, needs engine work (35)
 
-Ranked increments live in [frank-horrigan-increments.md](frank-horrigan-increments.md); the
-increment that unblocks each card is in parentheses.
+Ranked increments for this grind all landed (backlog file removed); the
+increment that unblocked each card is in parentheses.
 
 - [x] Agent Frank Horrigan (#1) — built 2026-07-26, faithful (#17 cleared the proliferate residual 2026-07-27)
 - [x] Alpha Deathclaw (#12) — built 2026-07-26, faithful

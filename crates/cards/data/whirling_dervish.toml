@@ -1,0 +1,32 @@
+# Protection from black
+# At the beginning of each end step, if this creature dealt damage to an opponent this turn, put a
+# +1/+1 counter on it.
+name = "Whirling Dervish"
+otags = ["gains-pp-counters", "hate-black", "intervening-if-clause", "triggered-ability"]
+sets = ["4bb", "4ed", "5ed", "itp", "leg", "pjas", "pjjt", "pjse", "prm", "psus", "ptc", "ren", "rqs", "tsb", "wc97"]
+id = "43f89524-4b22-4707-9aba-6eb4c01d75dc"
+default_print = "eba294e7-7097-4bc3-b396-72e85dd4f441"
+oracle = "Protection from black\nAt the beginning of each end step, if this creature dealt damage to an opponent this turn, put a +1/+1 counter on it."
+subtypes = ["Human", "Monk"]
+keywords = [{ protection = "black" }]
+
+[cost]
+green = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# At the beginning of each end step, if this creature dealt damage to an opponent this turn, put a
+# +1/+1 counter on it.
+[[abilities]]
+timing = "each_end_step"
+condition = { type = "source_dealt_damage_to_opponent_this_turn" }
+
+# put a +1/+1 counter on it.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+target = "this"
+count = 1

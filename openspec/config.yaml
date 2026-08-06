@@ -1,0 +1,52 @@
+schema: spec-driven
+
+context: |
+  mtgfr / edh.reilley.dev — browser-based 2–4 player free-for-all Commander (EDH).
+
+  Architecture commitments (do not relitigate without reason):
+  - Pure deterministic Rust engine (stack/priority state machine; no I/O; injected seed only).
+  - Event-sourced board facts; priority/choices are orchestration state on Game (not replay).
+  - tonic gRPC API + Axum health; live games in-memory only; Postgres `mtgfr` for users/sessions/decks/catalog.
+  - Foldkit SPA on Nitro BFF (`mtgfr_web` / Drizzle) for lobby + same-origin Effect RPC → tonic.
+  - Server-side per-viewer visibility filtering (hands/libraries private).
+  - Card pool is data-driven TOML scripts in `crates/cards`; grow DSL from real cards; flag-don't-force.
+  - `.proto` is the sole wire contract; expand-only during drain rolls (see docs/WIRE_COMPAT.md).
+  - Required ids in path params; query params optional.
+  - Commits: Angular conventional; PRs squash-merged; semantic-release owns v* tags.
+
+  Companion living docs (not OpenSpec duplicates): CONTEXT.md (glossary), DESIGN.md + design.tokens.json,
+  PRODUCT.md, docs/fidelity/, docs/WIRE_COMPAT.md, docs/AGENT_NAVIGATION.md, docs/CR_INDEX.md,
+  docs/CLIENT_CANVAS_MAP.md.
+
+  OpenSpec under openspec/specs/ is the source of truth for current product/system requirements.
+  Agent search: prefer ast-grep for structural Rust/TypeScript queries; rg for plain text and CR cites.
+  OpenSpec CLI for living specs; Superpowers brainstorming for new behavior before OpenSpec capture.
+  New behavior: Superpowers brainstorming first (optional local gitignored docs/superpowers/*-design.md);
+  implement via Superpowers plans/TDD; document what shipped in OpenSpec before done
+  (/opsx-propose → apply → archive/sync). Design docs are input only — do not treat them as the living contract.
+  docs/superpowers/ is gitignored local scratch (not in the repo).
+
+rules:
+  specs:
+    - Prefer enduring SHALL requirements and scenarios over implementation walkthroughs
+    - Prefer technology-agnostic wording; document hard tech choices as constraints
+    - One capability per directory; consolidate related surfaces — do not recreate fine-grained Superpowers surface specs
+    - Capture what shipped after Superpowers brainstorming/implementation — do not leave living requirements only in *-design.md
+    - No TBD, sprint notes, TODO lists, or migration/history narrative in main specs
+  proposal:
+    - Keep proposals under ~500 words when practical
+    - Include Non-goals when scope is ambiguous
+    - Assume design intent already came from Superpowers brainstorming when proposing a change that implements new behavior
+  tasks:
+    - Prefer small, verifiable tasks; engine work is TDD by default
+
+operations:
+  apply:
+    guidance:
+      - Keep test summaries concise
+      - Prefer just server-check / just client-check / just check for verification
+      - New behavior should already have gone through Superpowers brainstorming; OpenSpec captures what ships
+  archive:
+    guidance:
+      - Summarize which main specs changed before finishing
+      - Confirm shipped behavior is in OpenSpec, not only in a Superpowers *-design.md

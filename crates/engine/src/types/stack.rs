@@ -223,6 +223,19 @@ pub enum Intent {
         /// (attacking creature, what it attacks).
         attackers: Vec<(ObjectId, Defender)>,
     },
+    /// [`Self::DeclareAttackers`] plus declared attacking *bands* (CR 702.22c — "as a player
+    /// declares attackers, they may declare that one or more attacking creatures … are all in a
+    /// band"). A separate variant rather than a field on `DeclareAttackers` so that a bandless
+    /// attack — every attack in the game but a banding one — is untouched. Over the wire both are
+    /// one `WireIntent::DeclareAttackers`, whose non-empty `bands` selects this variant.
+    DeclareAttackersInBands {
+        player: PlayerId,
+        /// (attacking creature, what it attacks) — exactly [`Self::DeclareAttackers`]'s list.
+        attackers: Vec<(ObjectId, Defender)>,
+        /// Each declared band's members. Every member must also appear in `attackers`, and no
+        /// creature may be in two bands (CR 702.22c).
+        bands: Vec<Vec<ObjectId>>,
+    },
     /// The defending player declares blocks as (blocker, attacker) pairs.
     DeclareBlockers {
         player: PlayerId,
@@ -278,13 +291,14 @@ pub enum Intent {
     /// answerer in the pool needs an `{X}`, and this keeps every existing plain pay/decline call
     /// site untouched. See [`Game::pay_optional_cost_with_x`](crate::Game::pay_optional_cost_with_x).
     PayOptionalCostX { player: PlayerId, pay: bool, x: u32 },
-    /// Answer a [`PendingChoice::AssignCombatDamage`] with `(blocker, amount)` assignments.
+    /// Answer a [`PendingChoice::AssignCombatDamage`] with `(recipient, amount)` assignments — the
+    /// blockers of a dividing attacker, or the attackers a dividing blocker is blocking.
     AssignDamage {
         player: PlayerId,
         assignment: Vec<(ObjectId, i32)>,
     },
     /// Answer a [`PendingChoice::DivideSpellDamage`] with `(target, amount)` assignments (CR
-    /// 601.2d). Distinct from [`Self::AssignDamage`] (combat, always blockers): a divided-damage
+    /// 601.2d). Distinct from [`Self::AssignDamage`] (combat, always creatures): a divided-damage
     /// spell's "any number of targets" may include a *player*, which [`Self::AssignDamage`]'s
     /// `ObjectId` wire can't name — so this keys by [`Target`].
     DivideSpellDamage {
@@ -549,6 +563,12 @@ impl Intent {
                 .iter()
                 .flat_map(|&(a, d)| once(a).chain(d.object_id()))
                 .collect(),
+            // The band members are a subset of `attackers` (CR 702.22c), so listing the attackers
+            // covers every id this intent references.
+            Intent::DeclareAttackersInBands { attackers, .. } => attackers
+                .iter()
+                .flat_map(|&(a, d)| once(a).chain(d.object_id()))
+                .collect(),
             Intent::DeclareBlockers { blocks, .. } => {
                 blocks.iter().flat_map(|&(b, a)| [b, a]).collect()
             }
@@ -664,6 +684,7 @@ impl Intent {
             | Intent::ChannelColorlessMana { player, .. }
             | Intent::ActivateAbility { player, .. }
             | Intent::DeclareAttackers { player, .. }
+            | Intent::DeclareAttackersInBands { player, .. }
             | Intent::DeclareBlockers { player, .. }
             | Intent::ChooseOrder { player, .. }
             | Intent::ChooseTargets { player, .. }
@@ -776,6 +797,7 @@ impl Intent {
             | Intent::ChannelColorlessMana { .. }
             | Intent::ActivateAbility { .. }
             | Intent::DeclareAttackers { .. }
+            | Intent::DeclareAttackersInBands { .. }
             | Intent::DeclareBlockers { .. }
             | Intent::TakeAction { .. }
             | Intent::PassPriority { .. }
@@ -810,6 +832,12 @@ pub enum SplittingContinuation {
     /// Archangel of Strife's vote lands on [`Player::war_choices`], and the card's upkeep trigger
     /// reads it back from there.
     RememberAsChosenOpponent,
+    /// Rohgahh of Kher Keep's "an opponent gains control of them": the chosen opponent takes every
+    /// permanent in `objects` (snapshotted as the effect resolved). Like [`Self::Clash`] it needs
+    /// an `events` sink for the control changes, so it resumes through
+    /// [`Game::gain_control_of_all`] rather than the eventless
+    /// [`Game::resume_splitting_opponent`].
+    GainControlOf { objects: Vec<ObjectId> },
 }
 
 /// One thing proliferate may choose (CR 701.27: "Choose any number of permanents and/or
@@ -870,8 +898,46 @@ pub enum ArrangeRest {
     /// Nowhere: "put them back in any order" (Natural Selection) returns every card to the top,
     /// so the only thing the answer decides is the order and a bottom pile is illegal.
     Nowhere,
+    /// Nowhere, and not even reordered: a look-only pause (Visions' "Look at the top five cards of
+    /// target player's library"). The pause exists so one seat sees the cards; the answer is a
+    /// dismissal whose order is ignored, and the library comes out byte-identical.
+    LookOnly,
 }
 
+/// What answering a [`PendingChoice::ChooseColor`] does with the named color. Engine-internal —
+/// the wire prompt is "pick one of the five colors" in every case, so nothing here is projected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChosenColorUse {
+    /// Flickering Ward's as-enters "choose a color" (CR 614.12/700.9): remember it on the object
+    /// as [`Permanent::chosen_color`] for a protection ability to read. Not a color change at all.
+    Remember,
+    /// Wild Mongrel's "…and becomes the color of your choice until end of turn": a CR 613.3c
+    /// layer-5 SET, swept at the next cleanup.
+    SetUntilEndOfTurn,
+    /// Alchor's Tomb's "becomes the color of your choice. (This effect lasts indefinitely.)": the
+    /// same layer-5 SET with no printed duration (CR 400.7), so cleanup never takes it back.
+    SetIndefinitely,
+}
+
+/// What answering a [`PendingChoice::ChooseCardName`] does with the named card name (CR 201.2).
+/// Engine-internal — the wire prompt is "name a card" in every case, so nothing here is projected,
+/// the same shape [`ChosenColorUse`] takes for the color picker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CardNameUse {
+    /// Conundrum Sphinx (and Petra Sphinx, with `miss_to_graveyard`): the answering player reveals
+    /// their own top library card; a name match goes to their hand, a miss to the bottom of their
+    /// library — or to their graveyard when `miss_to_graveyard` (Petra Sphinx's one difference).
+    RevealTopOfOwnLibrary { miss_to_graveyard: bool },
+    /// Nebuchadnezzar: `subject` reveals `count` cards at random from their hand (the injected
+    /// per-op RNG) and then discards every revealed card with the named name. The answering seat
+    /// is the ability's controller, not `subject`.
+    SubjectRevealsHandAtRandomThenDiscards { subject: PlayerId, count: u32 },
+}
+
+// ponytail: same call as `StackItem` below — the variants that carry an `Effect` are wide because
+// `Effect` is ~9 KiB, and boxing one of them only promotes the next to largest. Revisit when
+// `Effect` itself shrinks.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingChoice {
     /// `player` must order their simultaneously-triggered abilities (put on the stack
@@ -898,6 +964,11 @@ pub enum PendingChoice {
     /// choices. Answered by [`Intent::ChooseTargets`].
     ChooseTarget {
         player: PlayerId,
+        /// The ability's own controller, which is *not* always the chooser: The Abyss's "destroy
+        /// target nonartifact creature that player controls **of their choice**" routes the pick
+        /// to the upkeep player (`player`) while the trigger stays on the stack under the
+        /// enchantment's controller (this field). Equal to `player` for every other raise site.
+        controller: PlayerId,
         source: ObjectId,
         effect: Option<Effect>,
         legal: Vec<Target>,
@@ -955,16 +1026,11 @@ pub enum PendingChoice {
     /// Dredge N), offered only when the library holds at least N (CR 702.52a). Answered by
     /// [`Intent::ChooseDredge`] — picking one mills N and returns it graveyard→hand instead of
     /// drawing; declining (`None`) performs the normal draw. Each of a "draw N"'s draws is its own
-    /// replaceable event (CR 121.2), so after this one resolves the answer handler re-enters the draw
-    /// loop for `remaining - 1`, re-checking `eligible` against the now-live graveyard/library.
-    /// `from_draw_step` distinguishes the two draw chokes that raise this: the turn-based draw step
-    /// (`remaining == 1`; resume by re-entering [`Game::advance_step`]) versus a mid-resolution
-    /// [`Effect::Draw(DrawEffect::Cards)`] (resume via the deferred sequence, like every other resolution pause).
+    /// replaceable event (CR 121.2), so the rest of the batch this draw came from — and whatever
+    /// its caller owes afterwards — waits in [`ResumeState::draw_batch`] while this is answered.
     ChooseDredge {
         player: PlayerId,
         eligible: Vec<(ObjectId, u8)>,
-        remaining: u8,
-        from_draw_step: bool,
     },
     /// `player` may pay `cost` to get an optional triggered ability (`source`'s `effect`).
     /// Answered by [`Intent::PayOptionalCost`].
@@ -1053,6 +1119,9 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         cost: Cost,
+        /// What paying *buys* — Imprison's "if you do, tap the creature, remove it from combat,
+        /// …". Empty for every "unless you pay", where paying only dodges `otherwise`.
+        then: &'static [Effect],
         otherwise: &'static [Effect],
     },
     /// `player` (a land card's controller, about to play it) may pay `life` to have it enter
@@ -1077,12 +1146,21 @@ pub enum PendingChoice {
         source: ObjectId,
         candidates: Vec<ObjectId>,
     },
-    /// `player` (the attacker's controller) must divide `attacker`'s combat damage among its
-    /// `blockers`. Answered by [`Intent::AssignDamage`].
+    /// `player` must divide `source`'s combat damage among the `recipients` it is in combat with.
+    /// Answered by [`Intent::AssignDamage`]. Both sides of a block use this one choice: `source` is
+    /// an attacker and `recipients` the creatures blocking it (CR 510.1c), or `source` is a blocker
+    /// and `recipients` the attacking creatures it's blocking (CR 510.1d).
+    ///
+    /// Raised in the combat damage step, once per batch, before any of that batch's damage is dealt
+    /// (CR 510.1a — the amounts are divided *there*, off the power the creature has then, which is
+    /// why this isn't asked at declare blockers). `player` is normally the dividing creature's own
+    /// controller, but banding swaps the two sides (CR 702.22j/k), so it is carried explicitly
+    /// rather than implied — see [`Game::attacker_damage_assigner`] and
+    /// [`Game::blocker_damage_assigner`].
     AssignCombatDamage {
         player: PlayerId,
-        attacker: ObjectId,
-        blockers: Vec<ObjectId>,
+        source: ObjectId,
+        recipients: Vec<ObjectId>,
     },
     /// `player` (the caster) must divide a divided-damage `spell`'s `total` among its already-
     /// chosen `targets` (CR 601.2d — Magma Opus's "4 damage divided as you choose among any number
@@ -1429,7 +1507,13 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
+        /// How many of `options` the offer costs — Mold Demon's "two Swamps". `1` for the plain
+        /// "you may sacrifice a permanent" shape; an answer is either empty (declining) or exactly
+        /// this many.
+        count: u8,
         then: &'static [Effect],
+        /// The price of declining — Mold Demon's "sacrifice it". Empty when declining is free.
+        otherwise: &'static [Effect],
     },
     /// `player` may return one of `options` (a graveyard card they own) to their hand, or decline
     /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's "you may return another permanent card
@@ -1442,7 +1526,20 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         options: Vec<ObjectId>,
+        /// What the *next* prompt in `then_graveyards` may offer — carried so the answer handler
+        /// can rebuild the following choice's options without knowing which effect raised this one.
+        filter: CardFilter,
         mandatory: bool,
+        /// Glyph of Reincarnation's "put a creature card … onto the battlefield **under its
+        /// owner's control**": the chosen card is reanimated instead of returned to `player`'s
+        /// hand, and — unlike every other user of this variant — `options` are cards `player`
+        /// does *not* own (the blocked creature's controller's graveyard), so `player` here is
+        /// only the chooser. `false` for the hand-return spelling.
+        to_battlefield: bool,
+        /// The graveyards still owed a card by the same "for each creature that died this way"
+        /// fan-out, prompted one at a time from the answer handler (the
+        /// `prompt_next_counter_target` chaining shape). Empty for a one-shot choice.
+        then_graveyards: Vec<PlayerId>,
     },
     /// `player` may exile one of `options` (a nonland card they just discarded, still in their
     /// graveyard) face-up with impulse-play permission until end of turn, or decline
@@ -1511,11 +1608,15 @@ pub enum PendingChoice {
     /// `or_one_matching` mirrors [`Effect::Choice(ChoiceEffect::Discard)::or_one_matching`]: when `Some`, a one-card
     /// answer matching the filter is accepted instead of the full `count`-card answer
     /// (Compulsive Research's land escape valve).
+    /// `draw_replacement` marks the discard Chains of Mephistopheles substitutes for a draw
+    /// (CR 614): answering it draws the card the replacement then owes and resumes the interrupted
+    /// draw batch, and it is not a resolution's "discarded this way" tally.
     DiscardCards {
         player: PlayerId,
         hand: Vec<ObjectId>,
         count: usize,
         or_one_matching: Option<CardFilter>,
+        draw_replacement: bool,
     },
     /// `player` puts exactly `count` cards from `hand` (their whole hand, kept for stable
     /// validation) on top of their library, in an order they choose (Brainstorm's
@@ -1526,6 +1627,12 @@ pub enum PendingChoice {
         player: PlayerId,
         hand: Vec<ObjectId>,
         count: usize,
+        /// Life paid for each of the `count` the player declines to put back — Sylvan Library's
+        /// "for each of those cards, pay 4 life **or** put the card on top of your library",
+        /// which is the same offer read as one subset choice with a price on the rest. Nonzero
+        /// makes `count` a maximum: any answer from zero cards to `count` is legal, and the
+        /// shortfall is charged. 0 (Brainstorm) keeps `count` exact.
+        life_per_declined: u32,
     },
     /// `player` may put one of `candidates` (their hand's land cards) onto the battlefield
     /// (`tapped` if it enters tapped), or decline ("up to one" — CR 305.9 special action, an
@@ -1547,6 +1654,13 @@ pub enum PendingChoice {
         candidates: Vec<ObjectId>,
         keep: bool,
         defender: Option<PlayerId>,
+        /// Eureka's "repeat this process": the seats still owed an offer after `player` before the
+        /// lap closes. `None` is a one-seat offer (Cauldron Dance, Kaalia). Answering re-raises for
+        /// the head of this queue; a seat that *acts* refills it with every other seat (so the
+        /// process only ends once a whole lap declines), and an empty queue ends it.
+        round: Option<Vec<PlayerId>>,
+        /// Any permanent card in hand is eligible, not only creature cards (Eureka).
+        permanent_cards: bool,
     },
     /// `player` may cast one of `candidates` — the creature cards in their hand whose mana cost
     /// could be paid by some amount of, or all of, the mana spent on the `{X}` paid (CR 107.3,
@@ -1777,6 +1891,18 @@ pub enum PendingChoice {
         count: u32,
         options: Vec<ObjectId>,
     },
+    /// `player` may sacrifice any subset of `options` — including none — as `source` enters
+    /// ([`Effect::Choice(ChoiceEffect::SacrificeAnyNumber)`](cards::ChoiceEffect::SacrificeAnyNumber),
+    /// Wood Elemental's "as this creature enters, sacrifice any number of untapped Forests"). How
+    /// many were sacrificed is then locked onto `source` as the X it entered with, which its
+    /// characteristic-defining power and toughness read for the rest of its time on the
+    /// battlefield. Answered by [`Intent::ChooseSacrifices`], the same "name the sacrificed set"
+    /// wire shape [`Self::Devour`] uses; only raised when something matches.
+    SacrificeAnyNumber {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+    },
     /// `player` (a Devour N creature's controller) may sacrifice any subset of `options` (the
     /// other creatures they control) as `source` enters (CR 702.82 — "you may sacrifice any
     /// number of creatures"); `source` then gains `multiplier × count` +1/+1 counters, routed
@@ -1817,18 +1943,17 @@ pub enum PendingChoice {
         /// projected. `None` for every as-enters "choose a creature type".
         then: Option<TextSwapPick>,
     },
-    /// `player` must name a color for `source` — either an as-enters choice (CR 614.12/700.9-style
-    /// — Flickering Ward's [`Effect::Choice(ChoiceEffect::ChooseColor)`]) or a resolution-time color-SET (CR 613.3c —
-    /// Wild Mongrel's [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]). The candidate list is the fixed five
-    /// colors ([`Color::ALL`]), so unlike [`Self::ChooseCreatureType`] no `options` slice is
-    /// carried. Both raise this same picker (same wire prompt — [`Self::ChooseColor`] variant
-    /// reused, not a second picker); `until_end_of_turn` tells [`Intent::ChooseColor`]'s handler
-    /// which of the two answered: `false` sets `source`'s indefinite [`Permanent::chosen_color`],
-    /// `true` registers an until-end-of-turn `ModifierKind::SetColor` instead.
+    /// `player` must name a color for `source` — the object the color lands on, which is the
+    /// ability's own permanent for an as-enters choice (Flickering Ward) or a self-recolor (Wild
+    /// Mongrel) and the *chosen target* for Alchor's Tomb. The candidate list is the fixed five
+    /// colors ([`Color::ALL`]) — CR 105.1: colorless is not a color — so unlike
+    /// [`Self::ChooseCreatureType`] no `options` slice is carried. All three raise this one picker
+    /// (same wire prompt, not a second picker); `use_` tells [`Intent::ChooseColor`]'s handler
+    /// which of them answered.
     ChooseColor {
         player: PlayerId,
         source: ObjectId,
-        until_end_of_turn: bool,
+        use_: ChosenColorUse,
     },
     /// `player` chooses a card name for [`Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)`]'s per-seat
     /// fan-out (CR 201.2/703.2j "choose a card name" — Conundrum Sphinx's attack trigger).
@@ -1846,6 +1971,11 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         remaining: Vec<PlayerId>,
+        /// What the answered name is *for* — the three cards that print "choose a card name" ask
+        /// the same question and do different things with the answer. Engine-internal (the wire
+        /// prompt is "name a card" either way), the same shape
+        /// [`Self::ChooseCreatureType`]'s `then` uses.
+        use_: CardNameUse,
     },
     /// `player` (an entering permanent's controller) may have `source` enter as a copy of one of
     /// `candidates` (every other object of the marker's [`EnterAsCopy::of`] type on the
@@ -1919,6 +2049,22 @@ pub enum PendingChoice {
         name: &'static str,
         options: Vec<ObjectId>,
     },
+    /// `player` must pick one of `candidates` — objects that dealt damage this turn, i.e. the
+    /// rows of [`Game::damage_dealt_this_turn`](crate::Game) some effect narrowed — so the rest
+    /// of the resolution can size an amount off *that* object's damage rather than the whole
+    /// ledger's ("half the damage dealt by **one of those** sorcery spells this turn" —
+    /// Backdraft, [`Effect::Choice(ChoiceEffect::ChooseTargetPlayersDamagingSorcery)`]). The
+    /// answer lands on [`ResolutionFrame::chosen_damage_source`](crate::resolution::ResolutionFrame),
+    /// which is what makes the pause reusable: the *effect* decides which ledger rows are on
+    /// offer, the pause and the answer are the same for all of them. Mandatory — the effect only
+    /// raises it when two or more candidates exist, so there is always a real decision and never
+    /// a decline. Answered by [`Intent::ChooseCopyTarget`] (reused — the answer is "one chosen
+    /// object").
+    ChooseDamageSource {
+        player: PlayerId,
+        source: ObjectId,
+        candidates: Vec<ObjectId>,
+    },
 }
 
 /// Every creature type printed on a creature card in the pool, offered as the candidate list
@@ -1934,6 +2080,7 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Aetherborn",
     "Ally",
     "Angel",
+    "Ape",
     "Archer",
     "Archon",
     "Artificer",
@@ -1942,8 +2089,10 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Barbarian",
     "Bard",
     "Basilisk",
+    "Bat",
     "Bear",
     "Beast",
+    "Berserker",
     "Bird",
     "Boar",
     "Cat",
@@ -1968,15 +2117,19 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Elemental",
     "Elephant",
     "Elf",
+    "Eye",
     "Faerie",
+    "Fish",
     "Fox",
     "Fractal",
     "Frog",
     "Fungus",
     "Gargoyle",
     "Giant",
+    "Gnome",
     "Goblin",
     "Golem",
+    "Gorgon",
     "Griffin",
     "Hag",
     "Horror",
@@ -1994,26 +2147,33 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Kavu",
     "Kithkin",
     "Knight",
+    "Kobold",
     "Kor",
     "Leviathan",
     "Lizard",
+    "Manticore",
     "Mercenary",
     "Merfolk",
+    "Minion",
     "Minotaur",
     "Monk",
     "Monkey",
     "Mutant",
     "Myr",
     "Nightmare",
+    "Nightstalker",
+    "Nomad",
     "Nymph",
     "Ogre",
     "Ooze",
     "Orc",
     "Otter",
+    "Ouphe",
     "Ox",
     "Pegasus",
     "Pest",
     "Phelddagrif",
+    "Phoenix",
     "Phyrexian",
     "Pirate",
     "Plant",
@@ -2023,15 +2183,19 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Rat",
     "Rebel",
     "Rogue",
+    "Satyr",
+    "Scorpion",
     "Scout",
     "Serpent",
     "Shade",
     "Shaman",
     "Shapeshifter",
     "Skeleton",
+    "Slug",
     "Snake",
     "Soldier",
     "Sorcerer",
+    "Spawn",
     "Specter",
     "Sphinx",
     "Spider",
@@ -2045,10 +2209,14 @@ pub const CREATURE_TYPES: &[&str] = &[
     "Wall",
     "Warlock",
     "Warrior",
+    "Werewolf",
     "Wizard",
     "Wolf",
+    "Wolverine",
+    "Wombat",
     "Wraith",
     "Wurm",
+    "Yeti",
     "Zombie",
 ];
 
@@ -2121,6 +2289,7 @@ impl PendingChoice {
             | PendingChoice::ChooseExiledToCastFree { player, .. }
             | PendingChoice::RevealedCardToBattlefieldOrHand { player, .. }
             | PendingChoice::ChooseOwnSacrifices { player, .. }
+            | PendingChoice::SacrificeAnyNumber { player, .. }
             | PendingChoice::Devour { player, .. }
             | PendingChoice::ChooseManaColor { player, .. }
             | PendingChoice::ChooseCreatureType { player, .. }
@@ -2130,7 +2299,8 @@ impl PendingChoice {
             | PendingChoice::ChooseTokenToCopy { player, .. }
             | PendingChoice::ChooseCopyCardFromList { player, .. }
             | PendingChoice::ChooseAttachHost { player, .. }
-            | PendingChoice::ChooseLegendaryKeep { player, .. } => *player,
+            | PendingChoice::ChooseLegendaryKeep { player, .. }
+            | PendingChoice::ChooseDamageSource { player, .. } => *player,
             // The answering seat is the caster, not the target player whose board is being pruned.
             PendingChoice::CasterKeepPermanents { caster, .. } => *caster,
             // The chooser (Nils' controller) answers, not the player whose creature is countered.
@@ -2187,6 +2357,30 @@ pub(crate) struct CombatState {
     /// no special case — a flyer is never divided into a pile, so it is never excluded. Lives on
     /// [`CombatState`] so "this combat" expiry is [`Event::CombatCleared`] and nothing else.
     pub(crate) cant_block_this_combat: Vec<(ObjectId, ObjectId)>,
+    /// The attacking bands declared this combat (CR 702.22c), each entry one band's members in
+    /// declaration order. Empty for nearly every combat — only banding and "bands with other" can
+    /// put a creature in one. CR 702.22e: "once an attacking band has been announced, it lasts for
+    /// the rest of combat, even if something later removes banding … from one or more of the
+    /// creatures in the band", so this is never re-validated after the declaration; combat-scoped
+    /// like everything else here, so [`Event::CombatCleared`] is its only expiry.
+    /// ponytail: transient combat bookkeeping set directly by
+    /// [`Game::declare_attackers_in_bands`](crate::Game), the same as `attackers_declared` above —
+    /// the attacks it groups are what get event-sourced. CR 702.22f's "an attacking creature that's
+    /// removed from combat is also removed from the band it was in" is read as a filter at the use
+    /// site rather than pruned here, mirroring `blockers_of`'s live-permanent filter.
+    pub(crate) bands: Vec<Vec<ObjectId>>,
+    /// Johan's "gain \"Johan can't attack\" until end of combat": creatures barred from *this*
+    /// combat, read by [`Game::can_attack`](crate::Game) beside the turn-scoped bans on
+    /// `CombatExtras`. Combat-scoped, so [`Event::CombatCleared`] is its only expiry.
+    /// ponytail: transient combat bookkeeping written straight by the resolution, like
+    /// `attackers_declared` and `bands` above.
+    pub(crate) cant_attack_this_combat: Vec<ObjectId>,
+    /// Johan's "attacking doesn't cause creatures you control to tap this combat if Johan is
+    /// untapped", each entry `(the controller whose attackers are spared, the source that must
+    /// still be untapped for it to hold)`. Read at the attack declaration next to
+    /// [`Keyword::Vigilance`](cards::Keyword) — the source's tapped state is checked *then*, not
+    /// when the ability resolved.
+    pub(crate) attacks_dont_tap: Vec<(PlayerId, ObjectId)>,
 }
 
 /// One group of abilities that triggered simultaneously from a single source.
@@ -2261,6 +2455,10 @@ pub enum StackEntry {
 /// A canonical, full-information record of something that happened. The *only* thing
 /// that mutates game state (via [`Game::apply`]). The engine is audience-unaware; any
 /// per-viewer redaction happens outside the engine.
+// ponytail: same call as `StackItem`/`StackEntry` above — the variants carrying an `Effect` are
+// ~6.3KB whatever `MAX_TARGETS` is, and boxing them would cost `Copy`, which the id-indexed
+// object arena requires. Revisit only if `Effect` itself shrinks.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     /// A card was cast: it left `from` (hand/command) and became the spell `spell` on the stack.
@@ -2561,16 +2759,43 @@ pub enum Event {
         object: ObjectId,
         host: Option<ObjectId>,
     },
-    /// A permanent received an until-end-of-turn power/toughness boost and/or keyword grant.
+    /// A permanent received a duration-scoped power/toughness boost and/or keyword grant.
+    /// `ends_at_end_of_combat` picks which sweep takes it off: the end of combat step (CR 511.3 —
+    /// Glyph of Destruction's "+10/+0 until end of combat") or, the usual case, cleanup.
     TempBoost {
         object: ObjectId,
         power: i32,
         toughness: i32,
         keywords: &'static [Keyword],
         source_name: &'static str,
+        ends_at_end_of_combat: bool,
     },
-    /// A permanent's until-end-of-turn boosts wore off (cleanup).
-    TempBoostsEnded { object: ObjectId },
+    /// A permanent gained `keywords` with no printed duration (Cocoon's "that creature gains
+    /// flying") — the durationless twin of [`TempBoost`](Event::TempBoost), so the cleanup sweep
+    /// leaves it alone and only the object changing zones ends it (CR 400.7).
+    KeywordsGrantedIndefinitely {
+        object: ObjectId,
+        keywords: &'static [Keyword],
+    },
+    /// A permanent gained `keywords` "until your next upkeep" (Gabriel Angelfire) — swept as
+    /// `player`'s next upkeep *begins*, before that upkeep's own triggers are placed, so the grant
+    /// it is about to be replaced by never overlaps with it. The start-of-upkeep sibling of
+    /// [`BasePtSetUntilEndOfNextUpkeep`](Event::BasePtSetUntilEndOfNextUpkeep), which Halfdane's
+    /// longer "until the *end* of your next upkeep" needs.
+    KeywordsGrantedUntilNextUpkeep {
+        object: ObjectId,
+        keywords: &'static [Keyword],
+        player: PlayerId,
+    },
+    /// A permanent's duration-scoped modifiers wore off. `end_of_combat_only` is the end of combat
+    /// step's narrower sweep (CR 511.3): it takes off only what was scoped to *this combat* and
+    /// leaves the until-end-of-turn modifiers on the same permanent alone, so a Giant Growth cast
+    /// on a creature that also carries a Glyph of Destruction survives to cleanup. `false` is the
+    /// cleanup sweep, which ends every duration-scoped modifier at once (CR 514.2).
+    TempBoostsEnded {
+        object: ObjectId,
+        end_of_combat_only: bool,
+    },
     /// A copy effect made `object` a copy "except it has `keywords`" (CR 707.2 — Twinflame's
     /// "except it has haste," Muddle's "except it has myriad," Cursed Mirror's haste). Unlike a
     /// [`TempBoost`](Event::TempBoost) keyword grant, these are part of the object's **copiable**
@@ -2595,6 +2820,47 @@ pub enum Event {
         /// permanent's P/T from the snapshot either way, so this isn't projected.
         ends_at_end_of_combat: bool,
     },
+    /// A permanent's base power/toughness was SET until the end of `player`'s next upkeep (CR
+    /// 613.3(7b) — Halfdane's "change Halfdane's base power and toughness to the power and
+    /// toughness of target creature other than Halfdane until the end of your next upkeep"), stored
+    /// as a `ModifierKind::BasePtSet` with a `ModifierDuration::EndOfNextUpkeep` and swept by
+    /// [`Event::UpkeepDurationsEnded`] rather than at cleanup. Public battlefield status, like
+    /// `BasePtSetUntilEndOfTurn`.
+    BasePtSetUntilEndOfNextUpkeep {
+        object: ObjectId,
+        power: i32,
+        toughness: i32,
+        player: PlayerId,
+    },
+    /// A permanent's base *toughness* alone was SET, indefinitely (CR 613.3(7b) — Sentinel's
+    /// "change this creature's base toughness to 1 plus the power of target creature", Wall of
+    /// Tombstones' upkeep set). A `ModifierKind::BaseToughnessSet` with
+    /// `ModifierDuration::Indefinite`: each set is its own layer-7b entry, so a later activation
+    /// simply outranks the earlier one on timestamp (CR 613.7). Public battlefield status, like
+    /// `BasePtSetUntilEndOfTurn`.
+    BaseToughnessSetIndefinite { object: ObjectId, toughness: i32 },
+    /// A land's free tap now credits `{C}` where it used to credit `color`, indefinitely (Quarum
+    /// Trench Gnomes' "If target Plains is tapped for mana, it produces colorless mana instead of
+    /// white mana"). A `ModifierKind::ProducesColorlessInsteadOf` with
+    /// `ModifierDuration::Indefinite`, read back at `Game::land_mana_credit`. Public battlefield
+    /// status — every seat can see which land was hit.
+    LandProducesColorlessInsteadOf { land: ObjectId, color: Color },
+    /// A permanent's power and toughness were switched until end of turn (CR 613.4e —
+    /// Transmutation). A `ModifierKind::PtSwitch` on the modifier registry, applied after every
+    /// other P/T layer and swept at cleanup with the rest. Public battlefield status, like
+    /// `BasePtSetUntilEndOfTurn`.
+    PtSwitchedUntilEndOfTurn { object: ObjectId },
+    /// The end-of-upkeep sweep for `object`'s "until the end of your next upkeep" modifiers
+    /// (Halfdane): the first sweep a modifier sees only arms it — the effect was created during an
+    /// upkeep of its own — and the next one takes it off. The narrow sibling of
+    /// [`Event::TempBoostsEnded`], which would wrongly end every *other* duration-scoped effect on
+    /// the same permanent.
+    UpkeepDurationsEnded { object: ObjectId },
+    /// The start-of-upkeep sweep for `object`'s "until your next upkeep" modifiers (Gabriel
+    /// Angelfire). No arming: the sweep runs as the upkeep step begins, so a modifier registered by
+    /// a trigger *during* an upkeep has already missed that step's sweep and the next one takes it
+    /// off. See [`Event::KeywordsGrantedUntilNextUpkeep`].
+    UpkeepStartDurationsEnded { object: ObjectId },
     /// A permanent gained card types + creature subtypes + colors until end of turn (CR 613.4 —
     /// Restless Spire's self-animation adds Creature + Elemental + blue/red to a noncreature land).
     /// Registered as one `ModifierKind::Became` — the layer-4 type add and the layer-5 color add
@@ -2605,6 +2871,10 @@ pub enum Event {
         types: TypeSet,
         subtypes: &'static [&'static str],
         colors: &'static [Color],
+        /// Jade Statue's "until end of combat": the type add is swept at the End of Combat step
+        /// with the rest of the animation instead of at cleanup. Bookkeeping for the sweep only,
+        /// like `BasePtSetUntilEndOfTurn`'s flag of the same name.
+        ends_at_end_of_combat: bool,
     },
     /// A just-reanimated permanent took on an *indefinite* set of characteristics (CR 611.2c —
     /// Excava, the Risen Past's "It's a 1/1 Spirit creature with flying in addition to its other
@@ -2675,13 +2945,21 @@ pub enum Event {
         /// and resets with the object (CR 400.7). [`TypeSet::NONE`] for every other copy.
         also_types: TypeSet,
     },
-    /// A permanent lost `keywords` until end of turn and can't have them, registered as a
-    /// `ModifierKind::LoseKeywords` (arcane_lighthouse's strip — see
-    /// [`Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures)`]). Swept with every other
-    /// duration-scoped modifier at [`Event::TempBoostsEnded`].
+    /// A permanent lost `keywords` — and every keyword in `families` — registered as a
+    /// [`ModifierKind::LoseKeywords`]. Two shapes share the event: arcane_lighthouse's "loses …
+    /// and can't have …" (`cant_have`, see
+    /// [`Effect::Pump(PumpEffect::StripKeywordsFromOpponentsCreatures)`]) and the Legends
+    /// strippers' plain CR 613.1f removal (see
+    /// [`Effect::Pump(PumpEffect::TargetLosesKeywords)`]), which a later grant can undo.
+    /// `until_end_of_turn` is swept with every other duration-scoped modifier at
+    /// [`Event::TempBoostsEnded`]; without it the loss is indefinite (Elder Land Wurm's blocks
+    /// trigger prints no duration) and lapses only when the object leaves the battlefield.
     KeywordsStripped {
         object: ObjectId,
         keywords: &'static [Keyword],
+        families: &'static [KeywordFamily],
+        until_end_of_turn: bool,
+        cant_have: bool,
     },
     /// An Aura's own resolving trigger gave it "Enchanted creature loses `keywords`" (Earthbind).
     /// Recorded on the *Aura* ([`Permanent::attachment_lost_keywords`]) rather than on `object`, so
@@ -2790,6 +3068,17 @@ pub enum Event {
         fire_at: Step,
         effect: Effect,
     },
+    /// The controller-scoped upkeep sibling of [`DelayedTriggerScheduled`](Self::DelayedTriggerScheduled):
+    /// "at the beginning of **your** next upkeep" (Hazezon Tamar), which fires on `controller`'s own
+    /// upkeep rather than on the next upkeep to begin (Arcane Denial's "the next turn's upkeep").
+    /// Kept in its own list ([`DelayedTriggers::scheduled_your_upkeep`](crate::state::DelayedTriggers))
+    /// so the unscoped timing stays exactly as it was; both drain on the same
+    /// [`DelayedTriggersFired`](Self::DelayedTriggersFired).
+    DelayedTriggerScheduledForYourNextUpkeep {
+        controller: PlayerId,
+        source: ObjectId,
+        effect: Effect,
+    },
     /// Every delayed trigger scheduled for `fire_at` fired at once (CR 603.7, drained in full the
     /// first time a step matching `fire_at` begins after scheduling). `active_player` is the player
     /// whose step it is; only the controller-scoped `Main1` timing (Scattering Stroke's "your next
@@ -2807,6 +3096,12 @@ pub enum Event {
     /// or not it was tapped), so it untaps normally on every later untap step. Removes the
     /// [`NextUntapSkipMarked`](Self::NextUntapSkipMarked) entry.
     NextUntapSkipConsumed { object: ObjectId },
+    /// `object` was marked "can't be regenerated this turn" (Clergy of the Holy Nimbus's second
+    /// ability, CR 701.15d) with no accompanying damage or destroy — see
+    /// [`Effect::Misc(MiscEffect::SourceCantBeRegeneratedThisTurn)`]. Sets the same
+    /// `cant_be_regenerated_this_turn` flag [`DamageMarked`](Self::DamageMarked)'s own
+    /// `cant_be_regenerated` rider does; both clear at the next untap step.
+    CantBeRegeneratedThisTurnMarked { object: ObjectId },
     /// `player` was granted an extra turn to take after the current one (Time Walk; CR 505.6a).
     /// Pushed onto [`Game::extra_turns`], which [`Game::advance_step`] drains as the current turn
     /// ends. There is no matching "taken" event: the [`StepBegan`](Self::StepBegan) that opens the
@@ -2828,6 +3123,26 @@ pub enum Event {
     /// turn" expiry is a silent clear at the next turn's Untap step instead ([`Game::apply`]'s
     /// `Step::Untap` arm, mirroring how `spells_cast_this_turn` resets) — not an event of its own.
     NextCastTriggerConsumed {
+        controller: PlayerId,
+        source: ObjectId,
+    },
+    /// A CR 603.7 delayed watch was armed by
+    /// [`Effect::Misc(MiscEffect::ScheduleWhenTargetDiesThisTurn)`] (Reincarnation): `then` runs
+    /// the first time `watched` dies, any time later this turn. Object-scoped like
+    /// [`CombatDamageWatchArmed`](Self::CombatDamageWatchArmed), but carrying its own payoff the
+    /// way [`NextCastTriggerArmed`](Self::NextCastTriggerArmed) does. See
+    /// [`Game::fire_dies_this_turn_triggers`].
+    DiesThisTurnWatchArmed {
+        controller: PlayerId,
+        source: ObjectId,
+        watched: ObjectId,
+        then: &'static [Effect],
+    },
+    /// A [`DiesThisTurnWatchArmed`](Self::DiesThisTurnWatchArmed) watch fired (`watched` died) and
+    /// is removed — CR 603.7's "when that creature dies" is at most once. An unconsumed watch's
+    /// "this turn" expiry is a silent clear at the next turn's Untap step instead ([`Game::apply`]'s
+    /// `Step::Untap` arm), mirroring [`NextCastTriggerConsumed`](Self::NextCastTriggerConsumed).
+    DiesThisTurnWatchConsumed {
         controller: PlayerId,
         source: ObjectId,
     },
@@ -2907,10 +3222,11 @@ pub enum Event {
         blocker: ObjectId,
         attacker: ObjectId,
     },
-    /// A multi-blocked attacker's combat damage was divided among its blockers (the damage
-    /// itself is dealt separately, in the combat-damage step).
+    /// A combat damage division was chosen: `source` is a multi-blocked attacker dividing among its
+    /// blockers (CR 510.1c) or a blocker dividing among the attackers it's blocking (CR 510.1d).
+    /// The damage itself is dealt separately, later in the same combat damage step.
     CombatDamageDivided {
-        attacker: ObjectId,
+        source: ObjectId,
         assignment: DamageAssignment,
     },
     /// A divided-damage spell's total was split among its chosen targets (CR 601.2d — see
@@ -2943,6 +3259,11 @@ pub enum Event {
     /// 605 — Yavimaya Bloomsage's Channel). Sets
     /// [`Player::channel_colorless_mana_this_turn`]; cleared at the next Untap step.
     ChannelColorlessManaGranted { player: PlayerId },
+    /// `player` may spend mana as though it were mana of any type to pay one spell's mana cost
+    /// this turn (CR 609.4b — North Star). Sets
+    /// [`Player::spend_mana_as_any_type_this_turn`]; cleared by that player's next
+    /// [`Self::SpellCast`], or at the next Untap step if they never cast one.
+    SpendManaAsAnyTypeGranted { player: PlayerId },
     /// Combat damage dealt to a player by a commander, tracked per source.
     CommanderDamageDealt {
         source: ObjectId,
@@ -3069,6 +3390,15 @@ pub enum Event {
         def: CardId,
         creator: ObjectId,
     },
+    /// Two permanents were paired as each other's twin (Stangg and the Stangg Twin token he
+    /// creates): both records point at the other, so either half's "when the other leaves the
+    /// battlefield" ability can find its partner from the surviving side. See
+    /// [`Permanent::linked_twin`](crate::types::object::Permanent).
+    TwinLinked { a: ObjectId, b: ObjectId },
+    /// Lock a number onto a permanent as the X it entered with (Wood Elemental's count of Forests
+    /// sacrificed as it entered) — the same slot a cast `{X}` fills, written after the fact by an
+    /// as-enters replacement effect instead of by the resolving spell.
+    EnteredWithXSet { object: ObjectId, x: u32 },
     /// A token left the battlefield and ceased to exist (CR 111.7) — a state-based action.
     /// Carries the token's `controller`/`def` (as [`Self::TokenCreated`] does) so its
     /// "when this dies" trigger can still be built after the arena slot is gone.
@@ -3302,6 +3632,9 @@ pub enum Event {
     DrewFromEmptyLibrary { player: PlayerId },
     /// A player lost the game (a state-based action; e.g. life <= 0).
     PlayerLost { player: PlayerId },
+    /// The game is a draw (CR 104.4 — Divine Intervention). Nobody won and nobody lost, so this is
+    /// not a batch of [`PlayerLost`](Self::PlayerLost); see [`Game::outcome`](crate::Game::outcome).
+    GameDrawn,
     /// `player` got the city's blessing (CR 702.131 Ascend) — a state-based action fired once
     /// they control ten or more permanents. Fully public: sticky for the rest of the game.
     CitysBlessingGained { player: PlayerId },
@@ -3353,6 +3686,13 @@ pub enum Event {
         from: ObjectId,
         def: CardId,
         player: PlayerId,
+        /// Who controlled the spell or ability that *caused* this discard — Psychic Purge's
+        /// "when a spell or ability an opponent controls causes you to discard this card".
+        /// `None` for a discard nothing on the stack caused: a discard-cost payment (the
+        /// caster's own choice, CR 601.2h) or the cleanup hand-size trim (CR 514.1, a turn-based
+        /// action). Read off [`ResolutionFrame::discard_cause`](crate::resolution::ResolutionFrame)
+        /// at the shared [`Game::discard_ids`](crate::Game) choke, not projected to the client.
+        cause: Option<PlayerId>,
     },
     /// A card was put from hand onto the top of its owner's library (Brainstorm resolving,
     /// [`Effect::Choice(ChoiceEffect::PutFromHandOnTop)`]): `card` is its new library-object id, `from` the hand-object
@@ -3493,10 +3833,15 @@ pub(crate) fn is_partition(top: &[ObjectId], bottom: &[ObjectId], cards: &[Objec
     combined == expected
 }
 
-/// The most targets any multi-target spell in the pool chooses (Aether Gale's six). Bounds the
-/// fixed, `Copy` array in [`TargetList`] so `Spell`/`Event` stay `Copy` (the id-indexed object
-/// arena requires it), mirroring [`MAX_MODES`]. ponytail: bump when a card targets more.
-pub(crate) const MAX_TARGETS: usize = 6;
+/// The ceiling on how many targets one spell chooses. Bounds the fixed, `Copy` array in
+/// [`TargetList`] so `Spell`/`Event` stay `Copy` (the id-indexed object arena requires it),
+/// mirroring [`MAX_MODES`]. Printed counts stay well under it (Aether Gale's six); what sets it
+/// is the *unbounded* clause — "one or more target creatures" (Sylvan Paradise) has no printed
+/// ceiling, so `TargetCount::unbounded` resolves to this width and CR 601.2c's "maximum possible
+/// number" is whatever legal targets exist below it. ponytail: 32 is a board size no four-player
+/// game of this pool reaches; bump it if one does, or move `TargetList` to a `Vec` (and lose
+/// `Copy`) if a card ever needs a genuinely unbounded count.
+pub(crate) const MAX_TARGETS: usize = 32;
 
 /// A spell's chosen targets (CR 601.2c), in the order chosen. A single-target spell fills just
 /// `[0]`; a multi-target spell (Aether Gale) fills up to [`MAX_TARGETS`]. `Copy` so `Spell`/
@@ -3577,13 +3922,16 @@ impl Modes {
     }
 }
 
-/// The most blockers a single gang-blocked attacker's damage division needs to remember in one
-/// [`Event::CombatDamageDivided`]. Bounds the fixed, `Copy` per-blocker array in
-/// [`DamageAssignment`] so `Event` stays `Copy` (the id-indexed object arena requires it).
-/// ponytail: bump if a pool board ever gang-blocks one attacker with more bodies than this.
+/// The most recipients one combat damage division needs to remember in a single
+/// [`Event::CombatDamageDivided`] — the blockers of a gang-blocked attacker, or the attackers a
+/// blocker is blocking. Bounds the fixed, `Copy` array in [`DamageAssignment`] so `Event` stays
+/// `Copy` (the id-indexed object arena requires it).
+/// ponytail: bump if a pool board ever puts more bodies than this on one side of a block. Over the
+/// ceiling the division is unanswerable rather than truncated — see increment #127.
 pub(crate) const MAX_BLOCKERS: usize = 8;
 
-/// How a multi-blocked attacker's combat damage is divided among its blockers (CR 510.1c).
+/// How a dividing creature's combat damage is split among its recipients — a multi-blocked
+/// attacker among its blockers (CR 510.1c), or a blocker among the attackers it blocks (CR 510.1d).
 /// `Copy` so `Event::CombatDamageDivided` stays `Copy`; see [`MAX_BLOCKERS`]. `pub` (not
 /// `pub(crate)`): the `schema` crate's redaction reads it back out via [`Self::pairs`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -3592,7 +3940,7 @@ pub struct DamageAssignment {
 }
 
 impl DamageAssignment {
-    /// Build from `(blocker, amount)` pairs. Callers must have already checked
+    /// Build from `(recipient, amount)` pairs. Callers must have already checked
     /// `pairs.len() <= MAX_BLOCKERS`; any pair beyond the ceiling is silently dropped.
     pub(crate) fn from_pairs(pairs: &[(ObjectId, i32)]) -> Self {
         let mut assignment = DamageAssignment::default();
@@ -3602,7 +3950,7 @@ impl DamageAssignment {
         assignment
     }
 
-    /// The `(blocker, amount)` pairs, in the order they were assigned.
+    /// The `(recipient, amount)` pairs, in the order they were assigned.
     pub fn pairs(&self) -> Vec<(ObjectId, i32)> {
         self.slots.into_iter().flatten().collect()
     }

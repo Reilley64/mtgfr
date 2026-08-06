@@ -34,6 +34,15 @@ impl Game {
             ManaEffect::TargetPlayerTapsLandsForMana => {
                 unreachable!("a pausing/composite effect resolves via Game::run")
             }
+            // Quarum Trench Gnomes. "(This effect lasts indefinitely.)" — no duration to sweep, so
+            // it lapses only when the land leaves the battlefield (CR 400.7). A land that has since
+            // stopped being a legal target is gone from `target` already (CR 608.2b).
+            ManaEffect::TargetLandProducesColorlessInsteadOf { color, .. } => {
+                let Some(Target::Object(land)) = target else {
+                    return Vec::new();
+                };
+                vec![Event::LandProducesColorlessInsteadOf { land, color }]
+            }
             // Add `repeat` copies of the mana batch — one ManaAdded event per mana kind.
             // ponytail: a pool holds at most 255 of any one mana (u8); a burst this large never
             // arises in the soc pool, so an over-255 repeat saturates rather than widening the type.

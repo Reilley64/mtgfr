@@ -13,12 +13,13 @@ import {
   type YieldTone,
 } from "~/turnYieldChrome";
 import { button } from "~/ui/button";
-import type { VisibleState } from "~/wire/types";
+import type { VisibleState, WireAttack } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
-import { canArmEndTurn, stagedAttackersForDisplay } from "../geometry/combat-staging";
+import { bandCandidates, canArmEndTurn, stagedAttackersForDisplay } from "../geometry/combat-staging";
 import { type PrimaryAction, primaryActionFor } from "../geometry/interaction";
 import {
   CancelActionClicked,
+  CombatBandToggled,
   type Message,
   PassClicked,
   PrimaryClicked,
@@ -29,14 +30,18 @@ import { promptPresentation } from "../promptPresentation";
 import type { BoardModel } from "../submodel";
 import { simplePromptBarActions } from "./prompt-bar-actions";
 
-/** The same decision the click path makes (`primaryActionFor`) — the button's label and what it
- * submits must never disagree. */
-function primaryFor(board: BoardModel, state: VisibleState): PrimaryAction {
-  const attackers = stagedAttackersForDisplay(
+/** The attacker list the button label, the band panel and the submit path all read (staged ∪ goad). */
+function mergedAttackers(board: BoardModel, state: VisibleState): WireAttack[] {
+  return stagedAttackersForDisplay(
     board.combatAttackers,
     state.actions?.find((a) => a.kind === "declare_attackers")?.required_attacks ?? [],
     board.attackersConfirmed || state.combat.attackers_declared,
   );
+}
+
+/** The same decision the click path makes (`primaryActionFor`) — the button's label and what it
+ * submits must never disagree. */
+function primaryFor(board: BoardModel, state: VisibleState, attackers: WireAttack[]): PrimaryAction {
   return primaryActionFor({
     step: state.step,
     activePlayer: state.active_player,
@@ -49,6 +54,48 @@ function primaryFor(board: BoardModel, state: VisibleState): PrimaryAction {
     attackersDeclared: state.combat.attackers_declared,
     blockersDeclared: state.combat.blockers_declared.includes(state.viewer),
   });
+}
+
+/** Band grouping affordance (CR 702.22c): one toggle per staged attacker, shown only once some
+ * staged attacker can band. Whether the grouping is *legal* is the engine's call — an illegal band
+ * comes back as `Reject::IllegalDeclaration` in `board-reject` like any other bad declaration. */
+function bandPanelView(
+  board: BoardModel,
+  state: VisibleState,
+  attackers: WireAttack[],
+  h: HtmlBuilder<Message>,
+): Html | null {
+  if (board.attackersConfirmed || state.combat.attackers_declared) return null;
+  const candidates = bandCandidates(state.objects, attackers);
+  if (candidates.length === 0) return null;
+
+  const chips = candidates.map((id) => {
+    const banded = board.combatBand.includes(id);
+    return button(
+      h,
+      {
+        testId: `board-band-chip-${id}`,
+        onClick: CombatBandToggled({ attackerId: id }),
+        variant: "game-quiet",
+        // Attribute-driven chrome: JS sets `data-banded`, Tailwind variants own the look.
+        class:
+          "data-[banded=true]:bg-llanowar data-[banded=true]:text-snow-mint data-[banded=true]:ring-1 data-[banded=true]:ring-llanowar",
+        attrs: [
+          h.DataAttribute("banded", banded ? "true" : "false"),
+          h.Attribute("aria-pressed", banded ? "true" : "false"),
+        ],
+      },
+      [state.objects.find((o) => o.id === id)?.name ?? `#${id}`],
+    );
+  });
+
+  return h.div(
+    [h.DataAttribute("testid", "board-band-panel"), h.Class("flex flex-col items-end gap-xs")],
+    [
+      h.div([h.Class("text-caption text-mist")], ["Band (attack as one)"]),
+      h.div([h.Class("flex flex-row-reverse flex-wrap items-center justify-end gap-xs")], chips),
+    ],
+  );
 }
 
 function canResolveCard(state: VisibleState): boolean {
@@ -124,7 +171,8 @@ export function priorityBarView(
     );
   }
 
-  const primary = primaryFor(board, state);
+  const attackers = mergedAttackers(board, state);
+  const primary = primaryFor(board, state, attackers);
   const yours = state.can_act && state.priority === state.viewer;
   const stackLen = state.stack.length;
   const yielded = state.yielded ?? false;
@@ -208,6 +256,7 @@ export function priorityBarView(
       h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
     ],
     [
+      bandPanelView(board, state, attackers, h),
       h.div(
         [h.Class("flex flex-row-reverse flex-wrap items-center justify-end gap-md")],
         [

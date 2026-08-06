@@ -40,6 +40,19 @@ impl Game {
                     watched,
                 }]
             }
+            // Reincarnation's "Choose target creature. When that creature dies this turn, …":
+            // arm a one-shot delayed trigger on the chosen creature (CR 603.7). A target that has
+            // since left the battlefield already fizzled the whole spell (CR 608.2b), so there is
+            // nothing to guard here beyond the untargeted case.
+            MiscEffect::ScheduleWhenTargetDiesThisTurn { then, .. } => {
+                let watched = expect_object_target(target, "a dies-this-turn watch's armed target");
+                vec![Event::DiesThisTurnWatchArmed {
+                    controller,
+                    source,
+                    watched,
+                    then,
+                }]
+            }
             // Surge to Victory: arm the this-turn, controller-scoped, repeatable combat-damage-
             // copy watch over the card the preceding `Sequence` step just exiled. `None` (the
             // exile step never ran) is unreachable in practice — CR 608.2b already fizzles the
@@ -69,6 +82,12 @@ impl Game {
             MiscEffect::GrantChannelColorlessManaThisTurn => {
                 vec![Event::ChannelColorlessManaGranted { player: controller }]
             }
+            // North Star: "For one spell this turn, you may spend mana as though it were mana of (CR 609.4b)
+            // any type to pay that spell's mana cost." The same one-shot turn-flag set as the two
+            // grants above; `Game::mana_substitutions` widens every color pair while it holds.
+            MiscEffect::GrantSpendManaAsAnyTypeForOneSpellThisTurn => {
+                vec![Event::SpendManaAsAnyTypeGranted { player: controller }]
+            }
             // Counter target spell (the unconditional hard-counter path — `unless_pays: Some(_)`
             // is intercepted earlier, in `run`, so this arm only ever sees `None`).
             MiscEffect::CounterTargetSpell { .. } => {
@@ -80,8 +99,24 @@ impl Game {
             // `AbilityCountered` apply removes the topmost matching stack ability. A guard-return
             // (CR 608.2b) if it already left the stack is handled upstream by `target_still_legal`,
             // which fizzles this ability before it runs; this stays a no-op if nothing matches.
-            MiscEffect::CounterTargetActivatedAbility => {
+            MiscEffect::CounterTargetActivatedAbility { .. } => {
                 let source_id = expect_object_target(target, "an activated ability to counter");
+                let on_stack = self.stack.iter().any(|item| {
+                    matches!(item, StackItem::Ability { source, activated: true, .. } if *source == source_id)
+                });
+                if !on_stack {
+                    return Vec::new();
+                }
+                vec![Event::AbilityCountered { source: source_id }]
+            }
+            // Imprison's "counter that ability" (CR 115.1): the ability is the one that fired the
+            // watch, baked in at placement, not a chosen target — otherwise identical to the
+            // targeted counter above, down to the on-stack check (it may have already resolved or
+            // been countered in response).
+            MiscEffect::CounterTriggeringAbility { triggering_ability } => {
+                let Some(source_id) = triggering_ability else {
+                    return Vec::new();
+                };
                 let on_stack = self.stack.iter().any(|item| {
                     matches!(item, StackItem::Ability { source, activated: true, .. } if *source == source_id)
                 });
@@ -93,11 +128,25 @@ impl Game {
             // Schedule a CR 603.7 delayed trigger: resolve `who` to a concrete player now (the
             // effect itself doesn't fire until the matching step begins — see
             // `Game::fire_delayed_triggers`).
-            MiscEffect::ScheduleAtNextUpkeep { who, then, fire_at } => {
+            MiscEffect::ScheduleAtNextUpkeep {
+                who,
+                then,
+                fire_at,
+                your_upkeep,
+            } => {
                 // A lost target leaves no seat to schedule for (CR 608.2b) — nothing is queued.
                 let Some(player) = self.sole_player_in(who, controller, target) else {
                     return Vec::new();
                 };
+                // "Your next upkeep" (Hazezon Tamar) waits for that seat's own upkeep; the default
+                // fires on whichever matching step begins first.
+                if your_upkeep {
+                    return vec![Event::DelayedTriggerScheduledForYourNextUpkeep {
+                        controller: player,
+                        source,
+                        effect: then.clone(),
+                    }];
+                }
                 vec![Event::DelayedTriggerScheduled {
                     controller: player,
                     source,
@@ -132,6 +181,15 @@ impl Game {
             // CR 104.3b: a "you lose the game" effect eliminates its controller directly, not via
             // a life total, so it mints the same event a state-based sweep would.
             MiscEffect::YouLoseTheGame => vec![Event::PlayerLost { player: controller }],
+            // CR 104.4: the game is a draw — its own outcome, so no `PlayerLost` for anyone.
+            MiscEffect::GameIsADraw => vec![Event::GameDrawn],
+            // Telekinesis' "It doesn't untap during its controller's next two untap steps": one
+            // mark per skipped step, since each untap step spends exactly one (see
+            // `Event::NextUntapSkipConsumed`).
+            MiscEffect::SkipNextUntaps { count, .. } => {
+                let object = expect_object_target(target, "a creature to hold down");
+                std::iter::repeat_n(Event::NextUntapSkipMarked { object }, count as usize).collect()
+            }
             MiscEffect::SkipNextUntapOpponentCreatures => self
                 .battlefield()
                 .into_iter()
@@ -158,6 +216,14 @@ impl Game {
             MiscEffect::FlipSource => match self.as_permanent(source) {
                 Some(p) if !p.flipped => vec![Event::Flipped { object: source }],
                 _ => vec![],
+            },
+
+            // Clergy of the Holy Nimbus: "This creature can't be regenerated this turn." Always
+            // the source, never a target; a no-op if the source has already left the battlefield
+            // by the time this ability resolves (nothing left to mark).
+            MiscEffect::SourceCantBeRegeneratedThisTurn => match self.as_permanent(source) {
+                Some(_) => vec![Event::CantBeRegeneratedThisTurnMarked { object: source }],
+                None => vec![],
             },
             _ => unreachable!("misc family mint received a non-family effect"),
         }

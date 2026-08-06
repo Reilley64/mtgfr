@@ -44,11 +44,16 @@ disagree, the code wins. Engine gaps for a deck live in that deck's
   rule approximated (for humans). Both, not either — comment alone doesn't count.
 - **Flag, don't force-script.** If a card needs something the DSL can't express, don't contort
   the model to fake it — flag the gap in that deck's `docs/fidelity/<slug>-increments.md` and
-  see [`card-dsl-and-card-pool` Out of Scope](docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md#out-of-scope)
-  for deliberate DSL limits.
+  see [`card-dsl`](openspec/specs/card-dsl/spec.md)
+  for deliberate DSL limits and fidelity posture.
 - **Test-first when behavior changes.** New or changed card behavior that needs engine
   support goes through the **`test-driven-development`** skill (failing test in
   `crates/engine/tests/game.rs` before the TOML / `Effect` arm). Pure TOML authoring against
   an already-expressible DSL surface still wants a regression test when the card is
   non-trivial.
 - Card identity is the `name` field, not the filename; filename is arbitrary.
+- **Composable effects.** Prefer combining existing DSL leaves (`sequence`, filters, shared
+  modes, amounts) over a one-off effect leaf for a single card. Grow the vocabulary only when
+  a real card cannot be expressed from what already exists (see `AGENTS.md`).
+- **Forge reference.** For sticky rules / ability encoding, use the `forge` skill
+  (vendored `.repos/forge`; `just forge` to sync from upstream).

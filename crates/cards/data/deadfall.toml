@@ -1,0 +1,24 @@
+# Creatures with forestwalk can be blocked as though they didn't have forestwalk.
+name = "Deadfall"
+otags = ["cycle-leg-anti-landwalk-enchant", "hate-landwalk", "single-english-word-name"]
+sets = ["leg"]
+id = "6a7d6bb7-d6ad-48a4-8923-4083e0c90786"
+default_print = "0d78f0fc-3ab2-46ee-b5a9-55ae97d08c1a"
+oracle = "Creatures with forestwalk can be blocked as though they didn't have forestwalk."
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "enchantment"
+
+# Creatures with forestwalk can be blocked as though they didn't have forestwalk.
+[[abilities]]
+timing = "static"
+
+# Creatures with forestwalk can be blocked as though they didn't have forestwalk.
+[[abilities.effects]]
+type = "static"
+mode = "landwalk_negated"
+land = "forest"

@@ -1,0 +1,33 @@
+# Enchant creature
+# Whenever enchanted creature blocks or becomes blocked by a creature with toughness 3 or less,
+# destroy the other creature at end of combat. At the beginning of the next end step, if that
+# creature was destroyed this way, put a +1/+1 counter on the first creature.
+name = "Infinite Authority"
+otags = ["block-trigger", "delayed-trigger", "hate-blocker", "removal-destroy", "repeatable-removal", "spot-removal", "triggered-ability"]
+sets = ["leg"]
+id = "b4faba1a-23db-4678-9ce6-a7816105f22a"
+default_print = "dc60077f-d577-4a6c-a78f-697317024c40"
+oracle = "Enchant creature\nWhenever enchanted creature blocks or becomes blocked by a creature with toughness 3 or less, destroy the other creature at end of combat. At the beginning of the next end step, if that creature was destroyed this way, put a +1/+1 counter on the first creature."
+
+[cost]
+white = 3
+
+[kind]
+type = "aura"
+enchant = { types = "creature" }
+
+# Whenever enchanted creature blocks or becomes blocked by a creature with toughness 3 or less,
+# destroy the other creature at end of combat. At the beginning of the next end step, if that
+# creature was destroyed this way, put a +1/+1 counter on the first creature.
+[[abilities]]
+timing = "static"
+
+# Whenever enchanted creature blocks or becomes blocked by a creature with toughness 3 or less,
+# destroy the other creature at end of combat. At the beginning of the next end step, if that
+# creature was destroyed this way, put a +1/+1 counter on the first creature.
+[[abilities.effects]]
+type = "static"
+mode = "grant_to_attached"
+power = 0
+toughness = 0
+granted_ability = { trigger = { blocks_or_becomes_blocked_by = { filter = { types = "creature", toughness_max = 3 } } }, effects = [{ type = "destroy", mode = "that_creature", at = "end_combat", then = { type = "counters", mode = "put_counters", target = "this", count = 1 } }] }

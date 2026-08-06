@@ -1,0 +1,30 @@
+# Whenever this creature deals damage to a player, that player gets a poison counter. (A player
+# with ten or more poison counters loses the game.)
+name = "Pit Scorpion"
+otags = ["combat-neutral-damage-trigger", "poisonous", "saboteur"]
+sets = ["4bb", "4ed", "5ed", "leg", "pz2", "ren"]
+id = "4804fc42-588c-487a-8ff7-bcc16749fc1f"
+default_print = "fe106ff1-cdc6-44cc-adb7-131203a05292"
+oracle = "Whenever this creature deals damage to a player, that player gets a poison counter. (A player with ten or more poison counters loses the game.)"
+subtypes = ["Scorpion"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Whenever this creature deals damage to a player, that player gets a poison counter.
+[[abilities]]
+timing = "deals_damage_to_player"
+
+# that player gets a poison counter.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters_on_player"
+kind = "poison"
+count = 1
+who = "damaged_player"

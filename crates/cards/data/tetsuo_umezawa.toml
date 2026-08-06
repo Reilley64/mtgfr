@@ -1,0 +1,46 @@
+# Tetsuo Umezawa can't be the target of Aura spells.
+# {U}{B}{B}{R}, {T}: Destroy target tapped or blocking creature.
+name = "Tetsuo Umezawa"
+otags = ["activated-ability", "deprecated-legend-type", "hate-aura", "hate-blocker", "hate-tapped", "removal-destroy", "repeatable-removal", "spot-removal"]
+sets = ["leg", "me3"]
+id = "ff132d04-c3a9-4949-83ba-d80bcbcd7b9b"
+default_print = "ec22ddf8-cb5e-4ca0-8f2f-c5d48f2cbd26"
+oracle = "Tetsuo Umezawa can't be the target of Aura spells.\n{U}{B}{B}{R}, {T}: Destroy target tapped or blocking creature."
+legendary = true
+subtypes = ["Human", "Archer"]
+
+[cost]
+blue = 1
+black = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Tetsuo Umezawa can't be the target of Aura spells.
+[[abilities]]
+timing = "static"
+
+# Tetsuo Umezawa can't be the target of Aura spells.
+[[abilities.effects]]
+type = "static"
+mode = "cant_be_targeted_by"
+spells = "aura"
+
+# {U}{B}{B}{R}, {T}: Destroy target tapped or blocking creature.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.cost]
+blue = 1
+black = 2
+red = 1
+
+# Destroy target tapped or blocking creature.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "creature", tapped_or_blocking = true } }

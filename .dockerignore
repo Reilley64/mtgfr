@@ -1,5 +1,6 @@
 .git
 .github
+.repos
 client/node_modules
 client/dist
 client/.output

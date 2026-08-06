@@ -1,0 +1,19 @@
+# Defender (This creature can't attack.)
+# Protection from black
+name = "Wall of Light"
+otags = ["drawback", "evasion", "french-vanilla", "hate-black"]
+sets = ["leg", "me3"]
+id = "d0c05cad-6e14-4726-b7fc-8f2fc7df7267"
+default_print = "347db0be-8a88-4110-942a-d3c77cfbca52"
+oracle = "Defender (This creature can't attack.)\nProtection from black"
+subtypes = ["Wall"]
+keywords = ["defender", { protection = "black" }]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 5

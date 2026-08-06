@@ -67,7 +67,7 @@ All 22 cards are in the pool and fully faithful, with no `approximates` notes.
 ## B. In Pool, Approximated (2 cards)
 
 Both entered the pool with the Political Puppets deck. Their shared "or planeswalkers you control"
-residual was cleared by [#201 `planeswalker-as-attack-defender`](mirror-mastery-increments.md) on
+residual was cleared by #201 `planeswalker-as-attack-defender` on
 2026-07-22 — a planeswalker is now a legal attack defender (CR 508.1a) and
 `grant_to_attached`'s `cant_attack_controller` reads the defender's *controller*, so both halves of
 the attack ban hold. Neither card carries an `approximates` any more.
@@ -113,7 +113,7 @@ These cards can be scripted with the current DSL and no engine changes.
 
 ## D. New, Needs Engine Work (32 cards)
 
-These cards require engine additions before they can be scripted. Detailed increments are in [`mirror-mastery-increments.md`](mirror-mastery-increments.md).
+These cards required engine additions before they could be scripted. Increments landed; backlog file removed.
 
 ### Lands (2 cards)
 
@@ -187,7 +187,7 @@ that reason, not the residual, is what was stale:
   **Verified:** planeswalkers exist; the real blocker is that `Intent::DeclareAttackers` carries
   `(ObjectId, PlayerId)`, so no attack can be aimed at a planeswalker and
   `Game::attacker_tax_owed` keys on `PlayerId`. Re-scoped to increment
-  [#201 `planeswalker-as-attack-defender`](mirror-mastery-increments.md); the note's reason is
+  #201 `planeswalker-as-attack-defender`; the note's reason is
   corrected in place, the residual stays.
 
 - `crates/cards/data/volcanic_torrent.toml`:  
@@ -195,7 +195,7 @@ that reason, not the residual, is what was stale:
   **Verified:** planeswalkers exist and single-target damage already reaches them
   (`TargetSpec::CreatureOrPlaneswalker`); the real blocker is `Effect::DamageEachCreature`'s sweep
   filtering `is_creature_on_battlefield`, so every *mass*-damage effect drops them. Re-scoped to
-  increment [#202 `planeswalker-as-damage-and-effect-target`](mirror-mastery-increments.md) —
+  increment #202 `planeswalker-as-damage-and-effect-target` —
   **landed**: `DamageEachCreature` now takes `include_planeswalkers`, the note is deleted, and
   Volcanic Torrent's planeswalker half is faithful.
 
@@ -217,7 +217,7 @@ No other ponytail claims in `crates/cards/data/` or `crates/engine/src/` are fal
 
 **Phase 3:** Author all 39 Section C cards in TDD waves (failing test → TOML), with mandatory frame audit after each wave.
 
-**Phase 4:** Engine grind loop for the 18 Section D cards, following increments in `mirror-mastery-increments.md`.
+**Phase 4:** Engine grind loop for Section D — complete (increments landed; backlog file removed).
 
 **Phase 5:** Client catch-up after engine waves (pending-choice forms, event arms).
 

@@ -1,0 +1,26 @@
+# {T}: Add {G}.
+# {T}: Target 1/1 creature gets +1/+2 until end of turn.
+name = "Pendelhaven"
+otags = ["activated-ability", "cycle-leg-legendary-land", "pump-creature", "utility-land"]
+sets = ["a25", "ath", "f08", "j17", "leg", "prm", "tsb"]
+id = "f70e72e1-9abe-485b-9fea-e8b35352f5b3"
+default_print = "acf85879-4d14-4d86-978c-b155c47b7dcd"
+oracle = "{T}: Add {G}.\n{T}: Target 1/1 creature gets +1/+2 until end of turn."
+legendary = true
+
+[kind]
+type = "land"
+produces = "green"
+
+# {T}: Target 1/1 creature gets +1/+2 until end of turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Target 1/1 creature gets +1/+2 until end of turn.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+power = 1
+toughness = 2
+target = { permanent = { types = "creature", power_min = 1, power_max = 1, toughness_min = 1, toughness_max = 1 } }

@@ -38,10 +38,16 @@ impl Game {
                 },
             ),
             // Natural Selection sorts somebody else's library: the caster answers, the target's
-            // library is the one shown, and every card goes back on top.
-            Effect::Dig(DigEffect::RearrangeTargetPlayersTop { count }) => {
+            // library is the one shown, and every card goes back on top. Visions only *looks* at
+            // somebody else's top — same pause, same shown cards, but the answer decides nothing.
+            Effect::Dig(DigEffect::RearrangeTargetPlayersTop { count })
+            | Effect::Dig(DigEffect::LookAtTargetPlayersTop { count }) => {
                 let Some(Target::Player(owner)) = target else {
                     return;
+                };
+                let rest = match effect {
+                    Effect::Dig(DigEffect::LookAtTargetPlayersTop { .. }) => ArrangeRest::LookOnly,
+                    _ => ArrangeRest::Nowhere,
                 };
                 pending::raise(
                     self,
@@ -49,7 +55,7 @@ impl Game {
                         player: controller,
                         library: owner,
                         count,
-                        rest: ArrangeRest::Nowhere,
+                        rest,
                     },
                 )
             }

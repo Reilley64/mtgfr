@@ -19,6 +19,9 @@ use crate::{Game, PendingChoice};
 
 /// Engine-internal raise request (not wire). Covers effect/cast pause sites, fan-out kickoffs,
 /// and dig-loop pause payloads (prep/dig events stay at the call site — see module deferred notes).
+// ponytail: every variant here carries an `Effect` (~6.3KB), so the spread the lint measures is
+// noise against a floor set by `Effect` itself — same call as `Event`/`StackItem`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub(crate) enum ChoiceRequest {
     ChooseTarget {
@@ -48,7 +51,7 @@ pub(crate) enum ChoiceRequest {
     ChooseColor {
         player: crate::PlayerId,
         source: crate::ObjectId,
-        until_end_of_turn: bool,
+        use_: crate::ChosenColorUse,
     },
     ChooseMode {
         player: crate::PlayerId,
@@ -98,12 +101,22 @@ pub(crate) enum ChoiceRequest {
         player: crate::PlayerId,
         source: crate::ObjectId,
     },
-    /// [`Effect::Choice(ChoiceEffect::MaySacrifice)`] — no legal permanent skips.
+    /// [`Effect::Choice(ChoiceEffect::MaySacrifice)`] — fewer than `count` legal permanents skips
+    /// (the `otherwise` penalty is run by the caller before the raise, see `Game::run_effect`).
     MaySacrifice {
         player: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::PermanentFilter,
+        count: u8,
         then: &'static [crate::Effect],
+        otherwise: &'static [crate::Effect],
+    },
+    /// [`Effect::Choice(ChoiceEffect::SacrificeAnyNumber)`](crate::ChoiceEffect::SacrificeAnyNumber)
+    /// as-enters (Wood Elemental) — no matching permanent skips.
+    SacrificeAnyNumber {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        filter: crate::PermanentFilter,
     },
     /// [`CardDef::devour`] as-enters — no other creature skips.
     Devour {
@@ -111,12 +124,17 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         multiplier: u32,
     },
-    /// [`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — no legal card skips.
+    /// [`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — no legal card in any listed
+    /// graveyard skips. `graveyards` is the queue of owners still owed a card: one entry for the
+    /// ordinary single return, the same owner repeated for Recall's counted return, distinct
+    /// owners for Glyph of Reincarnation's fan-out.
     MayReturnFromGraveyard {
         player: crate::PlayerId,
         source: crate::ObjectId,
         filter: crate::CardFilter,
         mandatory: bool,
+        to_battlefield: bool,
+        graveyards: Vec<crate::PlayerId>,
     },
     /// [`Effect::Choice(ChoiceEffect::MayExileDiscardedNonlandMayPlay)`] — no card still in the
     /// graveyard skips (Conspiracy Theorist).
@@ -150,12 +168,18 @@ pub(crate) enum ChoiceRequest {
         or_one_matching: Option<crate::CardFilter>,
     },
     /// [`Effect::Choice(ChoiceEffect::PutFromHandOnTop)`] — empty (or zero-count) hand skips.
-    PutFromHandOnTop { player: crate::PlayerId, count: u32 },
+    PutFromHandOnTop {
+        player: crate::PlayerId,
+        count: u32,
+        drawn_this_turn: bool,
+        life_per_declined: u32,
+    },
     /// [`Effect::Choice(ChoiceEffect::PayOrElse)`] — always pauses.
     PayOrElse {
         player: crate::PlayerId,
         source: crate::ObjectId,
         cost: crate::Cost,
+        then: &'static [crate::Effect],
         otherwise: &'static [crate::Effect],
     },
     /// [`Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand)`] — no candidates → `None` (caller sacrifices).
@@ -220,6 +244,9 @@ pub(crate) enum ChoiceRequest {
         subtypes: &'static [&'static str],
         keep: bool,
         defender: Option<crate::PlayerId>,
+        /// Eureka's round-robin queue — see [`PendingChoice::PutCreatureFromHand`](crate::PendingChoice).
+        round: Option<Vec<crate::PlayerId>>,
+        permanent_cards: bool,
     },
     /// [`Effect::Choice(ChoiceEffect::CastCreatureFaceDown)`] — no payable creature skips.
     CastCreatureFaceDown {
@@ -282,6 +309,8 @@ pub(crate) enum ChoiceRequest {
         caster: crate::PlayerId,
         source: crate::ObjectId,
     },
+    /// Next graveyard in Glyph of Reincarnation's "for each creature that died this way"
+    /// fan-out — a graveyard with no creature card is skipped, and an empty list skips entirely.
     /// Next seat in Nils' counter-target fan-out — empty remaining skips.
     NextCounterTarget {
         remaining: Vec<crate::PlayerId>,
@@ -307,6 +336,9 @@ pub(crate) enum ChoiceRequest {
     NextCardName {
         remaining: Vec<crate::PlayerId>,
         source: crate::ObjectId,
+        /// What the answered name is for — see [`crate::CardNameUse`]. Conundrum Sphinx's fan-out
+        /// and Petra Sphinx's single seat differ only in this tail.
+        use_: crate::CardNameUse,
     },
     /// Next seat in a multi-player sacrifice edict — no real choice left → `None` (caller runs
     /// follow-up).
@@ -461,8 +493,15 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             player,
             source,
             filter,
+            count,
             then,
-        } => optional::may_sacrifice(game, player, source, filter, then),
+            otherwise,
+        } => optional::may_sacrifice(game, player, source, filter, count, then, otherwise),
+        ChoiceRequest::SacrificeAnyNumber {
+            player,
+            source,
+            filter,
+        } => optional::sacrifice_any_number(game, player, source, filter),
         ChoiceRequest::Devour {
             player,
             source,
@@ -473,7 +512,17 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             source,
             filter,
             mandatory,
-        } => optional::may_return_from_graveyard(game, player, source, filter, mandatory),
+            to_battlefield,
+            graveyards,
+        } => optional::may_return_from_graveyard(
+            game,
+            player,
+            source,
+            filter,
+            mandatory,
+            to_battlefield,
+            graveyards,
+        ),
         ChoiceRequest::MayExileDiscardedNonlandMayPlay {
             player,
             source,
@@ -497,8 +546,13 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             count,
             or_one_matching,
         } => optional::discard(game, player, count, or_one_matching),
-        ChoiceRequest::PutFromHandOnTop { player, count } => {
-            optional::put_from_hand_on_top(game, player, count)
+        ChoiceRequest::PutFromHandOnTop {
+            player,
+            count,
+            drawn_this_turn,
+            life_per_declined,
+        } => {
+            optional::put_from_hand_on_top(game, player, count, drawn_this_turn, life_per_declined)
         }
         ChoiceRequest::SacrificeUnlessReturnLand {
             player,
@@ -563,7 +617,18 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             subtypes,
             keep,
             defender,
-        } => library::put_creature_from_hand(game, player, source, subtypes, keep, defender),
+            round,
+            permanent_cards,
+        } => library::put_creature_from_hand(
+            game,
+            player,
+            source,
+            subtypes,
+            keep,
+            defender,
+            round,
+            permanent_cards,
+        ),
         ChoiceRequest::CastCreatureFaceDown { player, spent_mana } => {
             library::cast_creature_face_down(game, player, spent_mana)
         }
@@ -621,9 +686,11 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             source,
             options,
         } => fanout::next_vote(remaining, source, options),
-        ChoiceRequest::NextCardName { remaining, source } => {
-            fanout::next_card_name(remaining, source)
-        }
+        ChoiceRequest::NextCardName {
+            remaining,
+            source,
+            use_,
+        } => fanout::next_card_name(remaining, source, use_),
         ChoiceRequest::NextSacrificeEdict {
             remaining,
             keep_one,

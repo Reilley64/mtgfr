@@ -1,0 +1,36 @@
+# {4}, {T}: Put a matrix counter on target creature and that creature gains "Remove a matrix
+# counter from this creature: Regenerate this creature." Activate only during your upkeep.
+name = "Life Matrix"
+otags = ["activated-ability"]
+sets = ["leg"]
+id = "0fd1ddc3-65cc-489f-81b9-6c144843fc67"
+default_print = "c99a3abc-e2a3-4eee-8f72-b1b25dcd1d0b"
+oracle = "{4}, {T}: Put a matrix counter on target creature and that creature gains \"Remove a matrix counter from this creature: Regenerate this creature.\" Activate only during your upkeep."
+
+[cost]
+generic = 4
+
+[kind]
+type = "artifact"
+
+# {4}, {T}: Put a matrix counter on target creature and that creature gains "Remove a matrix
+# counter from this creature: Regenerate this creature." Activate only during your upkeep.
+[[abilities]]
+timing = "activated"
+taps_self = true
+only_during_your_upkeep = true
+
+[abilities.activation_cost]
+generic = 4
+
+# Put a matrix counter on target creature and that creature gains "Remove a matrix counter from
+# this creature: Regenerate this creature."
+# The granted ability rides on the counter itself (Cyclopean Tomb's mire counter, Glyph of
+# Delusion's glyph counter): the grant has no duration and so outlives the Matrix, and
+# `Game::granted_activated_abilities` hands the regenerate ability to anything holding one.
+[[abilities.effects]]
+type = "counters"
+mode = "put_counters"
+count = 1
+target = "creature"
+kind = "matrix"

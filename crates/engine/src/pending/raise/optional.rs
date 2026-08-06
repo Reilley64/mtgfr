@@ -68,17 +68,48 @@ pub(super) fn may_sacrifice(
     player: PlayerId,
     source: ObjectId,
     filter: PermanentFilter,
+    count: u8,
     then: &'static [Effect],
+    otherwise: &'static [Effect],
 ) -> Option<PendingChoice> {
     let options = game.edict_options(player, filter, Some(source));
-    if options.is_empty() {
+    // Can't make the offer (Mold Demon on one Swamp): no prompt. The penalty isn't lost — the
+    // caller ran `otherwise` instead of reaching this raise at all.
+    if options.len() < count.max(1) as usize {
         return None;
     }
     Some(PendingChoice::MaySacrifice {
         player,
         source,
         options,
+        count: count.max(1),
         then,
+        otherwise,
+    })
+}
+
+/// Wood Elemental's as-enters "sacrifice any number of untapped Forests": every matching permanent
+/// its controller has, minus the source itself (a permanent can't be sacrificed to its own entry
+/// cost — and no printing of this shape matches its own type anyway). `None` when nothing matches,
+/// so the entry never pauses on an empty prompt.
+pub(super) fn sacrifice_any_number(
+    game: &Game,
+    player: PlayerId,
+    source: ObjectId,
+    filter: PermanentFilter,
+) -> Option<PendingChoice> {
+    let options: Vec<ObjectId> = game
+        .edict_options(player, filter, Some(source))
+        .into_iter()
+        .filter(|&id| id != source)
+        .collect();
+    if options.is_empty() {
+        return None;
+    }
+    Some(PendingChoice::SacrificeAnyNumber {
+        player,
+        source,
+        options,
     })
 }
 
@@ -104,31 +135,48 @@ pub(super) fn devour(
     })
 }
 
+/// The next graveyard still owed a card by a return-from-graveyard effect: `graveyards` is the
+/// queue of owners, and the first that actually holds a matching card becomes this prompt (the
+/// rest ride along on the choice to be prompted for in turn). One entry is the ordinary
+/// single return (Deadly Brew's rider); the *same* owner repeated is Recall's "a card ... for each
+/// card discarded this way" (each prompt recomputes the options, so an already-returned card is
+/// gone from the next one); distinct owners are Glyph of Reincarnation's per-graveyard fan-out.
+/// `None` when no listed graveyard holds a matching card at all — CR 700.2's "as much as
+/// possible" leaves nothing to do, so the resolution never pauses.
 pub(super) fn may_return_from_graveyard(
     game: &Game,
-    player: PlayerId,
+    chooser: PlayerId,
     source: ObjectId,
     filter: CardFilter,
     mandatory: bool,
+    to_battlefield: bool,
+    graveyards: Vec<PlayerId>,
 ) -> Option<PendingChoice> {
-    let options: Vec<ObjectId> = game
-        .live_object_ids()
-        .into_iter()
-        .filter(|&id| {
-            game.zone_of(id) == crate::Zone::Graveyard
-                && game.owner_of(id) == player
-                && filter.matches(&game.def_of(id))
-        })
-        .collect();
-    if options.is_empty() {
-        return None;
+    let mut rest = graveyards.into_iter();
+    while let Some(owner) = rest.next() {
+        let options: Vec<ObjectId> = game
+            .live_object_ids()
+            .into_iter()
+            .filter(|&id| {
+                game.zone_of(id) == crate::Zone::Graveyard
+                    && game.owner_of(id) == owner
+                    && filter.matches(&game.def_of(id))
+            })
+            .collect();
+        if options.is_empty() {
+            continue;
+        }
+        return Some(PendingChoice::MayReturnFromGraveyard {
+            player: chooser,
+            source,
+            options,
+            filter,
+            mandatory,
+            to_battlefield,
+            then_graveyards: rest.collect(),
+        });
     }
-    Some(PendingChoice::MayReturnFromGraveyard {
-        player,
-        source,
-        options,
-        mandatory,
-    })
+    None
 }
 
 pub(super) fn may_exile_discarded_nonland_may_play(
@@ -237,6 +285,7 @@ pub(super) fn discard(
         hand,
         count,
         or_one_matching,
+        draw_replacement: false,
     })
 }
 
@@ -244,8 +293,15 @@ pub(super) fn put_from_hand_on_top(
     game: &Game,
     player: PlayerId,
     count: u32,
+    drawn_this_turn: bool,
+    life_per_declined: u32,
 ) -> Option<PendingChoice> {
-    let hand = game.hand_of(player);
+    let mut hand = game.hand_of(player);
+    // Sylvan Library chooses among "cards in your hand drawn this turn" only — a card drawn and
+    // already played this turn is no longer in hand, so the intersection is the candidate set.
+    if drawn_this_turn {
+        hand.retain(|c| game.drawn_this_turn.contains(c));
+    }
     let count = (count as usize).min(hand.len());
     if count == 0 {
         return None;
@@ -254,6 +310,7 @@ pub(super) fn put_from_hand_on_top(
         player,
         hand,
         count,
+        life_per_declined,
     })
 }
 

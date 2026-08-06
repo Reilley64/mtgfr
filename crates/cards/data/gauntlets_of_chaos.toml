@@ -1,0 +1,35 @@
+# {5}, Sacrifice this artifact: Exchange control of target artifact, creature, or land you control and target permanent
+# an opponent controls that shares one of those types with it. If those permanents are exchanged this way, destroy all
+# Auras attached to them.
+name = "Gauntlets of Chaos"
+otags = ["activated-ability", "egg", "exchange-control", "multiple-targets", "removal-aura", "removal-destroy", "spot-removal", "theft-artifact", "theft-creature", "theft-land"]
+id = "924ef69f-9977-439c-ace9-353b429e4be6"
+default_print = "6f8f11b5-3ba8-4913-b76a-fb469a74864d"
+oracle = "{5}, Sacrifice this artifact: Exchange control of target artifact, creature, or land you control and target permanent an opponent controls that shares one of those types with it. If those permanents are exchanged this way, destroy all Auras attached to them."
+sets = ["leg", "chr", "bchr", "5ed", "me3"]
+
+[cost]
+generic = 5
+
+[kind]
+type = "artifact"
+
+# {5}, Sacrifice this artifact: Exchange control of target artifact, creature, or land you control and target permanent
+# an opponent controls that shares one of those types with it. If those permanents are exchanged this way, destroy all
+# Auras attached to them.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+[abilities.activation_cost]
+generic = 5
+
+# Exchange control of target artifact, creature, or land you control and target permanent an opponent controls that
+# shares one of those types with it. If those permanents are exchanged this way, destroy all Auras attached to them.
+[[abilities.effects]]
+type = "control"
+mode = "exchange_control"
+first = { permanent = { types = ["artifact", "creature", "land"], controller = "you" } }
+second = { permanent = { types = ["artifact", "creature", "land"], controller = "opponent" } }
+second_shares_type_with_first = true
+destroy_attached_auras = true

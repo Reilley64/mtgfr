@@ -5,7 +5,7 @@ Deck: Mardu (WBR), commander **Kaalia of the Vast**. 79 unique names; 4 basic la
 dropped → **75 non-basic cards** to make faithful.
 
 Legend: A = in pool, faithful · B = in pool, approximated · C = new, expressible today ·
-D = new, needs engine work (see `heavenly-inferno-increments.md`).
+D = new, needs engine work (increments landed; backlog file removed).
 
 ## A. In pool, faithful (22)
 
@@ -79,7 +79,7 @@ Bladewing the Risen (D-21) and Pyrohemia (D-22) moved to D during Phase 3 author
 engine work a pure script can't reach. Gwyllion Hedge-Mage was also flagged (D-23), but that was a
 one-line P/T-cache bug, fixed in the same Phase-4 wave, so it stays faithful in C.)*
 
-## D. New, needs engine work (27) → see `heavenly-inferno-increments.md`
+## D. New, needs engine work (27) → increments landed; backlog file removed
 
 Grouped by the increment that unblocks them. **Every increment that gates a card has landed** —
 every card below is in the pool, faithful except **Stranglehold**, which carries an `approximates`

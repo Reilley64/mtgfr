@@ -1,0 +1,35 @@
+# Flying
+# Rampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it
+# beyond the first.)
+# At the beginning of your upkeep, sacrifice Chromium unless you pay {W}{U}{B}.
+name = "Chromium"
+otags = ["block-trigger", "cycle-leg-elder-dragon", "deprecated-legend-type", "drawback", "evasion", "rampage", "single-english-word-name", "unique-mana-cost", "upkeep-cost"]
+sets = ["bchr", "chr", "leg", "me3", "sld"]
+id = "7c91ae5d-0320-46a7-98d2-df0918202478"
+default_print = "15ec5a20-4e8f-40b2-9abf-c0bf1cf816c3"
+oracle = "Flying\nRampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it beyond the first.)\nAt the beginning of your upkeep, sacrifice Chromium unless you pay {W}{U}{B}."
+legendary = true
+subtypes = ["Elder", "Dragon"]
+keywords = ["flying", { rampage = 2 }]
+
+[cost]
+generic = 2
+white = 2
+blue = 2
+black = 2
+
+[kind]
+type = "creature"
+power = 7
+toughness = 7
+
+# At the beginning of your upkeep, sacrifice Chromium unless you pay {W}{U}{B}.
+[[abilities]]
+timing = "upkeep"
+
+# sacrifice Chromium unless you pay {W}{U}{B}
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { white = 1, blue = 1, black = 1 }
+otherwise = [{ type = "sacrifice", mode = "source" }]

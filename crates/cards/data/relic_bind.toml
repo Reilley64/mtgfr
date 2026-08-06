@@ -1,0 +1,34 @@
+# Enchant artifact an opponent controls
+# Whenever enchanted artifact becomes tapped, choose one —
+# • This Aura deals 1 damage to target player or planeswalker.
+# • Target player gains 1 life.
+name = "Relic Bind"
+otags = ["burn-player", "hate-artifact", "hate-tapped", "modal", "parasitic-aura", "pinger", "triggered-ability"]
+sets = ["4bb", "4ed", "leg", "ren"]
+subtypes = ["Aura"]
+id = "35b9f327-d1f6-47d1-aefa-6f70f407b4bc"
+default_print = "a9b07dc4-21ad-410b-8f8a-2b034253bfee"
+oracle = "Enchant artifact an opponent controls\nWhenever enchanted artifact becomes tapped, choose one —\n• This Aura deals 1 damage to target player or planeswalker.\n• Target player gains 1 life."
+
+# Enchant artifact an opponent controls
+enchant = { types = "artifact", controller = "opponent" }
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "aura"
+
+# Whenever enchanted artifact becomes tapped, choose one — ... — any tap, mana or not.
+[[abilities]]
+timing = "enchanted_permanent_becomes_tapped"
+
+# • This Aura deals 1 damage to target player or planeswalker.
+# • Target player gains 1 life.
+[[abilities.effects]]
+type = "choose_one"
+options = [
+    { type = "damage", mode = "target", amount = 1, target = "player_or_planeswalker" },
+    { type = "life", mode = "gain", amount = 1, who = "target_player" },
+]

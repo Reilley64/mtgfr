@@ -1,0 +1,16 @@
+# (no rules text — vanilla creature)
+name = "Keepers of the Faith"
+otags = ["type-errata"]
+sets = ["bchr", "chr", "leg"]
+id = "6ddc1256-a166-464f-8136-bd111cba6327"
+default_print = "a3d1ad50-c60c-46a9-b2dc-5cd2680d7263"
+subtypes = ["Human", "Cleric"]
+
+[cost]
+generic = 1
+white = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3

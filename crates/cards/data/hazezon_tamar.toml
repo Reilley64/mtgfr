@@ -1,0 +1,48 @@
+# When Hazezon enters, create X 1/1 Sand Warrior creature tokens that are red, green, and white at
+# the beginning of your next upkeep, where X is the number of lands you control at that time. When
+# Hazezon leaves the battlefield, exile all Sand Warriors.
+name = "Hazezon Tamar"
+sets = ["leg", "me3", "prm"]
+id = "d298df4e-7b60-4495-9773-cc81954b7dd9"
+default_print = "4cd43773-2a6f-4f03-bcee-de32049561e5"
+oracle = "When Hazezon enters, create X 1/1 Sand Warrior creature tokens that are red, green, and white at the beginning of your next upkeep, where X is the number of lands you control at that time.\nWhen Hazezon leaves the battlefield, exile all Sand Warriors."
+otags = ["creature-tokens", "deprecated-legend-type", "etb-trigger", "leaves-battlefield-trigger", "token-generation", "unique-mana-cost", "upkeep-trigger"]
+subtypes = ["Human", "Warrior"]
+legendary = true
+
+[cost]
+generic = 4
+red = 1
+green = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# When Hazezon enters, create X 1/1 Sand Warrior creature tokens that are red, green, and white at
+# the beginning of your next upkeep, where X is the number of lands you control at that time.
+[[abilities]]
+timing = "etb"
+
+# … at the beginning of your next upkeep … where X is the number of lands you control at that time.
+[[abilities.effects]]
+type = "misc"
+mode = "schedule_at_next_upkeep"
+who = "you"
+your_upkeep = true
+then = { type = "token", mode = "create", token = "7705873e-6fe6-4b25-965d-5f3df1680f66", count = { per_permanent = { types = "land", controller = "you" } } }
+
+# When Hazezon leaves the battlefield, exile all Sand Warriors.
+[[abilities]]
+timing = "this_leaves_battlefield"
+
+# exile all Sand Warriors.
+[[abilities.effects]]
+type = "exile"
+mode = "all"
+# ponytail: `subtypes` is any-of, so ["Sand", "Warrior"] would sweep every Warrior. Sand is the
+# narrower half and no other Sand creature exists in the pool, so matching on it alone is exact
+# here; an all-of subtype axis on `PermanentFilter` is the upgrade path.
+filter = { subtypes = ["Sand"] }

@@ -1,0 +1,28 @@
+# All lands are 1/1 creatures that are still lands.
+name = "Living Plane"
+otags = ["animate-land", "static", "symmetrical", "universal-type-change"]
+sets = ["leg"]
+id = "30e99293-3212-4e3f-b543-b1c7c416575d"
+default_print = "0341da27-3d77-4959-b7fa-5929b2cc7141"
+oracle = "All lands are 1/1 creatures that are still lands."
+world = true
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "enchantment"
+
+# All lands are 1/1 creatures that are still lands.
+[[abilities]]
+timing = "static"
+
+# All lands are 1/1 creatures that are still lands.
+[[abilities.effects]]
+type = "static"
+mode = "all_lands_of_type_become"
+all_lands = true
+add_types = "creature"
+base_power = 1
+base_toughness = 1

@@ -1,0 +1,18 @@
+# Flying, first strike
+name = "Thunder Spirit"
+otags = ["evasion", "french-vanilla", "type-errata"]
+sets = ["leg", "me1", "prm"]
+id = "6efad3d6-4886-4b62-a4ff-bc0622f9672a"
+default_print = "f8508542-53ea-4c1b-ae6f-b446c42149ca"
+oracle = "Flying, first strike"
+subtypes = ["Elemental", "Spirit"]
+keywords = ["flying", "first_strike"]
+
+[cost]
+generic = 1
+white = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

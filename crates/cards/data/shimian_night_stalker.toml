@@ -1,0 +1,35 @@
+# {B}, {T}: All damage that would be dealt to you this turn by target attacking creature is dealt
+# to this creature instead.
+name = "Shimian Night Stalker"
+otags = ["activated-ability", "damage-prevention-you", "damage-redirection", "hate-attacker", "pariah"]
+sets = ["bchr", "chr", "leg"]
+id = "09b9e6fd-7a61-4ed4-a121-61b64fbf03f4"
+default_print = "4e04a1b9-c561-4e34-86d9-129ea0346631"
+oracle = "{B}, {T}: All damage that would be dealt to you this turn by target attacking creature is dealt to this creature instead."
+subtypes = ["Nightstalker"]
+
+[cost]
+generic = 3
+black = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# {B}, {T}: All damage that would be dealt to you this turn by target attacking creature is dealt
+# to this creature instead.
+[[abilities]]
+timing = "activated"
+activation_cost = { black = 1 }
+taps_self = true
+
+# All damage that would be dealt to you this turn by target attacking creature is dealt to this
+# creature instead.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = { permanent = { types = "creature", attacking = true } }
+target_is_source = true
+all_damage = true
+redirect_to_source = true

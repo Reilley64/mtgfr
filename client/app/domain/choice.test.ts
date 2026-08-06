@@ -38,6 +38,7 @@ const ALL_PENDING_CHOICE_KINDS = [
   "scry",
   "surveil",
   "reorder_top",
+  "look_at_top",
   "search_library",
   "select_from_top",
   "distribute_top",
@@ -144,6 +145,24 @@ test("choiceIntent maps scry arrange", () => {
     top: [1],
     bottom: [2],
   });
+});
+
+test("visions look-at-top dismisses by putting every shown card back on top", () => {
+  const pc = {
+    kind: "look_at_top" as const,
+    items: [
+      { id: 1, label: "A" },
+      { id: 2, label: "B" },
+    ],
+    player: 3,
+  };
+  // Nothing to decide, so Done is live before the player touches anything.
+  expect(cardPickReady(pc, [])).toBe(true);
+  expectDraftIntent(
+    pc,
+    { kind: "card-pick", picked: [], filter: "" },
+    { kind: "arrange_top", player: 3, top: [1, 2], bottom: [] },
+  );
 });
 
 test("choiceIntent maps order_triggers", () => {

@@ -18,17 +18,21 @@ use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
 use crate::{
-    Ability, ActivationCost, AdditionalCost, Amount, AmountZone, ArithOp, CardDef, CardFilter,
-    CardKind, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterAxis, CounterKind,
-    Effect, FilterController, GrantedAbility, LandProduces, Mana, ManaPool, Parity,
-    PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
+    Ability, ActivationCost, AdditionalCost, Amount, AmountZone, ArithOp, BlockSide, CardDef,
+    CardFilter, CardKind, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterAxis,
+    CounterKind, Effect, FilterController, FilterOwner, GrantedAbility, LandProduces, Mana,
+    ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
     SacrificeAdditionalCostCount, SacrificeCost, SpendToCastPredicate, TargetCount, Timing,
     TokenFilter, Trigger, TypeSet,
     toml_surface::{AbilityToml, CardToml, CostToml, KindToml},
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
-/// Scryfall oracle id; [`token_profile`] resolves `token = "<id>"` against this map.
+/// `id` — normally a Scryfall oracle id, but a token with no Scryfall printing to key (fidelity
+/// increment #97 — e.g. Legends predates printed token cards) uses a locally synthetic, non-UUID
+/// slug instead (`"leg-token-<name>"`) rather than a fabricated Scryfall id. [`token_profile`]
+/// resolves `token = "<id>"` against this map either way — the key is an opaque lookup string,
+/// not validated as a UUID anywhere in the stack.
 static TOKEN_DEFS: OnceLock<HashMap<&'static str, CardDef>> = OnceLock::new();
 
 /// Install the token-profile registry used by [`token_profile`]. Call once from the `cards` crate
@@ -81,6 +85,15 @@ where
     Ok(&*Box::leak(Box::new(Effect::deserialize(d)?)))
 }
 
+/// `deserialize_with` for an *optional* nested effect ([`DestroyEffect::ThatCreature`]'s `then`).
+/// Only called when the key is present, so it always yields `Some`.
+pub fn opt_static_effect<'de, D>(d: D) -> Result<Option<&'static Effect>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(&*Box::leak(Box::new(Effect::deserialize(d)?))))
+}
+
 /// Leak one owned [`Amount`] into the `&'static Amount` a `Copy` field needs (the [`Amount`]
 /// sibling of [`static_effect`]). [`Condition::Compare`](crate::Condition::Compare)'s operands need
 /// it because [`Amount::IfCondition`](crate::Amount::IfCondition) already holds a [`Condition`] by
@@ -90,6 +103,17 @@ where
     D: Deserializer<'de>,
 {
     Ok(&*Box::leak(Box::new(Amount::deserialize(d)?)))
+}
+
+/// Leak one owned [`Condition`] into the `&'static Condition`
+/// [`Condition::ForTriggeringPlayer`](crate::Condition::ForTriggeringPlayer)'s `inner` needs — a
+/// `Copy` `Condition` cannot hold another `Condition` by value without an infinitely sized cycle,
+/// the same reason [`static_amount`] above exists.
+pub fn static_condition<'de, D>(d: D) -> Result<&'static Condition, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(&*Box::leak(Box::new(Condition::deserialize(d)?)))
 }
 
 /// Leak one owned [`Cost`] into the `&'static Cost` a `Copy` field needs (the `Cost` sibling of
@@ -133,6 +157,11 @@ pub enum GrantedTriggerTag {
     /// it is spelled `trigger = { upkeep = {} }`. "Your" is the *host's* controller, which is
     /// who a granted ability belongs to.
     Upkeep {},
+    /// Infinite Authority's "Whenever enchanted creature blocks or becomes blocked by a creature
+    /// with toughness 3 or less, …" — the granted twin of the printed
+    /// [`TriggerTag::BlocksOrBecomesBlockedBy`], whose `filter` sibling lives on the ability's own
+    /// TOML row and so has to be spelled inline here instead.
+    BlocksOrBecomesBlockedBy { filter: PermanentFilter },
 }
 
 /// `deserialize_with` for [`GrantedAbility`]'s `trigger`. Only called when the key is present (a
@@ -146,6 +175,12 @@ where
             Trigger::DealsCombatDamageToPlayer { who }
         }
         GrantedTriggerTag::Upkeep {} => Trigger::Upkeep,
+        GrantedTriggerTag::BlocksOrBecomesBlockedBy { filter } => {
+            Trigger::BlocksOrBecomesBlockedBy {
+                filter,
+                side: BlockSide::Either,
+            }
+        }
     }))
 }
 
@@ -241,15 +276,17 @@ pub fn creature_edict() -> PermanentFilter {
     PermanentFilter::of(TypeSet::CREATURE)
 }
 
-/// A token profile reference on `create_token` (and siblings): a Scryfall oracle id string
-/// (`token = "37c4adc8-…"`) resolved against the registry installed by [`install_token_defs`].
-/// Token characteristics live in `cards/data/tokens/*.toml`; after resolve the effect embeds a
-/// full [`CardDef`] so mint paths stay pool-agnostic.
+/// A token profile reference on `create_token` (and siblings): a token id string — a Scryfall
+/// oracle id (`token = "37c4adc8-…"`) for a printed token, or a synthetic slug
+/// (`token = "leg-token-minor-demon"`) for one with no Scryfall printing to key (#97) — resolved
+/// against the registry installed by [`install_token_defs`]. Token characteristics live in
+/// `cards/data/tokens/*.toml`; after resolve the effect embeds a full [`CardDef`] so mint paths
+/// stay pool-agnostic.
 pub fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, D::Error> {
     let id = String::deserialize(d)?;
     if id.is_empty() {
         return Err(de::Error::custom(
-            "token profile id is empty — expected a Scryfall oracle id from data/tokens/",
+            "token profile id is empty — expected a token id from data/tokens/",
         ));
     }
     token_def(&id).ok_or_else(|| {
@@ -596,8 +633,9 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// amount (`{ left = <Amount>, op = "multiply", right = <Amount> }` — see [`ArithOp`]; both sides
 /// are full amounts, so these nest), a
 /// "destroyed this way" count (`{ permanents_destroyed_this_way = <filter> }`, filter optional
-/// — defaults to matching every destroyed permanent), or a count of Auras attached to the
-/// effect's source (`{ auras_attached_to_source = {} }`).
+/// — defaults to matching every destroyed permanent), a count of Auras attached to the
+/// effect's source (`{ auras_attached_to_source = {} }`), or a count of the creatures blocking a
+/// block's other creature (`{ creatures_blocking_that_creature = <filter> }`).
 impl<'de> Deserialize<'de> for Amount {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct AmountVisitor;
@@ -692,6 +730,13 @@ impl<'de> Deserialize<'de> for Amount {
                     "creatures_sacrificed_this_way" => Amount::CreaturesSacrificedThisWay,
                     "spell_first_target_mana_value" => Amount::SpellFirstTargetManaValue,
                     "counters_removed_this_way" => Amount::CountersRemovedThisWay,
+                    "damage_dealt_this_way" => Amount::DamageDealtThisWay,
+                    "damage_dealt_to_source_this_turn_by_others_named_the_same" => {
+                        Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame
+                    }
+                    "damage_dealt_by_chosen_sorcery_this_turn" => {
+                        Amount::DamageDealtByChosenSorceryThisTurn
+                    }
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
             }
@@ -706,6 +751,12 @@ impl<'de> Deserialize<'de> for Amount {
                     zone: AmountZone,
                     #[serde(default)]
                     per_counter_of_kind: Option<CounterKind>,
+                    /// `{ per_counter_of_kind = "sleep", on_attached = true }` — count the
+                    /// counters on the permanent the source is attached to (Venarian Gold's
+                    /// enchanted creature) rather than on the source itself. A modifier on
+                    /// `per_counter_of_kind`, not an amount of its own.
+                    #[serde(default)]
+                    on_attached: bool,
                     #[serde(default)]
                     condition: Option<Condition>,
                     #[serde(default)]
@@ -724,6 +775,16 @@ impl<'de> Deserialize<'de> for Amount {
                     /// `permanents_destroyed_this_way` table-vs-nullary-keyword split.
                     #[serde(default)]
                     auras_attached_to_source: Option<de::IgnoredAny>,
+                    /// `{ creatures_blocking_that_creature = <filter> }` —
+                    /// [`Amount::CreaturesBlockingThatCreature`] (Wall of Caltrops' co-blocker
+                    /// intervening-if). Its own key rather than `per_permanent` for the same
+                    /// reason as `permanents_destroyed_this_way`: the filter may be empty.
+                    #[serde(default)]
+                    creatures_blocking_that_creature: Option<PermanentFilter>,
+                    /// `{ discard_cost_was_land = 2 }` — [`Amount::DiscardCostWasLand`] (Land's
+                    /// Edge's "If the discarded card was a land card, ~ deals 2 damage…").
+                    #[serde(default)]
+                    discard_cost_was_land: Option<i32>,
                     /// `{ left = 2, op = "multiply", right = "per_creature_on_battlefield" }` —
                     /// [`Amount::Combine`] (Congregate's "2 life for each creature on the
                     /// battlefield"). All three keys go together; both sides are full amounts, so
@@ -756,27 +817,43 @@ impl<'de> Deserialize<'de> for Amount {
                     t.condition,
                     t.permanents_destroyed_this_way,
                     t.auras_attached_to_source,
+                    t.creatures_blocking_that_creature,
+                    t.discard_cost_was_land,
                 ) {
-                    (Some(filter), None, None, None, None) => Ok(Amount::PerPermanentMatching {
-                        filter,
-                        zone: t.zone,
-                    }),
-                    (None, Some(kind), None, None, None) => {
-                        Ok(Amount::PerCounterOfKindOnSource { kind })
+                    (Some(filter), None, None, None, None, None, None) => {
+                        Ok(Amount::PerPermanentMatching {
+                            filter,
+                            zone: t.zone,
+                        })
                     }
-                    (None, None, Some(condition), None, None) => Ok(Amount::IfCondition {
-                        condition,
-                        then: &*Box::leak(Box::new(t.then.unwrap_or(Amount::Fixed(0)))),
-                        else_: &*Box::leak(Box::new(t.otherwise.unwrap_or(Amount::Fixed(0)))),
+                    (None, Some(kind), None, None, None, None, None) => Ok(match t.on_attached {
+                        true => Amount::PerCounterOfKindOnAttached { kind },
+                        false => Amount::PerCounterOfKindOnSource { kind },
                     }),
-                    (None, None, None, Some(filter), None) => {
+                    (None, None, Some(condition), None, None, None, None) => {
+                        Ok(Amount::IfCondition {
+                            condition,
+                            then: &*Box::leak(Box::new(t.then.unwrap_or(Amount::Fixed(0)))),
+                            else_: &*Box::leak(Box::new(t.otherwise.unwrap_or(Amount::Fixed(0)))),
+                        })
+                    }
+                    (None, None, None, Some(filter), None, None, None) => {
                         Ok(Amount::PermanentsDestroyedThisWay { filter })
                     }
-                    (None, None, None, None, Some(_)) => Ok(Amount::AurasAttachedToSource),
+                    (None, None, None, None, Some(_), None, None) => {
+                        Ok(Amount::AurasAttachedToSource)
+                    }
+                    (None, None, None, None, None, Some(filter), None) => {
+                        Ok(Amount::CreaturesBlockingThatCreature { filter })
+                    }
+                    (None, None, None, None, None, None, Some(n)) => {
+                        Ok(Amount::DiscardCostWasLand(n))
+                    }
                     _ => Err(de::Error::custom(
                         "an amount table needs exactly one of `per_permanent`, `per_counter_of_kind`, \
                          `condition` (with `then`/`else`), `permanents_destroyed_this_way`, \
-                         `auras_attached_to_source`, or `left`+`op`+`right`",
+                         `auras_attached_to_source`, `creatures_blocking_that_creature`, \
+                         `discard_cost_was_land`, or `left`+`op`+`right`",
                     )),
                 }
             }
@@ -847,6 +924,10 @@ pub(crate) struct TargetCountToml {
     pub(crate) kicked_scaled: bool,
     #[serde(default)]
     pub(crate) main_phase_scaled: bool,
+    /// "One or more target …" (CR 601.2c) — no printed ceiling, so `max` is omitted and the
+    /// engine's `TargetList` width stands in. See [`TargetCount::unbounded`].
+    #[serde(default)]
+    pub(crate) unbounded: bool,
 }
 
 impl<'de> Deserialize<'de> for TargetCount {
@@ -880,6 +961,7 @@ impl<'de> Deserialize<'de> for TargetCount {
                     multikicker_scaled: false,
                     kicked_scaled: false,
                     main_phase_scaled: false,
+                    unbounded: false,
                 })
             }
 
@@ -892,8 +974,13 @@ impl<'de> Deserialize<'de> for TargetCount {
 
             fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<TargetCount, A::Error> {
                 let t = TargetCountToml::deserialize(de::value::MapAccessDeserializer::new(map))?;
-                if t.min > t.max {
+                if !t.unbounded && t.min > t.max {
                     return Err(de::Error::custom("target count min exceeds max"));
+                }
+                if t.unbounded && t.max != 0 {
+                    return Err(de::Error::custom(
+                        "an unbounded target count has no max — omit it",
+                    ));
                 }
                 Ok(TargetCount {
                     min: t.min,
@@ -905,6 +992,7 @@ impl<'de> Deserialize<'de> for TargetCount {
                     multikicker_scaled: t.multikicker_scaled,
                     kicked_scaled: t.kicked_scaled,
                     main_phase_scaled: t.main_phase_scaled,
+                    unbounded: t.unbounded,
                 })
             }
         }
@@ -1021,6 +1109,9 @@ pub const AMOUNT_KEYWORDS: &[&str] = &[
     "creatures_sacrificed_this_way",
     "spell_first_target_mana_value",
     "counters_removed_this_way",
+    "damage_dealt_this_way",
+    "damage_dealt_to_source_this_turn_by_others_named_the_same",
+    "damage_dealt_by_chosen_sorcery_this_turn",
 ];
 
 pub const PERMANENT_FILTER_SHORTHANDS: &[&str] = &[
@@ -1079,11 +1170,13 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// the old `destroy_all`/edict spellings working — or a full `{ … }` table with any of the
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_min`, `power_parity`,
-/// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
-/// `blocking`, `unblocked`, `power_less_than_source`, `toughness_less_than_source_power`, `entered_this_turn`,
+/// `toughness_max`, `toughness_min`,
+/// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `not_attacking`, `attacking_you`,
+/// `blocking`, `blocking_source`, `attacking_or_blocking`, `tapped_or_blocking`, `unblocked`, `blocked_by_a_wall_this_turn`, `in_combat_with_source`, `power_less_than_source`,
+/// `toughness_less_than_source_power`, `entered_this_turn`,
 /// `has_mana_ability`,
 /// `controlled_since_turn_start`, `did_not_attack_this_turn`,
-/// `nonbasic`, `basic`, `nonlegendary`, `nonlair`, `exclude_subtypes`,
+/// `nonbasic`, `basic`, `nonlegendary`, `legendary`, `nonlair`, `exclude_subtypes`, `exclude_name`,
 /// `without_flying`, `without_keyword`, `with_flying`, `with_counter`). `noncreature` is sugar for `exclude = "creature"`;
 /// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
 /// [`PermanentFilter`] fields as their general spelling (see below).
@@ -1132,6 +1225,10 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     subtypes: Vec<String>,
                     #[serde(default)]
                     controller: FilterController,
+                    /// CR 108.3's owner, independent of `controller` (Remove Enchantments' "all
+                    /// enchantments you both own and control").
+                    #[serde(default)]
+                    owner: FilterOwner,
                     #[serde(default)]
                     token: TokenFilter,
                     #[serde(default)]
@@ -1140,6 +1237,11 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     enchanted: Option<bool>,
                     #[serde(default)]
                     attached_to_creature: Option<bool>,
+                    /// The host side as a nested filter (Enchantment Alteration's "Aura attached
+                    /// to a creature or land") — recursion is fine here, the inner table is just
+                    /// another `PermanentFilter`.
+                    #[serde(default)]
+                    attached_to: Option<PermanentFilter>,
                     #[serde(default)]
                     enchanted_by_you: bool,
                     #[serde(default)]
@@ -1161,6 +1263,12 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     power_min: Option<u8>,
                     #[serde(default)]
                     power_parity: Option<Parity>,
+                    /// Pendelhaven's "target 1/1 creature" — the toughness twins of `power_max`
+                    /// and `power_min`.
+                    #[serde(default)]
+                    toughness_max: Option<u8>,
+                    #[serde(default)]
+                    toughness_min: Option<u8>,
                     /// Sugar for `exclude = "creature"` (kept for the pool's existing spelling).
                     #[serde(default)]
                     noncreature: bool,
@@ -1177,12 +1285,29 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     modified: bool,
                     #[serde(default)]
                     attacking: bool,
+                    /// Arcades Sabboth's "as long as it's not attacking" — `attacking`'s negation.
+                    #[serde(default)]
+                    not_attacking: bool,
                     #[serde(default)]
                     attacking_you: bool,
                     #[serde(default)]
                     blocking: bool,
+                    /// The Wretched's "all creatures blocking **this** creature" — `blocking`
+                    /// narrowed to the filter's own source as the attacker.
+                    #[serde(default)]
+                    blocking_source: bool,
+                    #[serde(default)]
+                    attacking_or_blocking: bool,
+                    #[serde(default)]
+                    tapped_or_blocking: bool,
                     #[serde(default)]
                     unblocked: bool,
+                    #[serde(default)]
+                    blocked_by_a_wall_this_turn: bool,
+                    /// "…blocking or blocked by this creature" (Lesser Werewolf, Sentinel) — the
+                    /// pairing against the filter's own source, read from either end.
+                    #[serde(default)]
+                    in_combat_with_source: bool,
                     #[serde(default)]
                     power_less_than_source: bool,
                     #[serde(default)]
@@ -1203,6 +1328,9 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     name: Option<String>,
                     #[serde(default)]
                     nonlegendary: bool,
+                    /// Karakas' "target legendary creature" — `nonlegendary`'s positive twin.
+                    #[serde(default)]
+                    legendary: bool,
                     #[serde(default)]
                     nonlair: bool,
                     #[serde(default)]
@@ -1228,6 +1356,10 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     /// Subtype exclusion (Keldon Warlord's "non-Wall creatures you control").
                     #[serde(default)]
                     exclude_subtypes: Vec<String>,
+                    /// Printed-name exclusion (Akron Legionnaire's "except for creatures named
+                    /// Akron Legionnaire") — `name`'s negative twin.
+                    #[serde(default)]
+                    exclude_name: Option<String>,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1235,10 +1367,12 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     types: t.types,
                     subtypes: intern_strs(t.subtypes),
                     controller: t.controller,
+                    owner: t.owner,
                     token: t.token,
                     other: t.other,
                     enchanted: t.enchanted,
                     attached_to_creature: t.attached_to_creature,
+                    attached_to: t.attached_to.map(|f| &*Box::leak(Box::new(f))),
                     enchanted_by_you: t.enchanted_by_you,
                     mv_max: t.mv_max,
                     mv_min: t.mv_min,
@@ -1249,6 +1383,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     power_max: t.power_max,
                     power_min: t.power_min,
                     power_parity: t.power_parity,
+                    toughness_max: t.toughness_max,
+                    toughness_min: t.toughness_min,
                     exclude: t.exclude.union(if t.noncreature {
                         TypeSet::CREATURE
                     } else {
@@ -1260,9 +1396,15 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                         .unwrap_or(t.color.unwrap_or_default()),
                     modified: t.modified,
                     attacking: t.attacking,
+                    not_attacking: t.not_attacking,
                     attacking_you: t.attacking_you,
                     blocking: t.blocking,
+                    blocking_source: t.blocking_source,
+                    attacking_or_blocking: t.attacking_or_blocking,
+                    tapped_or_blocking: t.tapped_or_blocking,
                     unblocked: t.unblocked,
+                    blocked_by_a_wall_this_turn: t.blocked_by_a_wall_this_turn,
+                    in_combat_with_source: t.in_combat_with_source,
                     power_less_than_source: t.power_less_than_source,
                     toughness_less_than_source_power: t.toughness_less_than_source_power,
                     entered_this_turn: t.entered_this_turn,
@@ -1272,6 +1414,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     basic: t.basic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
+                    legendary: t.legendary,
                     nonlair: t.nonlair,
                     without_flying: t.without_flying,
                     without_keyword: t.without_keyword,
@@ -1281,6 +1424,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     creature_or_vehicle: t.creature_or_vehicle,
                     snow: t.snow,
                     exclude_subtypes: intern_strs(t.exclude_subtypes),
+                    exclude_name: t.exclude_name.map(|s| &*Box::leak(s.into_boxed_str())),
                 })
             }
         }
@@ -1330,8 +1474,16 @@ impl<'de> Deserialize<'de> for SacrificeCost {
             ) -> Result<SacrificeCost, A::Error> {
                 let mut filter: Option<PermanentFilter> = None;
                 let mut count: u8 = 1;
+                let mut this_and_any_number = false;
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
+                        // "Sacrifice this artifact and any number of creatures you control"
+                        // (Sword of the Ages): the source plus an open-ended pick list matching
+                        // this filter — the `count`-free sibling of `permanent` below.
+                        "this_and_any_number" => {
+                            this_and_any_number = true;
+                            filter = Some(map.next_value()?);
+                        }
                         "creature" => {
                             let mut f: PermanentFilter = map.next_value()?;
                             f.types = TypeSet::CREATURE;
@@ -1351,6 +1503,9 @@ impl<'de> Deserialize<'de> for SacrificeCost {
                 }
                 let filter =
                     filter.ok_or_else(|| de::Error::custom("expected a sacrifice-cost key"))?;
+                if this_and_any_number {
+                    return Ok(SacrificeCost::ThisAndAnyNumber { filter });
+                }
                 Ok(SacrificeCost::Creature { filter, count })
             }
         }
@@ -1409,8 +1564,16 @@ pub(crate) enum TriggerTag {
     TurnedFaceUp,
     BecomesMonstrous,
     Attacks,
+    AttacksAndIsntBlocked,
+    Blocks,
     BlocksOrBecomesBlocked,
     BlocksOrBecomesBlockedBy,
+    /// "Whenever this creature blocks a \[filter\]" (Infernal Medusa) — the blocker half of
+    /// [`BlocksOrBecomesBlockedBy`](Self::BlocksOrBecomesBlockedBy), reusing its `filter` sibling.
+    BlocksCreature,
+    /// "Whenever this creature becomes blocked by a \[filter\]" (Infernal Medusa) — the attacker
+    /// half, likewise on the shared `filter` sibling.
+    BecomesBlockedBy,
     AttacksOrBlocks,
     Dies,
     CreatureDies,
@@ -1448,10 +1611,21 @@ pub(crate) enum TriggerTag {
     /// fires off any attached permanent (see [`Game::queue_enchanted_creature_attacks_triggers`],
     /// which reads [`Game::attachments`] rather than filtering to Auras).
     EnchantedCreatureAttacks,
+    /// Imprison's "whenever enchanted creature attacks **or blocks**". See
+    /// [`Trigger::EnchantedCreatureAttacksOrBlocks`].
+    EnchantedCreatureAttacksOrBlocks,
+    /// Imprison's "whenever a player activates an ability of enchanted creature with {T} in its
+    /// activation cost that isn't a mana ability". See
+    /// [`Trigger::EnchantedCreatureActivatesTapAbility`].
+    EnchantedCreatureActivatesTapAbility,
     EnchantedCreatureDies,
     /// Whenever the enchanted host deals damage, combat or noncombat (Armadillo Cloak's "you gain
     /// that much life"). See [`Trigger::EnchantedCreatureDealsDamage`].
     EnchantedCreatureDealsDamage,
+    /// Whenever the enchanted host deals damage *to this Aura's own controller* (Backfire's
+    /// "whenever enchanted creature deals damage to you"). See
+    /// [`Trigger::EnchantedCreatureDealsDamageToYou`].
+    EnchantedCreatureDealsDamageToYou,
     /// Whenever this permanent's controller is dealt damage, combat or noncombat (Living
     /// Artifact's "put that many vitality counters"). See [`Trigger::YouAreDealtDamage`].
     YouAreDealtDamage,
@@ -1464,6 +1638,7 @@ pub(crate) enum TriggerTag {
     PermanentBecomesTapped,
     EnchantedPermanentBecomesTapped,
     YouDiscard,
+    OpponentsSpellOrAbilityCausesYouToDiscardThis,
     YouDiscardNonland,
     YouPlayALand,
     DealsCombatDamageToPlayer,
@@ -1471,6 +1646,9 @@ pub(crate) enum TriggerTag {
     ThisIsDealtDamage,
     CreatureDealtDamageByThisDies,
     DealsDamageToOpponent,
+    /// Whenever this permanent deals damage to *any* player, its controller included (Pit
+    /// Scorpion). See [`Trigger::DealsDamageToPlayer`].
+    DealsDamageToPlayer,
     CastSpell,
     PlayerDraws,
     ActivateAbility,
@@ -1494,6 +1672,10 @@ pub(crate) enum TriggerTag {
     YouLoseLifeFirstTimeEachTurn,
     Cycled,
     YouProliferate,
+    /// Takes a `counter_kind` sibling naming the counter kind whose last one coming off fires the
+    /// ability (Divine Intervention's `intervention`). See
+    /// [`Trigger::YouRemoveLastCounterFromThis`].
+    YouRemoveLastCounterFromThis,
 }
 
 /// An `[[abilities]]` table is flat in TOML: the timing is a string, and an activated
@@ -1521,9 +1703,20 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::TurnedFaceUp => Trigger::TurnedFaceUp,
                 TriggerTag::BecomesMonstrous => Trigger::BecomesMonstrous,
                 TriggerTag::Attacks => Trigger::Attacks,
+                TriggerTag::AttacksAndIsntBlocked => Trigger::AttacksAndIsntBlocked,
+                TriggerTag::Blocks => Trigger::Blocks,
                 TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
                 TriggerTag::BlocksOrBecomesBlockedBy => Trigger::BlocksOrBecomesBlockedBy {
                     filter: flat.filter,
+                    side: BlockSide::Either,
+                },
+                TriggerTag::BlocksCreature => Trigger::BlocksOrBecomesBlockedBy {
+                    filter: flat.filter,
+                    side: BlockSide::Blocks,
+                },
+                TriggerTag::BecomesBlockedBy => Trigger::BlocksOrBecomesBlockedBy {
+                    filter: flat.filter,
+                    side: BlockSide::BecomesBlockedBy,
                 },
                 TriggerTag::AttacksOrBlocks => Trigger::AttacksOrBlocks,
                 TriggerTag::Dies => Trigger::Dies,
@@ -1577,8 +1770,17 @@ impl<'de> Deserialize<'de> for Ability {
                 }
                 TriggerTag::CreatureAttacks => Trigger::CreatureAttacks,
                 TriggerTag::EnchantedCreatureAttacks => Trigger::EnchantedCreatureAttacks,
+                TriggerTag::EnchantedCreatureAttacksOrBlocks => {
+                    Trigger::EnchantedCreatureAttacksOrBlocks
+                }
+                TriggerTag::EnchantedCreatureActivatesTapAbility => {
+                    Trigger::EnchantedCreatureActivatesTapAbility
+                }
                 TriggerTag::EnchantedCreatureDies => Trigger::EnchantedCreatureDies,
                 TriggerTag::EnchantedCreatureDealsDamage => Trigger::EnchantedCreatureDealsDamage,
+                TriggerTag::EnchantedCreatureDealsDamageToYou => {
+                    Trigger::EnchantedCreatureDealsDamageToYou
+                }
                 TriggerTag::YouAreDealtDamage => Trigger::YouAreDealtDamage,
                 TriggerTag::AnEnchantedCreatureDies => Trigger::AnEnchantedCreatureDies,
                 TriggerTag::CreatureEnchantedByYourAuraAttacks => {
@@ -1600,6 +1802,9 @@ impl<'de> Deserialize<'de> for Ability {
                     Trigger::EnchantedPermanentBecomesTapped
                 }
                 TriggerTag::YouDiscard => Trigger::YouDiscard,
+                TriggerTag::OpponentsSpellOrAbilityCausesYouToDiscardThis => {
+                    Trigger::OpponentsSpellOrAbilityCausesYouToDiscardThis
+                }
                 TriggerTag::YouDiscardNonland => Trigger::YouDiscardNonland,
                 TriggerTag::YouPlayALand => Trigger::YouPlayALand,
                 TriggerTag::DealsCombatDamageToPlayer => {
@@ -1609,10 +1814,12 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::ThisIsDealtDamage => Trigger::ThisIsDealtDamage,
                 TriggerTag::CreatureDealtDamageByThisDies => Trigger::CreatureDealtDamageByThisDies,
                 TriggerTag::DealsDamageToOpponent => Trigger::DealsDamageToOpponent,
+                TriggerTag::DealsDamageToPlayer => Trigger::DealsDamageToPlayer,
                 TriggerTag::CastSpell => Trigger::CastSpell {
                     filter: flat.spell_filter,
                     caster: flat.caster,
                     nth_each_turn: flat.nth_each_turn,
+                    after_nth_each_turn: flat.after_nth_each_turn,
                     from_hand: flat.from_hand,
                 },
                 TriggerTag::PlayerDraws => Trigger::PlayerDraws {
@@ -1655,6 +1862,15 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::YouLoseLifeFirstTimeEachTurn => Trigger::YouLoseLifeFirstTimeEachTurn,
                 TriggerTag::Cycled => Trigger::Cycled,
                 TriggerTag::YouProliferate => Trigger::YouProliferate,
+                TriggerTag::YouRemoveLastCounterFromThis => {
+                    let Some(kind) = flat.counter_kind else {
+                        return Err(de::Error::custom(
+                            "`timing = \"you_remove_last_counter_from_this\"` needs a \
+                             `counter_kind` sibling naming the counter kind it watches",
+                        ));
+                    };
+                    Trigger::YouRemoveLastCounterFromThis { kind }
+                }
             }),
             TimingName::Special(SpecialTiming::Spell) => Timing::Spell,
             TimingName::Special(SpecialTiming::Static) => Timing::Static,
@@ -1669,12 +1885,15 @@ impl<'de> Deserialize<'de> for Ability {
                 self_damage: flat.self_damage,
                 loyalty: flat.loyalty,
                 once_each_turn: flat.once_each_turn,
+                max_activations_per_turn: flat.max_activations_per_turn,
                 sorcery_speed: flat.sorcery_speed,
                 only_during_opponents_turn: flat.only_during_opponents_turn,
                 only_during_your_turn: flat.only_during_your_turn,
                 only_before_attackers: flat.only_before_attackers,
                 only_during_your_upkeep: flat.only_during_your_upkeep,
-                only_owner_may_activate: flat.only_owner_may_activate,
+                only_during_declare_blockers: flat.only_during_declare_blockers,
+                only_before_combat_damage_step: flat.only_before_combat_damage_step,
+                activator: flat.activator,
                 return_self: flat.return_self,
                 mill_self: flat.mill_self,
                 discard_cost: flat.discard_cost,

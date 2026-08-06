@@ -298,12 +298,12 @@ impl<'a> ChoiceCtx<'a> {
             },
             engine::PendingChoice::AssignCombatDamage {
                 player,
-                attacker,
-                blockers,
+                source,
+                recipients,
             } => PendingChoiceView::AssignCombatDamage {
                 player: player.0,
-                source: attacker,
-                items: self.label_items(blockers),
+                source,
+                items: self.label_items(recipients),
             },
             engine::PendingChoice::DivideSpellDamage {
                 player,
@@ -351,6 +351,7 @@ impl<'a> ChoiceCtx<'a> {
                     engine::ArrangeRest::Bottom => PendingChoiceView::Scry { player, items },
                     engine::ArrangeRest::Graveyard => PendingChoiceView::Surveil { player, items },
                     engine::ArrangeRest::Nowhere => PendingChoiceView::ReorderTop { player, items },
+                    engine::ArrangeRest::LookOnly => PendingChoiceView::LookAtTop { player, items },
                 }
             }
             engine::PendingChoice::SearchLibrary {
@@ -448,6 +449,9 @@ impl<'a> ChoiceCtx<'a> {
                 count,
                 items: self.label_targets(legal),
             },
+            // ponytail: the choice's `count` (Mold Demon's "two Swamps") is dropped — the wire view
+            // carries items only, so a client shows a plain optional sacrifice list and the engine
+            // rejects a short answer. Carrying the count needs a proto field; increment #175.
             engine::PendingChoice::MaySacrifice {
                 player,
                 source,
@@ -514,6 +518,7 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 options,
                 mandatory,
+                ..
             } => PendingChoiceView::MayReturnFromGraveyard {
                 player: player.0,
                 source,
@@ -552,6 +557,7 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(options),
                 put_counter_on_creature: true,
                 choose_block_target: false,
+                choose_damage_source: false,
             },
             // False Orders' "you may have it block an attacking creature of your choice" is the
             // same "pick one public object or decline" answer, so it rides `ChooseCopyTarget` too,
@@ -567,6 +573,7 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(options),
                 put_counter_on_creature: false,
                 choose_block_target: true,
+                choose_damage_source: false,
             },
             engine::PendingChoice::ChooseOwnSacrifices {
                 player,
@@ -578,6 +585,21 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 count,
+                items: self.label_items(options),
+            },
+            // "Sacrifice any number of untapped Forests" as Wood Elemental enters: the same
+            // free-subset sacrifice prompt Devour is, answered by the same intent, so it rides the
+            // Devour view rather than widening the wire. ponytail: the client labels it "choose
+            // creatures to devour"; give it its own view (and prompt string) when the client next
+            // catches up — `multiplier: 0` marks a payoff that isn't counters.
+            engine::PendingChoice::SacrificeAnyNumber {
+                player,
+                source,
+                options,
+            } => PendingChoiceView::Devour {
+                player: player.0,
+                source,
+                multiplier: 0,
                 items: self.label_items(options),
             },
             engine::PendingChoice::Devour {
@@ -622,9 +644,11 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 hand,
                 count,
+                life_per_declined,
             } => PendingChoiceView::PutFromHandOnTop {
                 player: player.0,
                 count: count as u32,
+                life_per_declined,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
             engine::PendingChoice::DeclineUntap {
@@ -980,6 +1004,22 @@ impl<'a> ChoiceCtx<'a> {
                 items: self.label_items(candidates),
                 put_counter_on_creature: false,
                 choose_block_target: false,
+                choose_damage_source: false,
+            },
+            // Backdraft's "one of those sorcery spells" is the same "pick one public object"
+            // answer over damage-ledger dealers, with its own wording discriminator. Mandatory:
+            // the engine only raises it when two or more candidates exist.
+            engine::PendingChoice::ChooseDamageSource {
+                player,
+                source,
+                candidates,
+            } => PendingChoiceView::ChooseCopyTarget {
+                player: player.0,
+                source,
+                items: self.label_items(candidates),
+                put_counter_on_creature: false,
+                choose_block_target: false,
+                choose_damage_source: true,
             },
         }
     }
@@ -1049,6 +1089,7 @@ mod coverage_tests {
             (
                 PendingChoice::ChooseTarget {
                     player: PlayerId(0),
+                    controller: PlayerId(0),
                     source,
                     effect: Some(draw_effect()),
                     legal: vec![Target::Object(blocker)],
@@ -1064,6 +1105,7 @@ mod coverage_tests {
             (
                 PendingChoice::ChooseTarget {
                     player: PlayerId(0),
+                    controller: PlayerId(0),
                     source: spell,
                     effect: None,
                     legal: vec![Target::Object(blocker)],
@@ -1126,8 +1168,8 @@ mod coverage_tests {
             (
                 PendingChoice::AssignCombatDamage {
                     player: PlayerId(0),
-                    attacker: source,
-                    blockers: vec![blocker],
+                    source,
+                    recipients: vec![blocker],
                 },
                 |view| matches!(view, PendingChoiceView::AssignCombatDamage { .. }),
             ),
@@ -1208,6 +1250,7 @@ mod coverage_tests {
                     hand: vec![hand_card],
                     count: 2,
                     or_one_matching: None,
+                    draw_replacement: false,
                 },
                 |view| matches!(view, PendingChoiceView::Discard { count: 2, .. }),
             ),
@@ -1226,6 +1269,8 @@ mod coverage_tests {
                     candidates: vec![hand_card],
                     keep: false,
                     defender: None,
+                    round: None,
+                    permanent_cards: false,
                 },
                 |view| matches!(view, PendingChoiceView::PutCreatureFromHand { .. }),
             ),
@@ -1261,6 +1306,9 @@ mod coverage_tests {
                     player: PlayerId(0),
                     source,
                     remaining: vec![PlayerId(1)],
+                    use_: engine::CardNameUse::RevealTopOfOwnLibrary {
+                        miss_to_graveyard: false,
+                    },
                 },
                 |view| matches!(view, PendingChoiceView::ChooseCardName { .. }),
             ),
@@ -1384,6 +1432,37 @@ mod coverage_tests {
         assert!(
             put_counter_on_creature,
             "the reused copy-target view must advertise counter wording"
+        );
+    }
+
+    #[test]
+    fn choose_damage_source_marks_the_reused_copy_target_view() {
+        let mut game = Game::new();
+        let source = game.spawn_in_hand(PlayerId(0), def("Backdraft"));
+        let soul = game.spawn_in_hand(PlayerId(0), def("Syphon Soul"));
+        let breath = game.spawn_in_hand(PlayerId(0), def("Breath of Darigaaz"));
+        let view = project_pending_choice(
+            &game,
+            Some(PlayerId(0)),
+            PendingChoice::ChooseDamageSource {
+                player: PlayerId(0),
+                source,
+                candidates: vec![soul, breath],
+            },
+        );
+
+        let PendingChoiceView::ChooseCopyTarget {
+            items,
+            choose_damage_source,
+            ..
+        } = view
+        else {
+            panic!("expected ChooseCopyTarget");
+        };
+        assert_eq!(items.len(), 2, "both damaging sorceries are on offer");
+        assert!(
+            choose_damage_source,
+            "the reused copy-target view must advertise damage-source wording"
         );
     }
 

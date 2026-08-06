@@ -70,6 +70,13 @@ pub enum DigEffect {
 
     LookAtTargetPlayersHand,
 
+    /// "Look at the top `count` cards of target player's library" (Visions). A look and nothing
+    /// else: the cards go back untouched, so unlike [`Self::RearrangeTargetPlayersTop`] the looker
+    /// does not even decide the order.
+    LookAtTargetPlayersTop {
+        count: u32,
+    },
+
     /// "You may have that player shuffle" (Natural Selection). `owner` is the targeted player,
     /// baked in when the yes/no is raised so the answer knows whose library to shuffle.
     MayShuffleTargetPlayersLibrary {

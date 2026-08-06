@@ -1,0 +1,24 @@
+# Artifacts, creatures, and lands your opponents control enter tapped.
+name = "Kismet"
+otags = ["opponents"]
+sets = ["4bb", "4ed", "5ed", "6ed", "leg", "me4", "ren"]
+id = "81fdd1c4-d43b-4f8b-8712-7c2bf45a3e0b"
+default_print = "7e0651ad-6901-4f9b-8807-d66e53a4ada8"
+oracle = "Artifacts, creatures, and lands your opponents control enter tapped."
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "enchantment"
+
+# Artifacts, creatures, and lands your opponents control enter tapped.
+[[abilities]]
+timing = "static"
+
+# Artifacts, creatures, and lands your opponents control enter tapped.
+[[abilities.effects]]
+type = "static"
+mode = "opponents_permanents_enter_tapped"
+types = ["artifact", "creature", "land"]

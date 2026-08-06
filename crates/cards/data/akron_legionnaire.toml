@@ -1,0 +1,29 @@
+# Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack.
+name = "Akron Legionnaire"
+otags = ["drawback", "synergy-artifact-creature", "type-errata"]
+sets = ["5ed", "bchr", "chr", "leg", "me3"]
+id = "c5f50a78-9dc4-4f3c-aa11-b41c8278bc16"
+default_print = "b3e10240-8a4f-410f-a9b2-5df89d7038df"
+oracle = "Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack."
+subtypes = ["Giant", "Soldier"]
+
+[cost]
+generic = 6
+white = 2
+
+[kind]
+type = "creature"
+power = 8
+toughness = 4
+
+# Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack.
+[[abilities]]
+timing = "static"
+
+# Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack. (The
+# "except for" clause is authored inverted, as the banned set: a creature you control that is neither an artifact
+# nor named Akron Legionnaire. By name rather than by identity, so a second Akron Legionnaire is exempt too.)
+[[abilities.effects]]
+type = "static"
+mode = "cant_attack_filter"
+filter = { types = "creature", controller = "you", exclude = "artifact", exclude_name = "Akron Legionnaire" }

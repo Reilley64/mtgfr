@@ -299,6 +299,7 @@ message PendingChoiceView {
     PendingChoiceViewMayExileDiscardedToPlay may_exile_discarded_to_play = 69;
     PendingChoiceViewPayLifeOrEntersTapped pay_life_or_enters_tapped = 70;
     PendingChoiceViewReorderTop reorder_top = 71;
+    PendingChoiceViewLookAtTop look_at_top = 72;
   }
 }
 
@@ -448,6 +449,13 @@ message PendingChoiceViewScry {
 // The looked-at cards, top of a library the player may reorder but not split (Natural
 // Selection). Private to that player; every card goes back on top, so there is no second pile.
 message PendingChoiceViewReorderTop {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// The looked-at cards, top of a library the player may only look at (Visions). Private to that
+// player; the answer is a dismissal, so not even the order is decided.
+message PendingChoiceViewLookAtTop {
   uint32 player = 1;
   repeated ChoiceItem items = 2;
 }
@@ -625,10 +633,13 @@ message PendingChoiceViewDiscard {
 // This player must put `count` cards from their hand (`items`, private to them) on top of
 // their library, in an order they choose (Brainstorm) — unlike `PendingChoiceViewDiscard`, the
 // answer's order matters (first-named ends up on top).
+// When `life_per_declined` is nonzero (Sylvan Library) `count` is a maximum: any number from
+// zero up may be put back, and each one declined costs that much life.
 message PendingChoiceViewPutFromHandOnTop {
   uint32 player = 1;
   uint32 count = 2;
   repeated ChoiceItem items = 3;
+  uint32 life_per_declined = 4;
 }
 
 // This player may put one hand land (`items`, private to them) onto the battlefield, or
@@ -795,13 +806,15 @@ message PendingChoiceViewChooseCardName {
 // reuse the same "pick one object or decline" wire shape; `put_counter_on_creature` tells the
 // client to render "put a +1/+1 counter on a creature" copy instead of copy-entry wording, and
 // `choose_block_target` to render False Orders' "have it block an attacking creature of your
-// choice" re-aim.
+// choice" re-aim, and `choose_damage_source` to render Backdraft's "choose which sorcery's damage
+// this turn is halved" pick (mandatory — no decline).
 message PendingChoiceViewChooseCopyTarget {
   uint32 player = 1;
   uint32 source = 2;
   repeated ChoiceItem items = 3;
   bool put_counter_on_creature = 4;
   bool choose_block_target = 5;
+  bool choose_damage_source = 6;
 }
 
 // This player (the deployed attachment's controller) must choose a host among `items` (the
@@ -1105,6 +1118,9 @@ message VisibleEvent {
     VisibleEventLookedAtHand looked_at_hand = 137;
     VisibleEventExtraTurnQueued extra_turn_queued = 138;
     VisibleEventTextChanged text_changed = 139;
+    VisibleEventCantBeRegeneratedThisTurnMarked cant_be_regenerated_this_turn_marked = 140;
+    VisibleEventGameDrawn game_drawn = 141;
+    VisibleEventSpendManaAsAnyTypeGranted spend_mana_as_any_type_granted = 142;
   }
   // 132 was VisibleEventPlayerPoisonChanged, superseded by the general player-counter
   // subsystem (`player_counters_placed`). Burned, not reused (docs/WIRE_COMPAT.md).
@@ -1296,6 +1312,12 @@ message VisibleEventRegenerated {
 
 // A permanent's regeneration shields expired at cleanup (CR 701.15b's "this turn").
 message VisibleEventRegenerationShieldsExpired {
+  uint32 object = 1;
+}
+
+// A permanent was marked "can't be regenerated this turn" (CR 701.15d) with no accompanying
+// damage — Clergy of the Holy Nimbus's second ability.
+message VisibleEventCantBeRegeneratedThisTurnMarked {
   uint32 object = 1;
 }
 
@@ -1618,6 +1640,12 @@ message VisibleEventFlashPermissionGranted {
 // `player` may, at mana-ability timing, pay 1 life to add {C} for the rest of the turn (CR 605
 // — Yavimaya Bloomsage's Channel). Public — no hidden information.
 message VisibleEventChannelColorlessManaGranted {
+  uint32 player = 1;
+}
+
+// North Star: the player may spend mana as though it were mana of any type to pay one spell's mana
+// cost this turn (CR 609.4b).
+message VisibleEventSpendManaAsAnyTypeGranted {
   uint32 player = 1;
 }
 
@@ -1945,6 +1973,11 @@ message VisibleEventDrewFromEmptyLibrary {
 message VisibleEventPlayerLost {
   uint32 player = 1;
 }
+
+// The game ended in a draw (CR 104.4) — every remaining player at once, so unlike
+// `VisibleEventPlayerLost` there is nobody to name. Carries no fields; the event's arrival is
+// the whole message.
+message VisibleEventGameDrawn {}
 
 // `player` got the city's blessing (CR 702.131 Ascend) — fully public.
 message VisibleEventCitysBlessingGained {

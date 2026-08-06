@@ -1,0 +1,28 @@
+# {T}, Sacrifice this artifact: Exchange life totals with target opponent. Activate only during
+# your upkeep.
+name = "Mirror Universe"
+otags = ["life-swap", "lifegain", "lifeloss"]
+sets = ["leg", "me1"]
+id = "8d231d2f-5274-4b55-8262-9eb95654d183"
+default_print = "a8f05d5e-bb7d-4554-b880-f0c6b4688357"
+oracle = "{T}, Sacrifice this artifact: Exchange life totals with target opponent. Activate only during your upkeep."
+
+[cost]
+generic = 6
+
+[kind]
+type = "artifact"
+
+# {T}, Sacrifice this artifact: Exchange life totals with target opponent. Activate only during
+# your upkeep.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+only_during_your_upkeep = true
+
+# Exchange life totals with target opponent.
+[[abilities.effects]]
+type = "life"
+mode = "exchange"
+who = "target_opponent"

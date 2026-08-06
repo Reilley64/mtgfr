@@ -271,7 +271,8 @@ impl<'a> TableSession<'a> {
             turn_yields: *self.table.chrome.turn_yields(),
             stack_hold_remaining_ms: hold_ms,
         }));
-        let disposition = if game.winner().is_some() {
+        // `outcome`, not `winner`: a draw (CR 104.4) ends the game with nobody winning.
+        let disposition = if game.outcome().is_some() {
             Disposition::GameOver
         } else {
             Disposition::Live { stack_held }
@@ -720,9 +721,11 @@ mod tests {
             blocks: vec![(b1, attacker), (b2, attacker)],
         })
         .unwrap();
+        advance_to(&mut game, Step::CombatDamage);
         assert!(
             game.pending_choice().is_some(),
-            "a multi-block owes the attacker a damage-division choice",
+            "a multi-block owes the attacker a damage-division choice in the damage step \
+             (CR 510.1a)",
         );
 
         let mut table = Table::empty();
@@ -813,6 +816,7 @@ mod tests {
         },
         legendary: false,
         snow: false,
+        world: false,
         uncounterable: false,
         modal: false,
         modal_choose: 1,
@@ -833,6 +837,8 @@ mod tests {
         cast_only_before_combat_damage: false,
         cast_only_during_declare_blockers: false,
         cast_only_during_declare_attackers: false,
+        cast_only_after_upkeep: false,
+        cast_only_after_combat: false,
         approximates: None,
         oracle: None,
         sets: empty_slice(),
@@ -855,6 +861,7 @@ mod tests {
                     multikicker_scaled: false,
                     kicked_scaled: false,
                     main_phase_scaled: false,
+                    unbounded: false,
                 },
                 divided: Division::None,
                 cant_be_regenerated: false,

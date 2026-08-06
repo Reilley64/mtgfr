@@ -1,0 +1,30 @@
+# Look at the top five cards of target player's library. You may then have that player shuffle
+# that library.
+name = "Visions"
+otags = ["just-shuffle", "peek-library", "single-target-instant-sorcery"]
+sets = ["4bb", "4ed", "leg", "ren"]
+id = "448fa4e3-7269-446b-8089-675bc1bff5f9"
+default_print = "21d00299-e183-4b3d-b015-18808e7135b9"
+oracle = "Look at the top five cards of target player's library. You may then have that player shuffle that library."
+
+[cost]
+white = 1
+
+[kind]
+type = "sorcery"
+
+# Look at the top five cards of target player's library. You may then have that player shuffle
+# that library.
+[[abilities]]
+timing = "spell"
+
+# Look at the top five cards of target player's library.
+[[abilities.effects]]
+type = "dig"
+mode = "look_at_target_players_top"
+count = 5
+
+# You may then have that player shuffle that library.
+[[abilities.effects]]
+type = "dig"
+mode = "may_shuffle_target_players_library"

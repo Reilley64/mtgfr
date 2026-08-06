@@ -1,0 +1,38 @@
+# Whenever this creature attacks and isn't blocked, you may destroy target artifact defending
+# player controls. If you do, this creature assigns no combat damage this turn.
+name = "Floral Spuzzem"
+otags = ["attack-trigger", "removal-destroy"]
+sets = ["leg"]
+id = "994de451-14f9-466f-a56e-da052b4666e5"
+default_print = "d141b9e3-7129-41e5-8b44-d3867e1c7e1d"
+oracle = "Whenever this creature attacks and isn't blocked, you may destroy target artifact defending player controls. If you do, this creature assigns no combat damage this turn."
+subtypes = ["Elemental"]
+
+[cost]
+generic = 3
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever this creature attacks and isn't blocked, you may destroy target artifact defending
+# player controls. If you do, this creature assigns no combat damage this turn.
+[[abilities]]
+timing = "attacks_and_isnt_blocked"
+optional = true
+
+# you may destroy target artifact defending player controls.
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "artifact", controller = "defending_player" } }
+
+# If you do, this creature assigns no combat damage this turn. — "if you do" is the destroy
+# actually happening, so it reads the destroy step's own "destroyed this way" tally rather than
+# the decision to try: an indestructible or regenerated artifact leaves the damage intact.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "compare", left = { permanents_destroyed_this_way = { types = "artifact" } }, op = "at_least", right = 1 }
+then = [{ type = "misc", mode = "source_assigns_no_combat_damage_this_turn" }]

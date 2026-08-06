@@ -1,0 +1,38 @@
+# {2}, {T}: Prevent all damage that would be dealt this turn by target creature you control.
+# That creature gets +0/+X until end of turn, where X is its mana value.
+name = "Kry Shield"
+otags = ["activated-ability", "damage-prevention", "scales-with-mana-value"]
+sets = ["leg"]
+id = "2c4bd475-b8af-4916-b7a0-68abb8994138"
+default_print = "a558f23c-c2ce-40d0-b894-f8ccbff8f622"
+oracle = "{2}, {T}: Prevent all damage that would be dealt this turn by target creature you control. That creature gets +0/+X until end of turn, where X is its mana value."
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {2}, {T}: Prevent all damage that would be dealt this turn by target creature you control. That
+# creature gets +0/+X until end of turn, where X is its mana value.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 2 }
+taps_self = true
+
+# Prevent all damage that would be dealt this turn by target creature you control.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = "creature_you_control"
+target_is_source = true
+any_recipient = true
+all_damage = true
+
+# That creature gets +0/+X until end of turn, where X is its mana value.
+[[abilities.effects]]
+type = "pump"
+mode = "pump_until_end_of_turn"
+target = "creature_you_control"
+power = 0
+toughness = "target_mana_value"

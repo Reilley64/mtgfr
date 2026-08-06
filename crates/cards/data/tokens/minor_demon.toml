@@ -1,0 +1,14 @@
+# Token: Minor Demon
+# Sources: boris_devilboon.toml
+# Legends predates printed token cards, so no Scryfall printing exists for this token. `id` is a
+# locally synthetic, non-UUID lookup key (fidelity increment #97's token-id convention for
+# pre-token-era tokens) rather than a fabricated Scryfall id — `default_print` is left empty.
+name = "Minor Demon"
+id = "leg-token-minor-demon"
+colors = ["black", "red"]
+subtypes = ["Demon"]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

@@ -84,6 +84,63 @@ resource "cloudflare_ruleset" "edh_no_response_buffering" {
   ]
 }
 
+# Coverage meta is public read-mostly data whose origin fans out to Scryfall + `/health/live`.
+# Cloudflare does not cache an extensionless JSON path by default, so this Cache Rule only makes
+# it eligible — the TTLs come from the route's own `cache-control` (`s-maxage` / `max-age`), see
+# client/server/routes/api/meta/coverage/v1.get.ts. Free plan has Cache Rules; it does not have
+# purge-by-tag/prefix, which is why the deploy purge below names the single URL.
+resource "cloudflare_ruleset" "edh_cache_coverage_meta" {
+  zone_id     = var.cloudflare_zone_id
+  name        = "mtgfr edh — cache coverage meta"
+  description = "Edge-cache /api/meta/coverage/v1 per origin cache-control; purged on deploy."
+  kind        = "zone"
+  phase       = "http_request_cache_settings"
+
+  rules = [
+    {
+      description = "Cache coverage meta at the edge"
+      expression  = "(http.host eq \"${var.edh_hostname}\" and http.request.uri.path eq \"/api/meta/coverage/v1\")"
+      action      = "set_cache_settings"
+
+      # Eligibility only — both TTLs are left at their defaults, which already follow the origin:
+      # Free/Pro/Business have origin cache control permanently on (the `edge_ttl` override for it
+      # is Enterprise-only and makes the whole rule out-of-plan and uneditable), and the zone's
+      # Browser Cache TTL is set to "Respect Existing Headers" (its 4h default would otherwise
+      # override the route's shorter `max-age`, where a purge cannot reach it).
+      action_parameters = {
+        cache = true
+      }
+    },
+  ]
+}
+
+# Purge on deploy: an apply that bumps the images *is* the deploy, so the image tags are the
+# trigger. Needs the Zone > Cache Purge permission on `cloudflare_api_token`.
+# ponytail: fires when Argo receives the new params, not when the rollout is Ready — a purge
+# that lands early re-caches the prior numbers until edge_ttl expires. Poll `/api/meta/version`
+# before purging if that hour ever matters.
+resource "terraform_data" "purge_coverage_meta_cache" {
+  triggers_replace = [var.server_image, var.web_image]
+
+  provisioner "local-exec" {
+    environment = {
+      CF_API_TOKEN = var.cloudflare_api_token
+    }
+
+    command = <<-EOT
+      curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/${var.cloudflare_zone_id}/purge_cache" \
+        -H "Authorization: Bearer $CF_API_TOKEN" \
+        -H "Content-Type: application/json" \
+        --data '{"files":["https://${var.edh_hostname}/api/meta/coverage/v1"]}'
+    EOT
+  }
+
+  depends_on = [
+    cloudflare_ruleset.edh_cache_coverage_meta,
+    helm_release.edh_application,
+  ]
+}
+
 resource "kubernetes_deployment_v1" "cloudflared" {
   wait_for_rollout = true
 

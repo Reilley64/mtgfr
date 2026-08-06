@@ -47,10 +47,12 @@ just --list
 
 - [`CONTEXT.md`](CONTEXT.md) — Magic / domain glossary used in the code
 - [`PRODUCT.md`](PRODUCT.md) / [`DESIGN.md`](DESIGN.md) — product intent and design system
-- [`docs/superpowers/specs/`](docs/superpowers/specs/) — feature specs for existing modules (source of truth)
+- [`openspec/specs/`](openspec/specs/) — living OpenSpec requirements (source of truth)
 - [`docs/fidelity/`](docs/fidelity/) — per-deck fidelity reports and increments backlogs (created by `fidelity-grind`)
 - [`docs/WIRE_COMPAT.md`](docs/WIRE_COMPAT.md) — expand-only proto rules across drain rolls
 - [`docs/README.md`](docs/README.md) — full docs index
+- [`docs/CLIENT_CANVAS_MAP.md`](docs/CLIENT_CANVAS_MAP.md) — client board paint / hits / flights / overlays
+- [`docs/AGENT_NAVIGATION.md`](docs/AGENT_NAVIGATION.md) — engine module ↔ CR navigation
 
 Agent-oriented working notes live in [`AGENTS.md`](AGENTS.md). Releases are cut by [semantic-release](https://semantic-release.org/) on `main` (PRs are squash-merged — the **PR title** is the release signal).
 

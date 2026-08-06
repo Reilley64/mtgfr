@@ -1,0 +1,12 @@
+# Token: Sand Warrior
+# Sources: hazezon_tamar.toml
+name = "Sand Warrior"
+id = "7705873e-6fe6-4b25-965d-5f3df1680f66"
+default_print = "17812f4e-a10c-472b-970f-35a8f392235a"
+colors = ["red", "green", "white"]
+subtypes = ["Sand", "Warrior"]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

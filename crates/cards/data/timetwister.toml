@@ -21,5 +21,6 @@ timing = "spell"
 # Each player shuffles their hand and graveyard into their library, then draws seven cards.
 [[abilities.effects]]
 type = "choice"
-mode = "each_player_shuffles_hand_and_graveyard_then_draws"
+mode = "each_player_shuffles_hand_then_draws"
+include_graveyard = true
 count = 7

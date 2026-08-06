@@ -1,8 +1,8 @@
 //! Interned card definitions (`CardId` → `Arc<CardDef>`).
 //!
-//! Wave A of the engine refactor program: zone objects and events store [`CardId`]
-//! instead of embedding a fat [`CardDef`]. See
-//! `docs/superpowers/specs/2026-07-25-engine-refactor-program-design.md`.
+//! Zone objects and events store [`CardId`] instead of embedding a fat [`CardDef`].
+//! See OpenSpec [`card-dsl`](../../../openspec/specs/card-dsl/spec.md) and
+//! [`engine`](../../../openspec/specs/engine/spec.md).
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};

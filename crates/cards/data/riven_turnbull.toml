@@ -1,0 +1,30 @@
+# {T}: Add {B}.
+name = "Riven Turnbull"
+otags = ["activated-ability", "deprecated-legend-type", "mana-dork"]
+sets = ["leg", "me3"]
+id = "2742d506-897f-4d30-ba43-ce0374984849"
+default_print = "ed665227-02ba-4977-a8e7-ea4e46a626e6"
+oracle = "{T}: Add {B}."
+legendary = true
+subtypes = ["Human", "Advisor"]
+
+[cost]
+generic = 5
+blue = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 7
+
+# {T}: Add {B}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {B}.
+[[abilities.effects]]
+type = "mana"
+mode = "add"
+mana = ["black"]

@@ -1,0 +1,24 @@
+# {T}: Tap target artifact.
+name = "Relic Barrier"
+otags = ["activated-ability", "hate-artifact", "hate-set-mechanic", "repeatable-crime", "tapper-artifact"]
+sets = ["5dn", "leg", "wc04"]
+id = "90cd8274-3f21-4b78-8910-dcaa5f8fe25d"
+default_print = "12d760d8-030e-47d0-a555-d88ee43d3d80"
+oracle = "{T}: Tap target artifact."
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {T}: Tap target artifact.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Tap target artifact.
+[[abilities.effects]]
+type = "control"
+mode = "tap_target"
+target = { permanent = { types = "artifact" } }

@@ -21,6 +21,7 @@ impl Game {
                 power,
                 toughness,
                 keywords,
+                ends_at_end_of_combat,
                 ..
             } => {
                 let object = expect_object_target(target, "a pump");
@@ -30,6 +31,27 @@ impl Game {
                     toughness: self.resolve_amount(toughness, controller, source, target, x),
                     keywords,
                     source_name,
+                    ends_at_end_of_combat,
+                }]
+            }
+            // Cocoon: "that creature gains flying", with no duration at all — the Aura that grants
+            // it is sacrificed by the same ability, so nothing is left to radiate a static grant.
+            PumpEffect::GrantKeywordsIndefinitely { keywords, .. } => {
+                let object = expect_object_target(target, "an indefinite keyword grant");
+                vec![Event::KeywordsGrantedIndefinitely { object, keywords }]
+            }
+            // Gabriel Angelfire: the chosen ability lands on the ability's own source and lasts
+            // until that controller's next upkeep begins. `choose_one` has already been peeled to
+            // a single keyword by the mode pause, so this only ever sees a settled list. Nothing
+            // to grant if the source has already left the battlefield (CR 608.2c).
+            PumpEffect::GrantSelfKeywordsUntilNextUpkeep { keywords, .. } => {
+                if self.as_permanent(source).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::KeywordsGrantedUntilNextUpkeep {
+                    object: source,
+                    keywords,
+                    player: controller,
                 }]
             }
             // Self-pump: the ability's own source, no target (prowess). The source is already
@@ -51,6 +73,7 @@ impl Game {
                     toughness: self.resolve_amount(toughness, controller, source, target, x),
                     keywords,
                     source_name,
+                    ends_at_end_of_combat: false,
                 }]
             }
             // Mother of Runes: "{T}: Target creature you control gains protection from the color
@@ -60,6 +83,30 @@ impl Game {
             // keyword-only `TempBoost`, the single-`Keyword` twin of `PumpUntilEndOfTurn`'s
             // `&'static` `keywords` slice: the scope isn't known until resolution, so it's leaked
             // fresh here rather than baked in at TOML-parse time.
+            // Giant Slug: "At the beginning of your next upkeep, choose a basic land type. This
+            // creature gains landwalk of the chosen type until the end of that turn." The land-type
+            // twin of the protection grant right below — the preceding `ChooseBasicLandType` step in
+            // the same `Sequence` wrote the pick to the Slug's own `Permanent::chosen_subtype`, and
+            // the keyword is leaked here because the type isn't known at TOML-parse time.
+            PumpEffect::GrantChosenLandwalkSelfUntilEndOfTurn => {
+                // CR 608.2c: the delayed trigger can fire long after the Slug left the battlefield,
+                // and a Slug that is gone has neither a choice to read nor anything to boost.
+                let Some(land) = self
+                    .as_permanent(source)
+                    .and_then(|p| p.chosen_subtype)
+                    .and_then(BasicLandType::from_subtype)
+                else {
+                    return Vec::new();
+                };
+                vec![Event::TempBoost {
+                    object: source,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Box::leak(Box::new([Keyword::Landwalk(land)])),
+                    source_name,
+                    ends_at_end_of_combat: false,
+                }]
+            }
             PumpEffect::GrantChosenColorProtectionUntilEndOfTurn { .. } => {
                 let object = expect_object_target(target, "a chosen-color protection grant");
                 let Some(color) = self.as_permanent(source).and_then(|p| p.chosen_color) else {
@@ -75,6 +122,7 @@ impl Game {
                         ProtectionScope::Color(color),
                     )])),
                     source_name,
+                    ends_at_end_of_combat: false,
                 }]
             }
             // Bathe in Light: "Target creature and each other creature that shares a color with
@@ -104,6 +152,7 @@ impl Game {
                         toughness: 0,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -130,6 +179,7 @@ impl Game {
                         toughness,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -157,6 +207,7 @@ impl Game {
                         toughness,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -177,6 +228,7 @@ impl Game {
                         toughness: 0,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -233,6 +285,64 @@ impl Game {
                     toughness: value,
                 }]
             }
+            // Indefinite self base-*toughness* SET (Sentinel, Wall of Tombstones — CR 613.3(7b)):
+            // the amount is locked in here, at resolution (CR 613.4b), and the running base power
+            // is left alone. Nothing to do if the source has already left (CR 608.2c).
+            PumpEffect::SetOwnBaseToughnessFromAmount { amount, .. } => {
+                if self.as_permanent(source).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::BaseToughnessSetIndefinite {
+                    object: source,
+                    toughness: self.resolve_amount(amount, controller, source, target, x),
+                }]
+            }
+            // Halfdane: the source wears the target's *effective* P/T (CR 613.4b snapshot) until
+            // the end of its controller's next upkeep. Nothing to do if either has left
+            // (CR 608.2b/608.2c).
+            PumpEffect::SetOwnBasePtFromTargetUntilEndOfNextUpkeep { .. } => {
+                let object = expect_object_target(target, "a borrowed base P/T");
+                if self.as_permanent(source).is_none() || self.as_permanent(object).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::BasePtSetUntilEndOfNextUpkeep {
+                    object: source,
+                    power: self.power(object),
+                    toughness: self.toughness(object),
+                    player: controller,
+                }]
+            }
+            // Brine Hag's dies trigger: every creature its turn-scoped tally recorded as having
+            // dealt it damage gets an indefinite 0/2 base set. The Hag itself is in the graveyard
+            // by now, so the tally is read through `current_id` (CR 603.10a).
+            PumpEffect::SetBasePtCreaturesThatDamagedSourceThisTurn { power, toughness } => {
+                let mut dealers: Vec<ObjectId> = self
+                    .damaged_this_turn
+                    .iter()
+                    .filter(|&&(_, victim)| self.current_id(victim) == self.current_id(source))
+                    .map(|&(dealer, _)| self.current_id(dealer))
+                    .filter(|&dealer| self.is_creature_on_battlefield(dealer))
+                    .collect();
+                dealers.sort_unstable();
+                dealers.dedup();
+                dealers
+                    .into_iter()
+                    .map(|object| Event::BasePtSetIndefinite {
+                        object,
+                        power,
+                        toughness,
+                    })
+                    .collect()
+            }
+            // Transmutation (CR 613.4e): a P/T switch on the chosen creature, applied above every
+            // other P/T layer and swept at cleanup.
+            PumpEffect::SwitchPtUntilEndOfTurn { .. } => {
+                let object = expect_object_target(target, "a power/toughness switch");
+                if self.as_permanent(object).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::PtSwitchedUntilEndOfTurn { object }]
+            }
             // Manland self-animation (Restless Spire): the source land becomes a creature until end
             // of turn — an added type/subtype (613.4), a base-P/T SET (613.3(7b)), and granted
             // keywords, all on the source. Nothing to do if the source has left (CR 608.2c).
@@ -254,6 +364,7 @@ impl Game {
                         types: add_types,
                         subtypes: add_subtypes,
                         colors: add_colors,
+                        ends_at_end_of_combat,
                     },
                     Event::BasePtSetUntilEndOfTurn {
                         object: source,
@@ -263,12 +374,15 @@ impl Game {
                     },
                 ];
                 if !keywords.is_empty() {
+                    // One clause, one duration: keywords the animation grants end when the rest of
+                    // it does.
                     events.push(Event::TempBoost {
                         object: source,
                         power: 0,
                         toughness: 0,
                         keywords,
                         source_name,
+                        ends_at_end_of_combat,
                     });
                 }
                 events
@@ -293,6 +407,7 @@ impl Game {
                         toughness,
                         keywords: &[],
                         source_name,
+                        ends_at_end_of_combat: false,
                     })
                     .collect()
             }
@@ -320,6 +435,7 @@ impl Game {
                         toughness,
                         keywords: &[],
                         source_name,
+                        ends_at_end_of_combat: false,
                     }];
                 }
                 vec![Event::LifeChanged {
@@ -342,6 +458,27 @@ impl Game {
                     keywords,
                 }]
             }
+            // Targeted keyword removal (CR 613.1f — the Legends strippers). A target that has left
+            // since (CR 608.2b) leaves nothing to strip. `choose_one` never reaches here: the mode
+            // pause peels it off first (see `Game::run`).
+            PumpEffect::TargetLosesKeywords {
+                keywords,
+                families,
+                until_end_of_turn,
+                ..
+            } => {
+                let object = expect_object_target(target, "a keyword loss");
+                if self.as_permanent(object).is_none() {
+                    return Vec::new();
+                }
+                vec![Event::KeywordsStripped {
+                    object,
+                    keywords,
+                    families,
+                    until_end_of_turn,
+                    cant_have: false,
+                }]
+            }
             // Mass keyword strip: every creature an opponent of the controller controls loses
             // `keywords` and can't have them until end of turn (arcane_lighthouse).
             PumpEffect::StripKeywordsFromOpponentsCreatures { keywords } => self
@@ -350,7 +487,13 @@ impl Game {
                 .filter(|&id| {
                     self.is_creature_on_battlefield(id) && self.controller_of(id) != controller
                 })
-                .map(|object| Event::KeywordsStripped { object, keywords })
+                .map(|object| Event::KeywordsStripped {
+                    object,
+                    keywords,
+                    families: &[],
+                    until_end_of_turn: true,
+                    cant_have: true,
+                })
                 .collect(),
             // Vesuvan Doppelganger's upkeep: "you may have this creature become a copy of target
             // creature, except it doesn't copy that creature's color and it has this ability."
@@ -396,16 +539,44 @@ impl Game {
                     also_types: TypeSet::NONE,
                 }]
             }
-            // "Target spell or permanent becomes black" (the lace cycle): a layer-5 SET with no
-            // printed duration, so it rides the object. `until_end_of_turn: false` — cleanup must
-            // not take it back. Nothing to do if the target already left the stack or the
-            // battlefield (CR 608.2b; `target_still_legal` normally fizzles this first).
-            PumpEffect::TargetBecomesColor { color, .. } => {
+            // "…becomes the color of your choice" is peeled to the color picker by `Game::run`
+            // before it ever reaches the minter (see `run_choose_pause`), so there is no color to
+            // set here.
+            PumpEffect::TargetBecomesColor { color: None, .. } => Vec::new(),
+            // "Target spell or permanent becomes black" (the lace cycle, no printed duration, so
+            // the SET rides the object) and "one or more target creatures become red until end of
+            // turn" (the Legends colour-wash cycle, swept at cleanup) — one layer-5 SET, told
+            // apart by the duration the card printed. A `color` of `None` ("of your choice",
+            // Alchor's Tomb) never reaches here: `Game::run` peels it to the color picker first.
+            // Nothing to do if the target already left the stack or the battlefield (CR 608.2b;
+            // `target_still_legal` normally fizzles this first).
+            PumpEffect::TargetBecomesColor {
+                color: Some(color),
+                until_end_of_turn,
+                ..
+            } => {
                 let object = expect_object_target(target, "becomes a color");
                 if !matches!(
                     self.objects[object as usize],
                     Object::Permanent(_) | Object::Spell(_)
                 ) {
+                    return Vec::new();
+                }
+                vec![Event::ColorSet {
+                    object,
+                    color,
+                    until_end_of_turn,
+                }]
+            }
+            // Aisling Leprechaun's "that creature becomes green" — the same layer-5 SET as the
+            // lace arm above, with no printed duration, aimed at the block pair's other half
+            // rather than a chosen target. Nothing to do if it has left the battlefield since
+            // (CR 608.2b).
+            PumpEffect::ThatCreatureBecomesColor { color, creature } => {
+                let Some(object) = creature else {
+                    return Vec::new();
+                };
+                if self.as_permanent(object).is_none() {
                     return Vec::new();
                 }
                 vec![Event::ColorSet {
@@ -457,6 +628,7 @@ impl Game {
                             toughness: -toughness,
                             keywords: &[],
                             source_name,
+                            ends_at_end_of_combat: false,
                         }
                     })
                     .collect()

@@ -168,6 +168,7 @@ pub(super) fn put_land_from_hand(
 /// end-step sacrifice against this same resolving ability. `subtypes` restricts eligibility
 /// (Kaalia: Angel/Demon/Dragon; empty = any creature); `keep` and `defender` ride along for the
 /// answer (no end-step sacrifice; enter tapped and attacking that opponent).
+#[allow(clippy::too_many_arguments)]
 pub(super) fn put_creature_from_hand(
     game: &Game,
     player: PlayerId,
@@ -175,28 +176,50 @@ pub(super) fn put_creature_from_hand(
     subtypes: &'static [&'static str],
     keep: bool,
     defender: Option<PlayerId>,
+    round: Option<Vec<PlayerId>>,
+    permanent_cards: bool,
 ) -> Option<PendingChoice> {
-    let candidates: Vec<ObjectId> = game
-        .hand_of(player)
-        .into_iter()
-        .filter(|&id| matches!(game.def_of(id).kind, crate::CardKind::Creature { .. }))
-        .filter(|&id| {
-            subtypes.is_empty()
-                || subtypes
-                    .iter()
-                    .any(|want| game.def_of(id).subtypes.contains(want))
-        })
-        .collect();
-    if candidates.is_empty() {
-        return None;
+    let eligible = |player: PlayerId| -> Vec<ObjectId> {
+        game.hand_of(player)
+            .into_iter()
+            .filter(|&id| match permanent_cards {
+                // Eureka's "a permanent card" — every card type but instant/sorcery (CR 110.4a).
+                true => !matches!(game.def_of(id).kind, crate::CardKind::Spell { .. }),
+                false => matches!(game.def_of(id).kind, crate::CardKind::Creature { .. }),
+            })
+            .filter(|&id| {
+                subtypes.is_empty()
+                    || subtypes
+                        .iter()
+                        .any(|want| game.def_of(id).subtypes.contains(want))
+            })
+            .collect()
+    };
+
+    // Eureka walks its own lap here: a seat holding nothing eligible can't act, so it is skipped
+    // rather than asked (CR 608.2b's "may"), and the lap ends when the queue runs dry. A one-seat
+    // offer (Cauldron Dance, Kaalia) has no queue and simply raises nothing.
+    let mut player = player;
+    let mut round = round;
+    loop {
+        let candidates = eligible(player);
+        if !candidates.is_empty() {
+            return Some(PendingChoice::PutCreatureFromHand {
+                player,
+                source,
+                candidates,
+                keep,
+                defender,
+                round,
+                permanent_cards,
+            });
+        }
+        let queue = round.as_mut()?;
+        if queue.is_empty() {
+            return None;
+        }
+        player = queue.remove(0);
     }
-    Some(PendingChoice::PutCreatureFromHand {
-        player,
-        source,
-        candidates,
-        keep,
-        defender,
-    })
 }
 
 pub(super) fn cast_creature_face_down(

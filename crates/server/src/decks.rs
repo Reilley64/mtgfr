@@ -345,7 +345,7 @@ mod soc_deck_tests {
         let mut prev = game.active_player();
         let mut guard = 0;
         while seen < turns {
-            if game.winner().is_some() {
+            if game.outcome().is_some() {
                 return;
             }
             if let Some(PendingChoice::DiscardToHandSize {

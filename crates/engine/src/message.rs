@@ -68,18 +68,22 @@ message_keys! {
     EFFECT_CONTROL_EXCHANGE_CONTROL => "effect.control_exchange_control",
     EFFECT_CONTROL_GAIN_CONTROL => "effect.control_gain_control",
     EFFECT_CONTROL_GAIN_CONTROL_ALL_UNTIL_END_OF_TURN => "effect.control_gain_control_all_until_end_of_turn",
+    EFFECT_CONTROL_GAIN_CONTROL_ALL_WHILE => "effect.control_gain_control_all_while",
     EFFECT_CONTROL_GAIN_CONTROL_UNTIL_END_OF_TURN => "effect.control_gain_control_until_end_of_turn",
     EFFECT_CONTROL_GAIN_CONTROL_WHILE => "effect.control_gain_control_while",
     EFFECT_CONTROL_GOAD_TARGET => "effect.control_goad_target",
     EFFECT_CONTROL_GRANT_SOURCE_ABILITIES_UNTIL_END_OF_TURN => "effect.control_grant_source_abilities_until_end_of_turn",
+    EFFECT_CONTROL_MOVE_AURA => "effect.control_move_aura",
     EFFECT_CONTROL_REGENERATE_SHIELD => "effect.control_regenerate_shield",
     EFFECT_CONTROL_REMOVE_FROM_COMBAT => "effect.control_remove_from_combat",
     EFFECT_CONTROL_REVERT_ALL_CREATURES_TO_OWNERS => "effect.control_revert_all_creatures_to_owners",
     EFFECT_CONTROL_TAP_SOURCE => "effect.control_tap_source",
     EFFECT_CONTROL_TAP_TARGET => "effect.control_tap_target",
+    EFFECT_CONTROL_OPPONENT_GAINS_CONTROL_ALL => "effect.control_opponent_gains_control_all",
     EFFECT_CONTROL_TARGET_OPPONENT_GAINS_CONTROL => "effect.control_target_opponent_gains_control",
     EFFECT_CONTROL_TAP_ALL => "effect.control_tap_all",
     EFFECT_CONTROL_TAP_ALL_TARGET_PLAYER_CONTROLS => "effect.control_tap_all_target_player_controls",
+    EFFECT_CONTROL_TAP_BLOCKERS_OF_TARGET => "effect.control_tap_blockers_of_target",
     EFFECT_CONTROL_UNTAP_ALL => "effect.control_untap_all",
     EFFECT_CONTROL_UNTAP_TARGET => "effect.control_untap_target",
     EFFECT_COPY_CHANGE_TARGET_OF_TARGET_SPELL_OR_ABILITY => "effect.copy_change_target_of_target_spell_or_ability",
@@ -109,6 +113,7 @@ message_keys! {
     EFFECT_COUNTERS_PUT_COUNTERS => "effect.counters_put_counters",
     EFFECT_COUNTERS_PUT_COUNTERS_EACH => "effect.counters_put_counters_each",
     EFFECT_COUNTERS_REMOVE_COUNTER_FROM_SELF => "effect.counters_remove_counter_from_self",
+    EFFECT_COUNTERS_REMOVE_COUNTER_FROM_ATTACHED => "effect.counters_remove_counter_from_attached",
     EFFECT_CHOICE_CAST_CREATURE_FACE_DOWN => "effect.choice_cast_creature_face_down",
     EFFECT_CHOICE_CASTER_KEEPS_ONE_OF_EACH_TYPE_PER_PLAYER => "effect.choice_caster_keeps_one_of_each_type_per_player",
     EFFECT_CHOICE_CHANGE_TEXT => "effect.choice_change_text",
@@ -116,6 +121,7 @@ message_keys! {
     EFFECT_CHOICE_CHOOSE_COLOR => "effect.choice_choose_color",
     EFFECT_CHOICE_CHOOSE_CREATURE_TYPE => "effect.choice_choose_creature_type",
     EFFECT_CHOICE_CHOOSE_OPPONENT => "effect.choice_choose_opponent",
+    EFFECT_CHOICE_CHOOSE_TARGET_PLAYERS_DAMAGING_SORCERY => "effect.choice_choose_target_players_damaging_sorcery",
     EFFECT_CHOICE_CONTROL_PLAYER_TO_PLAY_CARD_FROM_HAND => "effect.choice_control_player_to_play_card_from_hand",
     EFFECT_CHOICE_COUNCILS_DILEMMA_VOTE => "effect.choice_councils_dilemma_vote",
     EFFECT_CHOICE_DEFENDERS_DIVIDE_BLOCKERS_AMONG_ATTACKERS => "effect.choice_defenders_divide_blockers_among_attackers",
@@ -130,9 +136,12 @@ message_keys! {
     EFFECT_CHOICE_EACH_PLAYER_DISCARDS => "effect.choice_each_player_discards",
     EFFECT_CHOICE_EACH_PLAYER_DISCARDS_HAND_THEN_DRAWS => "effect.choice_each_player_discards_hand_then_draws",
     EFFECT_CHOICE_EACH_PLAYER_EXILES_FROM_GRAVEYARD => "effect.choice_each_player_exiles_from_graveyard",
+    EFFECT_CHOICE_EACH_PLAYER_MAY_PUT_PERMANENT_FROM_HAND_REPEATING => "effect.choice_each_player_may_put_permanent_from_hand_repeating",
     EFFECT_CHOICE_EACH_PLAYER_NAMES_CARD_THEN_REVEALS_TOP => "effect.choice_each_player_names_card_then_reveals_top",
+    EFFECT_CHOICE_TARGET_PLAYER_NAMES_CARD_THEN_REVEALS_TOP => "effect.choice_target_player_names_card_then_reveals_top",
+    EFFECT_CHOICE_NAME_CARD_THEN_TARGET_REVEALS_AT_RANDOM_AND_DISCARDS => "effect.choice_name_card_then_target_reveals_at_random_and_discards",
     EFFECT_CHOICE_EACH_PLAYER_SACRIFICES => "effect.choice_each_player_sacrifices",
-    EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_AND_GRAVEYARD_THEN_DRAWS => "effect.choice_each_player_shuffles_hand_and_graveyard_then_draws",
+    EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_THEN_DRAWS => "effect.choice_each_player_shuffles_hand_then_draws",
     EFFECT_CHOICE_JOIN_FORCES_PAY_MANA => "effect.choice_join_forces_pay_mana",
     EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_ATTACH_THIS_AURA_TO_CHOSEN => "effect.choice_triggering_player_may_attach_this_aura_to_chosen",
     EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_PAY_ANY_AMOUNT_TO_PREVENT => "effect.choice_triggering_player_may_pay_any_amount_to_prevent",
@@ -154,6 +163,7 @@ message_keys! {
     EFFECT_CHOICE_PUT_CREATURE_FROM_HAND_ATTACKING => "effect.choice_put_creature_from_hand_attacking",
     EFFECT_CHOICE_PUT_FROM_HAND_ON_TOP => "effect.choice_put_from_hand_on_top",
     EFFECT_CHOICE_PUT_LAND_FROM_HAND => "effect.choice_put_land_from_hand",
+    EFFECT_CHOICE_SACRIFICE_ANY_NUMBER => "effect.choice_sacrifice_any_number",
     EFFECT_CHOICE_SACRIFICE_OWN => "effect.choice_sacrifice_own",
     EFFECT_CHOICE_PAY_OR_ELSE => "effect.choice_pay_or_else",
     EFFECT_CHOICE_SACRIFICE_SELF_UNLESS_RETURN_LAND => "effect.choice_sacrifice_self_unless_return_land",
@@ -165,6 +175,8 @@ message_keys! {
     EFFECT_DAMAGE_TO_ENTERING_PERMANENT => "effect.damage_to_entering_permanent",
     EFFECT_DAMAGE_TO_PLAYERS => "effect.damage_to_players",
     EFFECT_DESTROY_ALL => "effect.destroy_all",
+    EFFECT_DESTROY_BLOCKED_BY_TARGET => "effect.destroy_blocked_by_target",
+    EFFECT_DESTROY_BLOCKED_BY_TARGET_REINCARNATE => "effect.destroy_blocked_by_target_reincarnate",
     EFFECT_DESTROY_TARGET => "effect.destroy_target",
     EFFECT_DESTROY_TRIGGERING_DAMAGED_CREATURE => "effect.destroy_triggering_damaged_creature",
     EFFECT_DIG_CASCADE => "effect.dig_cascade",
@@ -179,6 +191,7 @@ message_keys! {
     EFFECT_DIG_EXILE_TOP_CAST_MATCHING_FREE => "effect.dig_exile_top_cast_matching_free",
     EFFECT_DIG_EXILE_TOP_UNTIL_STOP_CAST_FREE_UNDER_BUDGET => "effect.dig_exile_top_until_stop_cast_free_under_budget",
     EFFECT_DIG_LOOK_AT_TARGET_PLAYERS_HAND => "effect.dig_look_at_target_players_hand",
+    EFFECT_DIG_LOOK_AT_TARGET_PLAYERS_TOP => "effect.dig_look_at_target_players_top",
     EFFECT_DIG_LOOK_AT_TOP => "effect.dig_look_at_top",
     EFFECT_DIG_MAY_SHUFFLE_TARGET_PLAYERS_LIBRARY => "effect.dig_may_shuffle_target_players_library",
     EFFECT_DIG_OPPONENT_SPLITS_EXILE_PILES => "effect.dig_opponent_splits_exile_piles",
@@ -195,33 +208,42 @@ message_keys! {
     EFFECT_EXILE_ALL => "effect.exile_all",
     EFFECT_EXILE_ALL_GRAVEYARDS => "effect.exile_all_graveyards",
     EFFECT_EXILE_GRAVEYARD => "effect.exile_graveyard",
+    EFFECT_EXILE_LINKED_TWIN => "effect.exile_linked_twin",
     EFFECT_EXILE_OBJECT => "effect.exile_object",
+    EFFECT_EXILE_SOURCE => "effect.exile_source",
     EFFECT_EXILE_TARGET => "effect.exile_target",
     EFFECT_EXILE_TARGET_MINTING_ILLUSION_ON_LEAVE => "effect.exile_target_minting_illusion_on_leave",
     EFFECT_EXILE_UNTIL_SOURCE_LEAVES => "effect.exile_until_source_leaves",
     EFFECT_LIFE_DRAIN => "effect.life_drain",
     EFFECT_LIFE_EACH_PLAYER_BECOMES_HIGHEST => "effect.life_each_player_becomes_highest",
+    EFFECT_LIFE_EXCHANGE => "effect.life_exchange",
     EFFECT_LIFE_GAIN => "effect.life_gain",
+    EFFECT_LIFE_GAIN_WHEN_TARGET_IS_DAMAGED_BY_ATTACKER_THIS_TURN => "effect.life_gain_when_target_is_damaged_by_attacker_this_turn",
     EFFECT_LIFE_LOSE => "effect.life_lose",
     EFFECT_LIFE_SOURCE_OWNER_LOSES_HALF_THEIR_LIFE => "effect.life_source_owner_loses_half_their_life",
     EFFECT_MANA_ADD => "effect.mana_add",
     EFFECT_MANA_LOSE_ALL_UNSPENT => "effect.mana_lose_all_unspent",
     EFFECT_MANA_TARGET_PLAYER_TAPS_LANDS_FOR_MANA => "effect.mana_target_player_taps_lands_for_mana",
+    EFFECT_MANA_TARGET_LAND_PRODUCES_COLORLESS_INSTEAD_OF => "effect.mana_target_land_produces_colorless_instead_of",
     EFFECT_MILL_EXILE_DISCARDED_WITH_THIS => "effect.mill_exile_discarded_with_this",
     EFFECT_MILL_EXILE_FROM_GRAVEYARD_MAY_PLAY => "effect.mill_exile_from_graveyard_may_play",
     EFFECT_MILL_EXILE_TARGET_FROM_GRAVEYARD_CREATE_TOKEN_COPY => "effect.mill_exile_target_from_graveyard_create_token_copy",
     EFFECT_MILL_EXILE_TARGET_FROM_GRAVEYARD_WITH_THIS => "effect.mill_exile_target_from_graveyard_with_this",
+    EFFECT_MILL_EXILE_TOP_FACE_DOWN_WITH_THIS => "effect.mill_exile_top_face_down_with_this",
     EFFECT_MILL_EXILE_TOP_MAY_PLAY => "effect.mill_exile_top_may_play",
     EFFECT_MILL_MILL => "effect.mill_mill",
     EFFECT_MISC_ARM_COMBAT_DAMAGE_WATCH => "effect.misc_arm_combat_damage_watch",
     EFFECT_MISC_BECOME_PREPARED => "effect.misc_become_prepared",
     EFFECT_MISC_COUNTER_TARGET_ACTIVATED_ABILITY => "effect.misc_counter_target_activated_ability",
     EFFECT_MISC_COUNTER_TARGET_SPELL => "effect.misc_counter_target_spell",
+    EFFECT_MISC_COUNTER_TRIGGERING_ABILITY => "effect.misc_counter_triggering_ability",
+    EFFECT_MISC_COUNTER_TRIGGERING_SPELL => "effect.misc_counter_triggering_spell",
     EFFECT_MISC_FIGHT => "effect.misc_fight",
     EFFECT_MISC_FLIP_SOURCE => "effect.misc_flip_source",
     EFFECT_MISC_GET_EMBLEM => "effect.misc_get_emblem",
     EFFECT_MISC_GRANT_CHANNEL_COLORLESS_MANA_THIS_TURN => "effect.misc_grant_channel_colorless_mana_this_turn",
     EFFECT_MISC_GRANT_FLASH_THIS_TURN => "effect.misc_grant_flash_this_turn",
+    EFFECT_MISC_GRANT_SPEND_MANA_AS_ANY_TYPE_FOR_ONE_SPELL_THIS_TURN => "effect.misc_grant_spend_mana_as_any_type_for_one_spell_this_turn",
     EFFECT_MISC_MUST_ATTACK_ALL => "effect.misc_must_attack_all",
     EFFECT_MISC_MUST_ATTACK_RANDOM_OPPONENT => "effect.misc_must_attack_random_opponent",
     EFFECT_MISC_BLOCKS_EACH_ATTACKER_IF_ABLE => "effect.misc_blocks_each_attacker_if_able",
@@ -234,9 +256,13 @@ message_keys! {
     EFFECT_MISC_SCHEDULE_COLORLESS_MANA_FOR_COUNTERED_SPELL_NEXT_MAIN_PHASE => "effect.misc_schedule_colorless_mana_for_countered_spell_next_main_phase",
     EFFECT_MISC_SCHEDULE_NEXT_CAST_TRIGGER => "effect.misc_schedule_next_cast_trigger",
     EFFECT_MISC_SCHEDULE_THIS_TURN_COMBAT_DAMAGE_COPY => "effect.misc_schedule_this_turn_combat_damage_copy",
+    EFFECT_MISC_SCHEDULE_WHEN_TARGET_DIES_THIS_TURN => "effect.misc_schedule_when_target_dies_this_turn",
+    EFFECT_MISC_SOURCE_CANT_BE_REGENERATED_THIS_TURN => "effect.misc_source_cant_be_regenerated_this_turn",
     EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES => "effect.misc_skip_next_untap_opponent_creatures",
+    EFFECT_MISC_SKIP_NEXT_UNTAPS => "effect.misc_skip_next_untaps",
     EFFECT_MISC_TAKE_EXTRA_TURN => "effect.misc_take_extra_turn",
     EFFECT_MISC_YOU_LOSE_THE_GAME => "effect.misc_you_lose_the_game",
+    EFFECT_MISC_GAME_IS_A_DRAW => "effect.misc_game_is_a_draw",
     EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_ATTACK => "effect.misc_you_choose_which_creatures_attack",
     EFFECT_MISC_YOU_CHOOSE_WHICH_CREATURES_BLOCK => "effect.misc_you_choose_which_creatures_block",
     EFFECT_PUMP_ANIMATE_SELF_UNTIL_END_OF_TURN => "effect.pump_animate_self_until_end_of_turn",
@@ -244,7 +270,10 @@ message_keys! {
     EFFECT_PUMP_ENCHANTED_ATTACKER_PUMP_ATTACKING_OPPONENT_ELSE_CONTROLLER_LOSES_LIFE => "effect.pump_enchanted_attacker_pump_attacking_opponent_else_controller_loses_life",
     EFFECT_PUMP_ENCHANTED_CREATURE_LOSES_KEYWORDS => "effect.pump_enchanted_creature_loses_keywords",
     EFFECT_PUMP_GRANT_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN => "effect.pump_grant_chosen_color_protection_until_end_of_turn",
+    EFFECT_PUMP_GRANT_CHOSEN_LANDWALK_SELF_UNTIL_END_OF_TURN => "effect.pump_grant_chosen_landwalk_self_until_end_of_turn",
+    EFFECT_PUMP_GRANT_KEYWORDS_INDEFINITELY => "effect.pump_grant_keywords_indefinitely",
     EFFECT_PUMP_GRANT_KEYWORDS_TO_PERMANENTS_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_grant_keywords_to_permanents_you_control_until_end_of_turn",
+    EFFECT_PUMP_GRANT_SELF_KEYWORDS_UNTIL_NEXT_UPKEEP => "effect.pump_grant_self_keywords_until_next_upkeep",
     EFFECT_PUMP_PUMP_EACH_CREATURE_UNTIL_END_OF_TURN => "effect.pump_pump_each_creature_until_end_of_turn",
     EFFECT_PUMP_PUMP_CREATURES_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_pump_creatures_you_control_until_end_of_turn",
     EFFECT_PUMP_PUMP_OTHER_ATTACKERS_ATTACKING_YOUR_OPPONENTS => "effect.pump_pump_other_attackers_attacking_your_opponents",
@@ -253,10 +282,17 @@ message_keys! {
     EFFECT_PUMP_RADIANCE_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN => "effect.pump_radiance_chosen_color_protection_until_end_of_turn",
     EFFECT_PUMP_SET_BASE_PT_CREATURES_YOU_CONTROL_UNTIL_END_OF_TURN => "effect.pump_set_base_pt_creatures_you_control_until_end_of_turn",
     EFFECT_PUMP_SET_BASE_PT_TARGET_UNTIL_END_OF_TURN => "effect.pump_set_base_pt_target_until_end_of_turn",
+    EFFECT_PUMP_SET_BASE_PT_CREATURES_THAT_DAMAGED_SOURCE_THIS_TURN => "effect.pump_set_base_pt_creatures_that_damaged_source_this_turn",
     EFFECT_PUMP_SET_OWN_BASE_PT_FROM_AMOUNT => "effect.pump_set_own_base_pt_from_amount",
+    EFFECT_PUMP_SET_OWN_BASE_PT_FROM_TARGET_UNTIL_END_OF_NEXT_UPKEEP => "effect.pump_set_own_base_pt_from_target_until_end_of_next_upkeep",
+    EFFECT_PUMP_SET_OWN_BASE_TOUGHNESS_FROM_AMOUNT => "effect.pump_set_own_base_toughness_from_amount",
+    EFFECT_PUMP_SWITCH_PT_UNTIL_END_OF_TURN => "effect.pump_switch_pt_until_end_of_turn",
     EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES => "effect.pump_strip_keywords_from_opponents_creatures",
+    EFFECT_PUMP_TARGET_LOSES_KEYWORDS => "effect.pump_target_loses_keywords",
     EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS => "effect.pump_target_becomes_subtypes_while_source_remains",
+    EFFECT_PUMP_TARGET_BECOMES_CHOSEN_COLOR => "effect.pump_target_becomes_chosen_color",
     EFFECT_PUMP_TARGET_BECOMES_COLOR => "effect.pump_target_becomes_color",
+    EFFECT_PUMP_THAT_CREATURE_BECOMES_COLOR => "effect.pump_that_creature_becomes_color",
     EFFECT_PUMP_TARGET_BECOMES_TREASURE => "effect.pump_target_becomes_treasure",
     EFFECT_PUMP_WEAKEN_EACH_CREATURE => "effect.pump_weaken_each_creature",
     EFFECT_REVEAL_TOP_AND_DRAIN_MUTUAL => "effect.reveal_top_and_drain_mutual",
@@ -264,29 +300,49 @@ message_keys! {
     EFFECT_REVEAL_TOP_TO_HAND => "effect.reveal_top_to_hand",
     EFFECT_REVEAL_UNTIL => "effect.reveal_until",
     EFFECT_SACRIFICE_ENCHANTED_CREATURE => "effect.sacrifice_enchanted_creature",
+    EFFECT_SACRIFICE_LINKED_TWIN => "effect.sacrifice_linked_twin",
     EFFECT_SACRIFICE_OBJECT => "effect.sacrifice_object",
     EFFECT_SACRIFICE_SOURCE => "effect.sacrifice_source",
     EFFECT_SCRY => "effect.scry",
     EFFECT_SEQUENCE => "effect.sequence",
     EFFECT_STATIC_ALL_LANDS_OF_TYPE_BECOME => "effect.static_all_lands_of_type_become",
+    EFFECT_STATIC_OPPONENT_LAND_ENTRY_COSTS_A_LAND => "effect.static_opponent_land_entry_costs_a_land",
     EFFECT_STATIC_ANTHEM => "effect.static_anthem",
     EFFECT_STATIC_ATTACK_TAX => "effect.static_attack_tax",
     EFFECT_STATIC_BASE_POWER_TOUGHNESS_FROM_AMOUNT => "effect.static_base_power_toughness_from_amount",
+    EFFECT_STATIC_CANT_ATTACK_FILTER => "effect.static_cant_attack_filter",
     EFFECT_STATIC_CANT_ATTACK_IF_CAST_THIS_TURN => "effect.static_cant_attack_if_cast_this_turn",
+    EFFECT_STATIC_MAX_ATTACKERS_EACH_COMBAT => "effect.static_max_attackers_each_combat",
+    EFFECT_STATIC_MAX_BLOCKERS_EACH_COMBAT => "effect.static_max_blockers_each_combat",
+    EFFECT_STATIC_CANT_ATTACK_IF_ATTACKED_LAST_OWN_TURN => "effect.static_cant_attack_if_attacked_last_own_turn",
+    EFFECT_STATIC_CANT_ATTACK_PLAYER_UNLESS_THEY_ACTED => "effect.static_cant_attack_player_unless_they_acted",
+    EFFECT_MISC_THAT_CREATURE_CANT_ATTACK_NEXT_OWN_TURN => "effect.misc_that_creature_cant_attack_next_own_turn",
+    EFFECT_MISC_SOURCE_ASSIGNS_NO_COMBAT_DAMAGE_THIS_TURN => "effect.misc_source_assigns_no_combat_damage_this_turn",
+    EFFECT_MISC_SOURCE_CANT_ATTACK_THIS_COMBAT => "effect.misc_source_cant_attack_this_combat",
+    EFFECT_MISC_YOUR_ATTACKS_DONT_TAP_WHILE_SOURCE_UNTAPPED_THIS_COMBAT => "effect.misc_your_attacks_dont_tap_while_source_untapped_this_combat",
+    EFFECT_MISC_THAT_CREATURE_AND_ITS_BLOCKERS_ASSIGN_NO_COMBAT_DAMAGE_THIS_TURN => "effect.misc_that_creature_and_its_blockers_assign_no_combat_damage_this_turn",
     EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS => "effect.static_cant_attack_unless_defender_controls",
     EFFECT_STATIC_CANT_BE_ATTACKED_BY => "effect.static_cant_be_attacked_by",
     EFFECT_STATIC_MAY_SKIP_DRAW_FOR_CANT_BE_ATTACKED_BY => "effect.static_may_skip_draw_for_cant_be_attacked_by",
     EFFECT_STATIC_CANT_BLOCK_FILTER => "effect.static_cant_block_filter",
     EFFECT_STATIC_CANT_BE_BLOCKED_BY => "effect.static_cant_be_blocked_by",
+    EFFECT_STATIC_CANT_BE_TARGETED_BY => "effect.static_cant_be_targeted_by",
+    EFFECT_STATIC_MUST_BE_BLOCKED_BY => "effect.static_must_be_blocked_by",
+    EFFECT_STATIC_CANT_BE_TARGETED_BY_SUBTYPE_ONLY_EFFECTS => "effect.static_cant_be_targeted_by_subtype_only_effects",
     EFFECT_STATIC_CANT_BLOCK_ATTACKERS => "effect.static_cant_block_attackers",
     EFFECT_STATIC_CAN_BLOCK_ADDITIONAL => "effect.static_can_block_additional",
+    EFFECT_STATIC_LANDWALK_NEGATED => "effect.static_landwalk_negated",
     EFFECT_STATIC_CANT_CAST_DURING_COMBAT => "effect.static_cant_cast_during_combat",
     EFFECT_STATIC_CANT_CAST_IF_ATTACKED_THIS_TURN => "effect.static_cant_cast_if_attacked_this_turn",
     EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD => "effect.static_discard_to_library_top_instead",
     EFFECT_STATIC_DOESNT_UNTAP => "effect.static_doesnt_untap",
+    EFFECT_STATIC_RETURN_TO_HAND_INSTEAD_OF_DYING => "effect.static_return_to_hand_instead_of_dying",
     EFFECT_STATIC_PLAYERS_SKIP_UNTAP_STEPS => "effect.static_players_skip_untap_steps",
+    EFFECT_STATIC_PLAYERS_PLAY_WITH_HANDS_REVEALED => "effect.static_players_play_with_hands_revealed",
+    EFFECT_STATIC_PLAYERS_PLAY_WITH_LIBRARY_TOPS_REVEALED => "effect.static_players_play_with_library_tops_revealed",
     EFFECT_STATIC_UNTAP_AT_MOST_ONE => "effect.static_untap_at_most_one",
     EFFECT_STATIC_MAY_SKIP_TURN_WHILE_TAPPED => "effect.static_may_skip_turn_while_tapped",
+    EFFECT_STATIC_REGENERATES_INSTEAD_OF_BEING_DESTROYED => "effect.static_regenerates_instead_of_being_destroyed",
     EFFECT_CHOICE_TRIGGERING_PLAYER_MAY_PAY => "effect.choice_triggering_player_may_pay",
     EFFECT_STATIC_MUST_ATTACK_EACH_COMBAT => "effect.static_must_attack_each_combat",
     EFFECT_STATIC_OPPONENTS_CANT_SEARCH_LIBRARIES => "effect.static_opponents_cant_search_libraries",
@@ -294,16 +350,19 @@ message_keys! {
     EFFECT_STATIC_CAST_X_REPLACEMENT => "effect.static_cast_x_replacement",
     EFFECT_STATIC_CONTROL_ATTACHED => "effect.static_control_attached",
     EFFECT_STATIC_COUNTER_REPLACEMENT => "effect.static_counter_replacement",
+    EFFECT_STATIC_COUNTER_MAXIMUM => "effect.static_counter_maximum",
     EFFECT_STATIC_COUNTER_SCALED_ATTACK_TAX => "effect.static_counter_scaled_attack_tax",
     EFFECT_STATIC_CREATURES_YOU_CONTROL_ENTER_WITH_COUNTERS => "effect.static_creatures_you_control_enter_with_counters",
     EFFECT_STATIC_ENTERS_WITH_COUNTERS => "effect.static_enters_with_counters",
+    EFFECT_STATIC_FILTERED_ANTHEM => "effect.static_filtered_anthem",
     EFFECT_STATIC_GRANT_ACTIVATED_ABILITY => "effect.static_grant_activated_ability",
     EFFECT_STATIC_GRANT_MANA_ABILITY => "effect.static_grant_mana_ability",
     EFFECT_STATIC_GRANT_TO_ATTACHED => "effect.static_grant_to_attached",
-    EFFECT_STATIC_KEYWORD_ANTHEM => "effect.static_keyword_anthem",
     EFFECT_STATIC_LIFE_GAIN_REPLACEMENT => "effect.static_life_gain_replacement",
     EFFECT_STATIC_LIFE_GAIN_BECOMES_DRAW => "effect.static_life_gain_becomes_draw",
+    EFFECT_STATIC_DRAWS_AFTER_THE_FIRST_EACH_DRAW_STEP_BECOME_DISCARD_THEN_DRAW => "effect.static_draws_after_the_first_each_draw_step_become_discard_then_draw",
     EFFECT_STATIC_NO_MAXIMUM_HAND_SIZE => "effect.static_no_maximum_hand_size",
+    EFFECT_STATIC_OPPONENTS_PERMANENTS_ENTER_TAPPED => "effect.static_opponents_permanents_enter_tapped",
     EFFECT_STATIC_PLAY_ANY_NUMBER_OF_LANDS => "effect.static_play_any_number_of_lands",
     EFFECT_STATIC_PLAY_FROM_GRAVEYARD_ONCE_PER_TURN => "effect.static_play_from_graveyard_once_per_turn",
     EFFECT_STATIC_PREVENT_COMBAT_DAMAGE => "effect.static_prevent_combat_damage",
@@ -312,6 +371,7 @@ message_keys! {
     EFFECT_STATIC_PREVENT_DAMAGE_TO_SELF_REMOVING_COUNTERS_GIVING_RAD => "effect.static_prevent_damage_to_self_removing_counters_giving_rad",
     EFFECT_STATIC_PREVENT_NONCOMBAT_DAMAGE_TO_OTHER_CREATURES_YOU_CONTROL => "effect.static_prevent_noncombat_damage_to_other_creatures_you_control",
     EFFECT_STATIC_REDIRECT_UNBLOCKED_DAMAGE_TO_SELF => "effect.static_redirect_unblocked_damage_to_self",
+    EFFECT_STATIC_REPLACE_DAMAGE_TO_YOU => "effect.static_replace_damage_to_you",
     EFFECT_STATIC_REDUCE_SPELL_COST => "effect.static_reduce_spell_cost",
     EFFECT_STATIC_TAX_SPELL_COST => "effect.static_tax_spell_cost",
     EFFECT_STATIC_TAX_ACTIVATED_ABILITY => "effect.static_tax_activated_ability",
@@ -341,9 +401,11 @@ message_keys! {
     EFFECT_ZONE_MANIFEST => "effect.zone_manifest",
     EFFECT_ZONE_MASS_RETURN_FROM_GRAVEYARD => "effect.zone_mass_return_from_graveyard",
     EFFECT_ZONE_REANIMATE_DYING_ENCHANTED_CREATURE => "effect.zone_reanimate_dying_enchanted_creature",
+    EFFECT_ZONE_RETURN_DYING_ENCHANTED_CREATURE_TO_HAND => "effect.zone_return_dying_enchanted_creature_to_hand",
     EFFECT_ZONE_REANIMATE_RANDOM_FROM_TARGET_OPPONENT_GRAVEYARD => "effect.zone_reanimate_random_from_target_opponent_graveyard",
     EFFECT_ZONE_REANIMATE_TO_BATTLEFIELD => "effect.zone_reanimate_to_battlefield",
     EFFECT_ZONE_REFLEXIVE_TRIGGER => "effect.zone_reflexive_trigger",
+    EFFECT_ZONE_RETURN_ALL_EXILED_WITH_THIS => "effect.zone_return_all_exiled_with_this",
     EFFECT_ZONE_RETURN_ALL_TO_HAND => "effect.zone_return_all_to_hand",
     EFFECT_ZONE_RETURN_EXILED_CARD_TO_OWNERS_GRAVEYARD => "effect.zone_return_exiled_card_to_owners_graveyard",
     EFFECT_ZONE_RETURN_FLICKERED_CARD => "effect.zone_return_flickered_card",
@@ -607,6 +669,11 @@ fn color_filter_token(filter: ColorFilter) -> String {
         ColorFilter::Red => "red".to_string(),
         ColorFilter::Green => "green".to_string(),
         ColorFilter::NotColor(color) => format!("not_{}", color_token(color)),
+        // "A black or red source" (Greater Realm of Preservation) — the union reads as its
+        // members joined, the same shape `color_list_param` gives an authored colour list.
+        ColorFilter::AnyOf { colors } => {
+            join_tokens(colors.iter().map(|color| color_token(*color).to_string()))
+        }
     }
 }
 
@@ -648,9 +715,12 @@ fn keyword_token(keyword: Keyword) -> String {
         }
         // The printed keyword names itself after the land: "islandwalk", "forestwalk", …
         Keyword::Landwalk(land) => format!("{}walk", land.as_str().to_lowercase()),
+        // The one walk named after a supertype, so it reads as two words rather than a compound.
+        Keyword::LegendaryLandwalk => "legendary_landwalk".to_string(),
         Keyword::Hexproof => "hexproof".to_string(),
         Keyword::Infect => "infect".to_string(),
         Keyword::Toxic(n) => format!("toxic_{n}"),
+        Keyword::Rampage(n) => format!("rampage_{n}"),
         Keyword::Shroud => "shroud".to_string(),
         Keyword::Prowess => "prowess".to_string(),
         Keyword::Skulk => "skulk".to_string(),
@@ -659,6 +729,12 @@ fn keyword_token(keyword: Keyword) -> String {
         Keyword::LesserPowerCantBlock => "lesser_power_cant_block".to_string(),
         Keyword::CantBlock => "cant_block".to_string(),
         Keyword::Banding => "banding".to_string(),
+        Keyword::BandsWith(BandsWithQuality::Legendary) => "bands_with_legendary".to_string(),
+        // The quality is a card name rather than a supertype, so the name rides along in the
+        // token: "bands_with_named_wolves_of_the_hunt".
+        Keyword::BandsWith(BandsWithQuality::Named(name)) => {
+            format!("bands_with_named_{}", snake_text(name))
+        }
         Keyword::CanBlockOnlyFlyers => "can_block_only_flyers".to_string(),
         Keyword::Decayed => "decayed".to_string(),
         Keyword::Myriad => "myriad".to_string(),
@@ -667,6 +743,18 @@ fn keyword_token(keyword: Keyword) -> String {
 
 fn keyword_list_param(name: &'static str, values: &[Keyword]) -> MessageParam {
     owned_str_param(name, join_tokens(values.iter().copied().map(keyword_token)))
+}
+
+/// "all landwalk abilities" / "all \"bands with other\" abilities" — a whole keyword family named
+/// at once (Hammerheim, Shelkin Brownie), rather than one keyword per token.
+fn keyword_family_list_param(name: &'static str, values: &[KeywordFamily]) -> MessageParam {
+    owned_str_param(
+        name,
+        join_tokens(values.iter().map(|family| match family {
+            KeywordFamily::Landwalk => "landwalk".to_string(),
+            KeywordFamily::BandsWith => "bands_with".to_string(),
+        })),
+    )
 }
 
 /// Which combat state a defining P/T count is gated on, for the log line's "As long as …" lead.
@@ -697,6 +785,17 @@ fn counter_kind_token(kind: CounterKind) -> &'static str {
         CounterKind::Corpse => "corpse",
         CounterKind::Vitality => "vitality",
         CounterKind::Mire => "mire",
+        CounterKind::Carrion => "carrion",
+        CounterKind::MinusZeroMinusTwo => "minus_zero_minus_two",
+        CounterKind::MinusZeroMinusOne => "minus_zero_minus_one",
+        CounterKind::Intervention => "intervention",
+        CounterKind::Glyph => "glyph",
+        CounterKind::Sleep => "sleep",
+        CounterKind::Pupa => "pupa",
+        CounterKind::Matrix => "matrix",
+        CounterKind::Hatchling => "hatchling",
+        CounterKind::Dream => "dream",
+        CounterKind::Pin => "pin",
     }
 }
 
@@ -926,6 +1025,12 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     if let Some(parity) = filter.power_parity {
         parts.push(format!("power_{}", parity_token(parity)));
     }
+    if let Some(max) = filter.toughness_max {
+        parts.push(format!("toughness_lte_{max}"));
+    }
+    if let Some(min) = filter.toughness_min {
+        parts.push(format!("toughness_gte_{min}"));
+    }
     if !filter.exclude.is_empty() {
         parts.push(format!("excluding_{}", type_set_token(filter.exclude)));
     }
@@ -943,6 +1048,15 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     }
     if filter.blocking {
         parts.push("blocking".to_string());
+    }
+    if filter.blocking_source {
+        parts.push("blocking_source".to_string());
+    }
+    if filter.attacking_or_blocking {
+        parts.push("attacking_or_blocking".to_string());
+    }
+    if filter.tapped_or_blocking {
+        parts.push("tapped_or_blocking".to_string());
     }
     if filter.unblocked {
         parts.push("unblocked".to_string());
@@ -965,8 +1079,14 @@ fn permanent_filter_token(filter: PermanentFilter) -> String {
     if let Some(name) = filter.name {
         parts.push(format!("named_{}", snake_text(name)));
     }
+    if let Some(name) = filter.exclude_name {
+        parts.push(format!("not_named_{}", snake_text(name)));
+    }
     if filter.nonlegendary {
         parts.push("nonlegendary".to_string());
+    }
+    if filter.legendary {
+        parts.push("legendary".to_string());
     }
     if filter.nonlair {
         parts.push("nonlair".to_string());
@@ -1077,8 +1197,11 @@ fn spell_filter_token(filter: SpellFilter) -> String {
         SpellFilter::SpellsThatTargetACreature => "spells_that_target_a_creature".to_string(),
         SpellFilter::Aura => "aura".to_string(),
         SpellFilter::InstantOrSorcery => "instant_or_sorcery".to_string(),
+        SpellFilter::Instant => "instant".to_string(),
+        SpellFilter::Sorcery => "sorcery".to_string(),
         SpellFilter::Enchantment => "enchantment".to_string(),
         SpellFilter::ArtifactOrEnchantment => "artifact_or_enchantment".to_string(),
+        SpellFilter::InstantOrEnchantment => "instant_or_enchantment".to_string(),
         SpellFilter::HasSubtype(subtypes) => format!("has_subtype_{}", string_list_token(subtypes)),
         SpellFilter::HasXInCost => "has_x_in_cost".to_string(),
         SpellFilter::InstantOrSorceryWithXInCost => "instant_or_sorcery_with_x_in_cost".to_string(),
@@ -1089,6 +1212,13 @@ fn spell_filter_token(filter: SpellFilter) -> String {
         SpellFilter::CastFromNonHandZone => "cast_from_non_hand_zone".to_string(),
         SpellFilter::Color(color) => format!("color_{}", color_token(color)),
         SpellFilter::ManaValueEqualsX => "mana_value_equals_x".to_string(),
+        SpellFilter::InstantOrAuraTargetsPermanentYouControl => {
+            "instant_or_aura_targets_permanent_you_control".to_string()
+        }
+        SpellFilter::CreatureNotSharingColorWithCreatureYouControl => {
+            "creature_not_sharing_color_with_creature_you_control".to_string()
+        }
+        SpellFilter::WouldDestroyLandYouControl => "would_destroy_land_you_control".to_string(),
     }
 }
 
@@ -1103,6 +1233,9 @@ fn target_spec_token(target: TargetSpec) -> String {
         TargetSpec::CreatureYouControl => "creature_you_control".to_string(),
         TargetSpec::Player => "player".to_string(),
         TargetSpec::OpponentPlayer => "opponent".to_string(),
+        TargetSpec::PlayerWhoCastASorceryThisTurn => {
+            "player_who_cast_a_sorcery_this_turn".to_string()
+        }
         TargetSpec::AnyTarget => "any".to_string(),
         TargetSpec::CreatureOrPlaneswalker => "creature_or_planeswalker".to_string(),
         TargetSpec::PlayerOrPlaneswalker => "player_or_planeswalker".to_string(),
@@ -1128,7 +1261,7 @@ fn target_spec_token(target: TargetSpec) -> String {
             format!("spell_on_stack_{}", spell_filter_token(filter))
         }
         TargetSpec::SingleTargetSpellOnStack => "single_target_spell_on_stack".to_string(),
-        TargetSpec::ActivatedAbilityOnStack => "activated_ability_on_stack".to_string(),
+        TargetSpec::ActivatedAbilityOnStack { .. } => "activated_ability_on_stack".to_string(),
         TargetSpec::SpellOrPermanent => "spell_or_permanent".to_string(),
         TargetSpec::ArtifactEnchantmentOrPlaneswalker => {
             "artifact_enchantment_or_planeswalker".to_string()
@@ -1160,6 +1293,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::TargetManaValue => "target_mana_value",
         Amount::PerCounterOnSource => "per_counter_on_source",
         Amount::PerCounterOfKindOnSource { .. } => "per_counter_of_kind_on_source",
+        Amount::PerCounterOfKindOnAttached { .. } => "per_counter_of_kind_on_attached",
         Amount::YourLifeTotal => "your_life_total",
         Amount::LifeGainedThisTurn => "life_gained_this_turn",
         Amount::DamageTakenThisTurn => "damage_taken_this_turn",
@@ -1173,6 +1307,7 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::NontokenCreaturesEnteredThisTurn => "nontoken_creatures_entered_this_turn",
         Amount::SacrificedCreaturePower => "sacrificed_creature_power",
         Amount::SacrificedCreatureToughness => "sacrificed_creature_toughness",
+        Amount::DiscardCostWasLand(_) => "discard_cost_was_land",
         Amount::DyingEnchantedCreatureToughness => "dying_enchanted_creature_toughness",
         Amount::CommanderColorCount => "commander_color_count",
         Amount::TotalPowerYouControl => "total_power_you_control",
@@ -1187,6 +1322,13 @@ fn amount_token(amount: Amount) -> &'static str {
         Amount::CardsDiscardedThisWay => "cards_discarded_this_way",
         Amount::CreaturesSacrificedThisWay => "creatures_sacrificed_this_way",
         Amount::CountersRemovedThisWay => "counters_removed_this_way",
+        Amount::DamageDealtThisWay => "damage_dealt_this_way",
+        Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame => {
+            "damage_dealt_to_source_this_turn_by_others_named_the_same"
+        }
+        Amount::DamageDealtByChosenSorceryThisTurn => "damage_dealt_by_chosen_sorcery_this_turn",
+        Amount::BlockersBeyondFirst { .. } => "blockers_beyond_first",
+        Amount::CreaturesBlockingThatCreature { .. } => "creatures_blocking_that_creature",
         Amount::Combine { .. } => "combine",
         Amount::RevealedCreatureManaValue => "revealed_creature_mana_value",
         Amount::PermanentsDiedThisTurn => "permanents_died_this_turn",
@@ -1296,6 +1438,12 @@ impl EffectMessage for Effect {
             Effect::Life(SourceOwnerLosesHalfTheirLife) => MessageRef::new(
                 MessageKey::EFFECT_LIFE_SOURCE_OWNER_LOSES_HALF_THEIR_LIFE,
             ),
+            Effect::Life(GainWhenTargetIsDamagedByAttackerThisTurn { .. }) => MessageRef::new(
+                MessageKey::EFFECT_LIFE_GAIN_WHEN_TARGET_IS_DAMAGED_BY_ATTACKER_THIS_TURN,
+            ),
+            Effect::Life(Exchange { who }) => {
+                MessageRef::new(MessageKey::EFFECT_LIFE_EXCHANGE).with_params(vec![who_param(who)])
+            }
             Effect::Destroy(DestroyEffect::Target { .. }) => MessageRef::new(MessageKey::EFFECT_DESTROY_TARGET),
             Effect::Destroy(DestroyEffect::All { filter, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_ALL)
@@ -1303,6 +1451,14 @@ impl EffectMessage for Effect {
             }
             // The key's name predates the variant's; its string is already "Destroy that creature",
             // which reads right for the damage look-back and Stone Giant's delayed landing alike.
+            // Glyph of Doom / Glyph of Reincarnation — the reincarnate rider is a whole second
+            // sentence, so it gets its own key rather than a parameter on the first.
+            Effect::Destroy(DestroyEffect::BlockedByTarget { reincarnate, .. }) => {
+                MessageRef::new(match reincarnate {
+                    true => MessageKey::EFFECT_DESTROY_BLOCKED_BY_TARGET_REINCARNATE,
+                    false => MessageKey::EFFECT_DESTROY_BLOCKED_BY_TARGET,
+                })
+            }
             Effect::Destroy(ThatCreature { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_DESTROY_TRIGGERING_DAMAGED_CREATURE)
             }
@@ -1317,11 +1473,22 @@ impl EffectMessage for Effect {
             }
             Effect::Exile(Graveyard) => MessageRef::new(MessageKey::EFFECT_EXILE_GRAVEYARD),
             Effect::Exile(AllGraveyards) => MessageRef::new(MessageKey::EFFECT_EXILE_ALL_GRAVEYARDS),
-            Effect::Exile(ExileEffect::Object { .. }) => MessageRef::new(MessageKey::EFFECT_EXILE_OBJECT),
+            Effect::Exile(ExileEffect::LinkedTwin) => {
+                MessageRef::new(MessageKey::EFFECT_EXILE_LINKED_TWIN)
+            }
+            Effect::Sacrifice(SacrificeEffect::LinkedTwin) => {
+                MessageRef::new(MessageKey::EFFECT_SACRIFICE_LINKED_TWIN)
+            }
+            // Sword of the Ages' per-card exile leaf shares the plain "exile it" line — one
+            // sequenced step per sacrificed card, each about a single object.
+            Effect::Exile(ExileEffect::Object { .. } | ExileEffect::SacrificedCard { .. }) => MessageRef::new(MessageKey::EFFECT_EXILE_OBJECT),
             Effect::Sacrifice(SacrificeEffect::Object { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_SACRIFICE_OBJECT)
             }
-            Effect::Sacrifice(Source) => MessageRef::new(MessageKey::EFFECT_SACRIFICE_SOURCE),
+            Effect::Exile(ExileEffect::Source) => MessageRef::new(MessageKey::EFFECT_EXILE_SOURCE),
+            Effect::Sacrifice(SacrificeEffect::Source) => {
+                MessageRef::new(MessageKey::EFFECT_SACRIFICE_SOURCE)
+            }
             Effect::Sacrifice(EnchantedCreature { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_SACRIFICE_ENCHANTED_CREATURE)
             }
@@ -1345,17 +1512,31 @@ impl EffectMessage for Effect {
             Effect::Control(GainControlWhile { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_GAIN_CONTROL_WHILE)
             }
+            Effect::Control(OpponentGainsControlAll { filter, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_CONTROL_OPPONENT_GAINS_CONTROL_ALL)
+                    .with_params(vec![permanent_filter_param("filter", filter)])
+            }
             Effect::Control(TargetOpponentGainsControl { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_TARGET_OPPONENT_GAINS_CONTROL)
             }
-            Effect::Control(ExchangeControl { .. }) => {
+            // ponytail: Juxtapose's chosen-by-mana-value exchange reuses the plain exchange key —
+            // both describe "exchange control", and the key set is mirrored by hand into the
+            // client i18n catalog. Give it its own key if the client ever needs to say which.
+            Effect::Control(ExchangeControl { .. } | ExchangeGreatestManaValue { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_EXCHANGE_CONTROL)
+            }
+            Effect::Control(MoveAura { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_CONTROL_MOVE_AURA)
             }
             Effect::Control(ExchangeAllCreaturesUntilEndOfTurn { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_EXCHANGE_ALL_CREATURES_UNTIL_END_OF_TURN)
             }
             Effect::Control(GainControlAllUntilEndOfTurn { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_GAIN_CONTROL_ALL_UNTIL_END_OF_TURN)
+            }
+            Effect::Control(GainControlAllWhile { filter }) => {
+                MessageRef::new(MessageKey::EFFECT_CONTROL_GAIN_CONTROL_ALL_WHILE)
+                    .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Control(RevertAllCreaturesToOwners) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_REVERT_ALL_CREATURES_TO_OWNERS)
@@ -1368,6 +1549,9 @@ impl EffectMessage for Effect {
             Effect::Control(TapAllTargetPlayerControls { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_CONTROL_TAP_ALL_TARGET_PLAYER_CONTROLS)
                     .with_params(vec![permanent_filter_param("filter", filter)])
+            }
+            Effect::Control(TapBlockersOfTarget { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_CONTROL_TAP_BLOCKERS_OF_TARGET)
             }
             Effect::Control(TapSource) => MessageRef::new(MessageKey::EFFECT_CONTROL_TAP_SOURCE),
             Effect::Control(UntapAll { filter }) => {
@@ -1420,6 +1604,13 @@ impl EffectMessage for Effect {
                         kind.map_or("plus_one_plus_one", counter_kind_token),
                     )])
             }
+            Effect::Counters(RemoveCounterFromAttached { kind }) => {
+                MessageRef::new(MessageKey::EFFECT_COUNTERS_REMOVE_COUNTER_FROM_ATTACHED)
+                    .with_params(vec![str_param(
+                        "kind",
+                        kind.map_or("plus_one_plus_one", counter_kind_token),
+                    )])
+            }
             Effect::Mana(ManaEffect::Add { .. }) => MessageRef::new(MessageKey::EFFECT_MANA_ADD),
             Effect::Mana(ManaEffect::LoseAllUnspent { to_you }) => {
                 MessageRef::new(MessageKey::EFFECT_MANA_LOSE_ALL_UNSPENT)
@@ -1427,6 +1618,10 @@ impl EffectMessage for Effect {
             }
             Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana) => {
                 MessageRef::new(MessageKey::EFFECT_MANA_TARGET_PLAYER_TAPS_LANDS_FOR_MANA)
+            }
+            Effect::Mana(ManaEffect::TargetLandProducesColorlessInsteadOf { color, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MANA_TARGET_LAND_PRODUCES_COLORLESS_INSTEAD_OF)
+                    .with_params(vec![str_param("color", color_token(color))])
             }
             Effect::Mill(Mill { who, count }) => MessageRef::new(MessageKey::EFFECT_MILL_MILL)
                 .with_params(vec![who_param(who), amount_param("count", count)]),
@@ -1449,6 +1644,9 @@ impl EffectMessage for Effect {
             }
             Effect::Mill(ExileTargetFromGraveyardWithThis) => {
                 MessageRef::new(MessageKey::EFFECT_MILL_EXILE_TARGET_FROM_GRAVEYARD_WITH_THIS)
+            }
+            Effect::Mill(ExileTopFaceDownWithThis) => {
+                MessageRef::new(MessageKey::EFFECT_MILL_EXILE_TOP_FACE_DOWN_WITH_THIS)
             }
             Effect::Mill(ExileTargetFromGraveyardCreateTokenCopy { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_MILL_EXILE_TARGET_FROM_GRAVEYARD_CREATE_TOKEN_COPY)
@@ -1488,6 +1686,9 @@ impl EffectMessage for Effect {
             Effect::Pump(GrantChosenColorProtectionUntilEndOfTurn { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN)
             }
+            Effect::Pump(GrantChosenLandwalkSelfUntilEndOfTurn) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_CHOSEN_LANDWALK_SELF_UNTIL_END_OF_TURN)
+            }
             Effect::Pump(RadianceChosenColorProtectionUntilEndOfTurn { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_RADIANCE_CHOSEN_COLOR_PROTECTION_UNTIL_END_OF_TURN)
             }
@@ -1502,6 +1703,14 @@ impl EffectMessage for Effect {
                 keyword_list_param("keywords", keywords),
                 permanent_filter_param("filter", filter),
             ]),
+            Effect::Pump(GrantKeywordsIndefinitely { keywords, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_KEYWORDS_INDEFINITELY)
+                    .with_params(vec![keyword_list_param("keywords", keywords)])
+            }
+            Effect::Pump(GrantSelfKeywordsUntilNextUpkeep { keywords, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_SELF_KEYWORDS_UNTIL_NEXT_UPKEEP)
+                    .with_params(vec![keyword_list_param("keywords", keywords)])
+            }
             Effect::Pump(GrantKeywordsToPermanentsYouControlUntilEndOfTurn { keywords, filter }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_GRANT_KEYWORDS_TO_PERMANENTS_YOU_CONTROL_UNTIL_END_OF_TURN)
                     .with_params(vec![keyword_list_param("keywords", keywords), permanent_filter_param("filter", filter)])
@@ -1530,6 +1739,22 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_PUMP_SET_OWN_BASE_PT_FROM_AMOUNT)
                     .with_params(vec![amount_param("amount", amount)])
             }
+            Effect::Pump(SetOwnBaseToughnessFromAmount { amount, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_SET_OWN_BASE_TOUGHNESS_FROM_AMOUNT)
+                    .with_params(vec![amount_param("amount", amount)])
+            }
+            Effect::Pump(SetOwnBasePtFromTargetUntilEndOfNextUpkeep { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_SET_OWN_BASE_PT_FROM_TARGET_UNTIL_END_OF_NEXT_UPKEEP)
+            }
+            Effect::Pump(SetBasePtCreaturesThatDamagedSourceThisTurn { power, toughness }) => {
+                MessageRef::new(
+                    MessageKey::EFFECT_PUMP_SET_BASE_PT_CREATURES_THAT_DAMAGED_SOURCE_THIS_TURN,
+                )
+                .with_params(vec![int_param("power", power), int_param("toughness", toughness)])
+            }
+            Effect::Pump(SwitchPtUntilEndOfTurn { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_SWITCH_PT_UNTIL_END_OF_TURN)
+            }
             Effect::Pump(PumpOtherAttackersAttackingYourOpponents { power, toughness }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_PUMP_OTHER_ATTACKERS_ATTACKING_YOUR_OPPONENTS)
                     .with_params(vec![int_param("power", power), int_param("toughness", toughness)])
@@ -1550,6 +1775,18 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_PUMP_ENCHANTED_CREATURE_LOSES_KEYWORDS)
                     .with_params(vec![keyword_list_param("keywords", keywords)])
             }
+            Effect::Pump(TargetLosesKeywords {
+                keywords,
+                families,
+                until_end_of_turn,
+                choose_one,
+                ..
+            }) => MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_LOSES_KEYWORDS).with_params(vec![
+                keyword_list_param("keywords", keywords),
+                keyword_family_list_param("families", families),
+                bool_param("until_end_of_turn", until_end_of_turn),
+                bool_param("choose_one", choose_one),
+            ]),
             Effect::Pump(StripKeywordsFromOpponentsCreatures { keywords }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_STRIP_KEYWORDS_FROM_OPPONENTS_CREATURES)
                     .with_params(vec![keyword_list_param("keywords", keywords)])
@@ -1657,7 +1894,7 @@ impl EffectMessage for Effect {
             Effect::Zone(ReturnObjectToHand { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_OBJECT_TO_HAND)
             }
-            Effect::Zone(ReturnThisAuraFromGraveyardAttachedToChosenHost) => {
+            Effect::Zone(ReturnThisAuraFromGraveyardAttachedToChosenHost { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_THIS_AURA_FROM_GRAVEYARD_ATTACHED_TO_CHOSEN_HOST)
             }
             Effect::Zone(ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost) => {
@@ -1680,11 +1917,19 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_THIS_FROM_GRAVEYARD_TO_BATTLEFIELD)
                     .with_params(vec![bool_param("tapped", tapped)])
             }
+            // One key for both destinations — the hand/graveyard split rides `to_graveyard`.
+            Effect::Zone(ReturnAllExiledWithThis { to_graveyard }) => {
+                MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_ALL_EXILED_WITH_THIS)
+                    .with_params(vec![bool_param("to_graveyard", to_graveyard)])
+            }
             Effect::Zone(ReturnAllToHand { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_ALL_TO_HAND)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
-            Effect::Zone(ReturnFromGraveyardToHand { .. }) => {
+            // Spurnmage Advocate's plural second clause reads the same to a player — "return it to
+            // its owner's hand", once per chosen card — so it shares the singular's key.
+            Effect::Zone(ReturnFromGraveyardToHand { .. })
+            | Effect::Zone(ReturnTargetCardsFromGraveyardToHand { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_FROM_GRAVEYARD_TO_HAND)
             }
             Effect::Zone(ReanimateRandomFromTargetOpponentGraveyard { .. }) => {
@@ -1720,6 +1965,9 @@ impl EffectMessage for Effect {
             Effect::Zone(ReanimateDyingEnchantedCreature { under_owner, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_REANIMATE_DYING_ENCHANTED_CREATURE)
                     .with_params(vec![bool_param("under_owner", under_owner)])
+            }
+            Effect::Zone(ReturnDyingEnchantedCreatureToHand { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_ZONE_RETURN_DYING_ENCHANTED_CREATURE_TO_HAND)
             }
             Effect::Zone(ExileDeadCreatureCreateCopyWithSubtype { add_subtypes, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_ZONE_EXILE_DEAD_CREATURE_CREATE_COPY_WITH_SUBTYPE)
@@ -1825,6 +2073,10 @@ impl EffectMessage for Effect {
             Effect::Dig(LookAtTargetPlayersHand) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_LOOK_AT_TARGET_PLAYERS_HAND)
             }
+            Effect::Dig(LookAtTargetPlayersTop { count }) => {
+                MessageRef::new(MessageKey::EFFECT_DIG_LOOK_AT_TARGET_PLAYERS_TOP)
+                    .with_params(vec![int_param("count", count)])
+            }
             Effect::Dig(RearrangeTargetPlayersTop { count }) => {
                 MessageRef::new(MessageKey::EFFECT_DIG_REARRANGE_TARGET_PLAYERS_TOP)
                     .with_params(vec![int_param("count", count)])
@@ -1891,10 +2143,15 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DRAW_UP_TO_THEN_OPPONENT_MAY_REPEAT)
                     .with_params(vec![amount_param("count", count)])
             }
-            Effect::Choice(PutFromHandOnTop { count }) => {
-                MessageRef::new(MessageKey::EFFECT_CHOICE_PUT_FROM_HAND_ON_TOP)
-                    .with_params(vec![int_param("count", count)])
-            }
+            Effect::Choice(PutFromHandOnTop {
+                count,
+                drawn_this_turn,
+                life_per_declined,
+            }) => MessageRef::new(MessageKey::EFFECT_CHOICE_PUT_FROM_HAND_ON_TOP).with_params(vec![
+                int_param("count", count),
+                bool_param("drawn_this_turn", drawn_this_turn),
+                int_param("life_per_declined", life_per_declined),
+            ]),
             Effect::Choice(PutLandFromHand { tapped }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_PUT_LAND_FROM_HAND)
                     .with_params(vec![bool_param("tapped", tapped)])
@@ -1914,11 +2171,17 @@ impl EffectMessage for Effect {
             Effect::Choice(EachPlayerChoosesWarOrPeace) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_CHOOSES_WAR_OR_PEACE)
             }
-            Effect::Choice(DiscardYourHand) => MessageRef::new(MessageKey::EFFECT_CHOICE_DISCARD_YOUR_HAND),
+            Effect::Choice(DiscardYourHand { who }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_DISCARD_YOUR_HAND)
+                    .with_params(vec![who_param(who)])
+            }
             Effect::Choice(CastCreatureFaceDown) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_CAST_CREATURE_FACE_DOWN)
             }
-            Effect::Choice(PayOrElse { cost, otherwise }) => {
+            // ponytail: `extra_generic` is left off the wire — the offer the player actually
+            // answers carries the resolved cost (`PendingChoice::PayOrElse`), so the ability's
+            // static description showing the printed pips is the same "{X}" the card prints.
+            Effect::Choice(PayOrElse { cost, otherwise, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_PAY_OR_ELSE)
                     .with_params(vec![mana_param("cost", cost)])
                     .with_children(otherwise.iter().map(|e| e.clone().message()).collect())
@@ -1949,6 +2212,9 @@ impl EffectMessage for Effect {
             ]),
             Effect::Choice(EachPlayerExilesFromGraveyard) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_EXILES_FROM_GRAVEYARD)
+            }
+            Effect::Choice(EachPlayerMayPutPermanentFromHandRepeating) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_MAY_PUT_PERMANENT_FROM_HAND_REPEATING)
             }
             Effect::Choice(DefendersDivideBlockersAmongAttackers) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_DEFENDERS_DIVIDE_BLOCKERS_AMONG_ATTACKERS)
@@ -1992,6 +2258,15 @@ impl EffectMessage for Effect {
             Effect::Choice(EachPlayerNamesCardThenRevealsTop) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_NAMES_CARD_THEN_REVEALS_TOP)
             }
+            Effect::Choice(TargetPlayerNamesCardThenRevealsTop { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_TARGET_PLAYER_NAMES_CARD_THEN_REVEALS_TOP)
+            }
+            Effect::Choice(NameCardThenTargetRevealsAtRandomAndDiscards { count, .. }) => {
+                MessageRef::new(
+                    MessageKey::EFFECT_CHOICE_NAME_CARD_THEN_TARGET_REVEALS_AT_RANDOM_AND_DISCARDS,
+                )
+                .with_params(vec![amount_param("count", count)])
+            }
             Effect::Choice(EachPlayerCreatesFractalFromExiledPower { token }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_CREATES_FRACTAL_FROM_EXILED_POWER)
                     .with_params(vec![name_param("token", token.name)])
@@ -2000,11 +2275,16 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_DISCARDS_HAND_THEN_DRAWS)
                     .with_params(vec![amount_param("count", count)])
             }
-            Effect::Choice(EachPlayerShufflesHandAndGraveyardThenDraws { count }) => {
-                MessageRef::new(
-                    MessageKey::EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_AND_GRAVEYARD_THEN_DRAWS,
-                )
-                .with_params(vec![amount_param("count", count)])
+            Effect::Choice(EachPlayerShufflesHandThenDraws {
+                include_graveyard,
+                count,
+            }) => {
+                // An absent `count` is "that many" — a per-player number the client cannot know,
+                // so it renders the phrase rather than a figure.
+                let mut params = vec![bool_param("include_graveyard", include_graveyard)];
+                params.extend(count.map(|count| amount_param("count", count)));
+                MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_PLAYER_SHUFFLES_HAND_THEN_DRAWS)
+                    .with_params(params)
             }
             Effect::Choice(EachOtherTokenBecomesCopyOfChosen) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_EACH_OTHER_TOKEN_BECOMES_COPY_OF_CHOSEN)
@@ -2016,9 +2296,11 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_SACRIFICE)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
-            Effect::Choice(MayReturnFromGraveyard { filter, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_RETURN_FROM_GRAVEYARD)
-                    .with_params(vec![card_filter_param("filter", filter)])
+            Effect::Choice(MayReturnFromGraveyard { filter, reincarnate, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_RETURN_FROM_GRAVEYARD).with_params(vec![
+                    card_filter_param("filter", filter),
+                    bool_param("reincarnate", reincarnate),
+                ])
             }
             Effect::Choice(MayExileDiscardedNonlandMayPlay { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_EXILE_DISCARDED_NONLAND_MAY_PLAY)
@@ -2029,6 +2311,9 @@ impl EffectMessage for Effect {
             }
             Effect::Choice(MayBlockAttackerOfYourChoice) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_BLOCK_ATTACKER_OF_YOUR_CHOICE)
+            }
+            Effect::Choice(ChooseTargetPlayersDamagingSorcery) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_CHOOSE_TARGET_PLAYERS_DAMAGING_SORCERY)
             }
             Effect::Choice(MayDrawUnlessPays { cost, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_MAY_DRAW_UNLESS_PAYS)
@@ -2053,6 +2338,10 @@ impl EffectMessage for Effect {
             Effect::Choice(SetOwnColorUntilEndOfTurn) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_SET_OWN_COLOR_UNTIL_END_OF_TURN)
             }
+            Effect::Choice(SacrificeAnyNumber { filter }) => {
+                MessageRef::new(MessageKey::EFFECT_CHOICE_SACRIFICE_ANY_NUMBER)
+                    .with_params(vec![permanent_filter_param("filter", filter)])
+            }
             Effect::Choice(SacrificeOwn { filter, count, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_CHOICE_SACRIFICE_OWN)
                     .with_params(vec![permanent_filter_param("filter", filter), int_param("count", count)])
@@ -2069,17 +2358,28 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_GRANT_MANA_ABILITY)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
-            Effect::Static(KeywordAnthem {
+            // The P/T delta rides here too (Arcades Sabboth's "+0/+2", Ivory Guardians' "+2/+2"):
+            // without it an anthem that grants a boost and no keyword describes itself as granting
+            // nothing.
+            Effect::Static(FilteredAnthem {
                 keywords,
+                lose_keywords,
                 filter,
                 all_players,
-            }) => MessageRef::new(MessageKey::EFFECT_STATIC_KEYWORD_ANTHEM).with_params(vec![
+                power,
+                toughness,
+                ..
+            }) => MessageRef::new(MessageKey::EFFECT_STATIC_FILTERED_ANTHEM).with_params(vec![
                 keyword_list_param("keywords", keywords),
+                keyword_list_param("lose_keywords", lose_keywords),
                 permanent_filter_param("filter", filter),
                 bool_param("all_players", all_players),
+                amount_param("power", power),
+                amount_param("toughness", toughness),
             ]),
             Effect::Static(AllLandsOfTypeBecome {
                 land_types,
+                all_lands,
                 set_subtypes,
                 add_types,
                 base_power,
@@ -2088,6 +2388,7 @@ impl EffectMessage for Effect {
             }) => MessageRef::new(MessageKey::EFFECT_STATIC_ALL_LANDS_OF_TYPE_BECOME).with_params(
                 vec![
                     string_list_param("land_types", land_types),
+                    bool_param("all_lands", all_lands),
                     string_list_param("set_subtypes", set_subtypes),
                     bool_param("creature", add_types.intersects(TypeSet::CREATURE)),
                     int_param("base_power", base_power),
@@ -2095,6 +2396,9 @@ impl EffectMessage for Effect {
                     color_list_param("add_colors", add_colors),
                 ],
             ),
+            Effect::Static(OpponentLandEntryCostsALand) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_OPPONENT_LAND_ENTRY_COSTS_A_LAND)
+            }
             Effect::Static(Anthem {
                 power,
                 toughness,
@@ -2164,6 +2468,9 @@ impl EffectMessage for Effect {
             Effect::Static(DiscardToLibraryTopInstead) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_DISCARD_TO_LIBRARY_TOP_INSTEAD)
             }
+            Effect::Static(ReturnToHandInsteadOfDying) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_RETURN_TO_HAND_INSTEAD_OF_DYING)
+            }
             Effect::Static(NoMaximumHandSize) => MessageRef::new(MessageKey::EFFECT_STATIC_NO_MAXIMUM_HAND_SIZE),
             Effect::Static(YouDontLoseAtZeroLife) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_YOU_DONT_LOSE_AT_ZERO_LIFE)
@@ -2171,6 +2478,9 @@ impl EffectMessage for Effect {
             Effect::Static(LifeGainBecomesDraw) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_LIFE_GAIN_BECOMES_DRAW)
             }
+            Effect::Static(DrawsAfterTheFirstEachDrawStepBecomeDiscardThenDraw) => MessageRef::new(
+                MessageKey::EFFECT_STATIC_DRAWS_AFTER_THE_FIRST_EACH_DRAW_STEP_BECOME_DISCARD_THEN_DRAW,
+            ),
             Effect::Static(PlayAnyNumberOfLands) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PLAY_ANY_NUMBER_OF_LANDS)
             }
@@ -2202,6 +2512,12 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_ATTACK_TAX)
                     .with_params(vec![int_param("amount", amount)])
             }
+            Effect::Static(CounterMaximum { kind, max }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_COUNTER_MAXIMUM).with_params(vec![
+                    counter_kind_param("kind", kind),
+                    int_param("max", i32::from(max)),
+                ])
+            }
             Effect::Static(CounterScaledAttackTax) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_COUNTER_SCALED_ATTACK_TAX)
             }
@@ -2224,17 +2540,67 @@ impl EffectMessage for Effect {
             Effect::Static(RedirectUnblockedDamageToSelf) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_REDIRECT_UNBLOCKED_DAMAGE_TO_SELF)
             }
+            Effect::Static(ReplaceDamageToYou {
+                source,
+                at_least,
+                becomes,
+            }) => MessageRef::new(MessageKey::EFFECT_STATIC_REPLACE_DAMAGE_TO_YOU).with_params(vec![
+                spell_filter_param("source", source),
+                int_param("at_least", at_least),
+                int_param("becomes", becomes),
+            ]),
             Effect::Static(ProtectionFromChosenColor) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PROTECTION_FROM_CHOSEN_COLOR)
             }
             Effect::Static(CantBlockFilter { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BLOCK_FILTER)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(CantAttackFilter { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_FILTER)
+                .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(MaxAttackersEachCombat { count }) => MessageRef::new(MessageKey::EFFECT_STATIC_MAX_ATTACKERS_EACH_COMBAT)
+                .with_params(vec![int_param("count", count as i32)]),
+            Effect::Static(MaxBlockersEachCombat { count }) => MessageRef::new(MessageKey::EFFECT_STATIC_MAX_BLOCKERS_EACH_COMBAT)
+                .with_params(vec![int_param("count", count as i32)]),
+            Effect::Static(CantAttackIfAttackedLastOwnTurn) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_IF_ATTACKED_LAST_OWN_TURN)
+            }
+            Effect::Static(CantAttackPlayerUnlessTheyActed) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_PLAYER_UNLESS_THEY_ACTED)
+            }
+            Effect::Misc(MiscEffect::ThatCreatureCantAttackNextOwnTurn { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_THAT_CREATURE_CANT_ATTACK_NEXT_OWN_TURN)
+            }
+            Effect::Misc(MiscEffect::SourceAssignsNoCombatDamageThisTurn) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_SOURCE_ASSIGNS_NO_COMBAT_DAMAGE_THIS_TURN)
+            }
+            Effect::Misc(MiscEffect::SourceCantAttackThisCombat) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_SOURCE_CANT_ATTACK_THIS_COMBAT)
+            }
+            Effect::Misc(MiscEffect::YourAttacksDontTapWhileSourceUntappedThisCombat) => MessageRef::new(
+                MessageKey::EFFECT_MISC_YOUR_ATTACKS_DONT_TAP_WHILE_SOURCE_UNTAPPED_THIS_COMBAT,
+            ),
+            Effect::Misc(MiscEffect::ThatCreatureAndItsBlockersAssignNoCombatDamageThisTurn) => MessageRef::new(
+                MessageKey::EFFECT_MISC_THAT_CREATURE_AND_ITS_BLOCKERS_ASSIGN_NO_COMBAT_DAMAGE_THIS_TURN,
+            ),
             Effect::Static(CantBeBlockedBy { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_BLOCKED_BY)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(CantBeTargetedBy { spells, attached }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_TARGETED_BY).with_params(vec![
+                    spell_filter_param("spells", spells),
+                    bool_param("attached", attached),
+                ])
+            }
+            Effect::Static(MustBeBlockedBy { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_MUST_BE_BLOCKED_BY)
+                .with_params(vec![permanent_filter_param("filter", filter)]),
+            Effect::Static(CantBeTargetedBySubtypeOnlyEffects { subtypes }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BE_TARGETED_BY_SUBTYPE_ONLY_EFFECTS)
+                    .with_params(vec![string_list_param("subtypes", subtypes)])
+            }
             Effect::Static(CantBlockAttackers { filter }) => MessageRef::new(MessageKey::EFFECT_STATIC_CANT_BLOCK_ATTACKERS)
                 .with_params(vec![permanent_filter_param("filter", filter)]),
             Effect::Static(CanBlockAdditional { count }) => MessageRef::new(MessageKey::EFFECT_STATIC_CAN_BLOCK_ADDITIONAL)
                 .with_params(vec![int_param("count", count as i32)]),
+            Effect::Static(LandwalkNegated { land }) => MessageRef::new(MessageKey::EFFECT_STATIC_LANDWALK_NEGATED)
+                .with_params(vec![keyword_list_param("landwalk", &[Keyword::Landwalk(land)])]),
             Effect::Static(DoesntUntap { self_only, filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_DOESNT_UNTAP).with_params(vec![
                     bool_param("self_only", self_only),
@@ -2244,12 +2610,21 @@ impl EffectMessage for Effect {
             Effect::Static(PlayersSkipUntapSteps) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PLAYERS_SKIP_UNTAP_STEPS)
             }
+            Effect::Static(PlayersPlayWithHandsRevealed) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_PLAYERS_PLAY_WITH_HANDS_REVEALED)
+            }
+            Effect::Static(PlayersPlayWithLibraryTopsRevealed) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_PLAYERS_PLAY_WITH_LIBRARY_TOPS_REVEALED)
+            }
             Effect::Static(UntapAtMostOne { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_UNTAP_AT_MOST_ONE)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
             Effect::Static(MaySkipTurnWhileTapped) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_MAY_SKIP_TURN_WHILE_TAPPED)
+            }
+            Effect::Static(RegeneratesInsteadOfBeingDestroyed) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_REGENERATES_INSTEAD_OF_BEING_DESTROYED)
             }
             Effect::Static(CantAttackUnlessDefenderControls { filter }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CANT_ATTACK_UNLESS_DEFENDER_CONTROLS)
@@ -2263,7 +2638,9 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_STATIC_MAY_SKIP_DRAW_FOR_CANT_BE_ATTACKED_BY)
                     .with_params(vec![permanent_filter_param("filter", filter)])
             }
-            Effect::Static(PreventCombatDamage { to_self, by_self }) => {
+            Effect::Static(PreventDamage {
+                to_self, by_self, ..
+            }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_PREVENT_COMBAT_DAMAGE)
                     .with_params(vec![bool_param("to_self", to_self), bool_param("by_self", by_self)])
             }
@@ -2299,6 +2676,15 @@ impl EffectMessage for Effect {
             Effect::Static(CreaturesYouControlEnterWithCounters { filter, count }) => {
                 MessageRef::new(MessageKey::EFFECT_STATIC_CREATURES_YOU_CONTROL_ENTER_WITH_COUNTERS)
                     .with_params(vec![permanent_filter_param("filter", filter), amount_param("count", count)])
+            }
+            // The variant carries only types, so `PermanentFilter::of` reaches the client's
+            // existing type-list formatter with nothing lost.
+            Effect::Static(OpponentsPermanentsEnterTapped { types }) => {
+                MessageRef::new(MessageKey::EFFECT_STATIC_OPPONENTS_PERMANENTS_ENTER_TAPPED)
+                    .with_params(vec![permanent_filter_param(
+                        "filter",
+                        PermanentFilter::of(types),
+                    )])
             }
             Effect::Static(GrantToAttached {
                 power, toughness, ..
@@ -2338,10 +2724,15 @@ impl EffectMessage for Effect {
             Effect::Misc(SkipNextUntapOpponentCreatures) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SKIP_NEXT_UNTAP_OPPONENT_CREATURES)
             }
+            Effect::Misc(SkipNextUntaps { count, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_SKIP_NEXT_UNTAPS)
+                    .with_params(vec![int_param("count", count)])
+            }
             Effect::Misc(TakeExtraTurn) => MessageRef::new(MessageKey::EFFECT_MISC_TAKE_EXTRA_TURN),
             Effect::Misc(YouLoseTheGame) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_YOU_LOSE_THE_GAME)
             }
+            Effect::Misc(GameIsADraw) => MessageRef::new(MessageKey::EFFECT_MISC_GAME_IS_A_DRAW),
             Effect::Misc(BlocksEachAttackerIfAble { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_BLOCKS_EACH_ATTACKER_IF_ABLE)
             }
@@ -2388,8 +2779,22 @@ impl EffectMessage for Effect {
                     .map(|amount| amount_param("amount", amount))
                     .unwrap_or_else(|| str_param("amount", "none")),
             ]),
-            Effect::Misc(CounterTargetActivatedAbility) => {
+            Effect::Misc(CounterTriggeringSpell {
+                unless_pays,
+                triggering_spell: _,
+            }) => MessageRef::new(MessageKey::EFFECT_MISC_COUNTER_TRIGGERING_SPELL).with_params(
+                vec![
+                    bool_param("unless_pays", unless_pays.is_some()),
+                    unless_pays
+                        .map(|amount| amount_param("amount", amount))
+                        .unwrap_or_else(|| str_param("amount", "none")),
+                ],
+            ),
+            Effect::Misc(CounterTargetActivatedAbility { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_COUNTER_TARGET_ACTIVATED_ABILITY)
+            }
+            Effect::Misc(CounterTriggeringAbility { .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_COUNTER_TRIGGERING_ABILITY)
             }
             Effect::Misc(ScheduleAtNextUpkeep { then, fire_at, .. }) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SCHEDULE_AT_NEXT_UPKEEP)
@@ -2401,8 +2806,15 @@ impl EffectMessage for Effect {
                     .with_params(vec![spell_filter_param("filter", filter)])
                     .with_children(then.iter().map(|effect| effect.clone().message()).collect())
             }
+            Effect::Misc(ScheduleWhenTargetDiesThisTurn { then, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_SCHEDULE_WHEN_TARGET_DIES_THIS_TURN)
+                    .with_children(then.iter().map(|effect| effect.clone().message()).collect())
+            }
             Effect::Misc(ScheduleThisTurnCombatDamageCopy) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_SCHEDULE_THIS_TURN_COMBAT_DAMAGE_COPY)
+            }
+            Effect::Misc(SourceCantBeRegeneratedThisTurn) => {
+                MessageRef::new(MessageKey::EFFECT_MISC_SOURCE_CANT_BE_REGENERATED_THIS_TURN)
             }
             Effect::Misc(BecomePrepared) => MessageRef::new(MessageKey::EFFECT_MISC_BECOME_PREPARED),
             Effect::Misc(FlipSource) => MessageRef::new(MessageKey::EFFECT_MISC_FLIP_SOURCE),
@@ -2415,6 +2827,9 @@ impl EffectMessage for Effect {
             Effect::Misc(GrantChannelColorlessManaThisTurn) => {
                 MessageRef::new(MessageKey::EFFECT_MISC_GRANT_CHANNEL_COLORLESS_MANA_THIS_TURN)
             }
+            Effect::Misc(GrantSpendManaAsAnyTypeForOneSpellThisTurn) => MessageRef::new(
+                MessageKey::EFFECT_MISC_GRANT_SPEND_MANA_AS_ANY_TYPE_FOR_ONE_SPELL_THIS_TURN,
+            ),
             Effect::Sequence { steps } => MessageRef::new(MessageKey::EFFECT_SEQUENCE)
                 .with_children(steps.iter().map(|effect| effect.clone().message()).collect()),
             Effect::ChooseOne { options } => MessageRef::new(MessageKey::EFFECT_CHOOSE_ONE)
@@ -2456,9 +2871,16 @@ impl EffectMessage for Effect {
                 MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_SUBTYPES_WHILE_SOURCE_REMAINS)
                     .with_params(vec![string_list_param("set_subtypes", set_subtypes)])
             }
-            Effect::Pump(TargetBecomesColor { color, .. }) => {
-                MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_COLOR)
+            Effect::Pump(TargetBecomesColor {
+                color: Some(color), ..
+            }) => MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_COLOR)
+                .with_params(vec![str_param("color", color_token(color))]),
+            Effect::Pump(ThatCreatureBecomesColor { color, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_THAT_CREATURE_BECOMES_COLOR)
                     .with_params(vec![str_param("color", color_token(color))])
+            }
+            Effect::Pump(TargetBecomesColor { color: None, .. }) => {
+                MessageRef::new(MessageKey::EFFECT_PUMP_TARGET_BECOMES_CHOSEN_COLOR)
             }
             Effect::Pump(BecomesCopyOfTarget { .. }) => {
                 MessageRef::new(MessageKey::EFFECT_PUMP_BECOMES_COPY_OF_TARGET)
@@ -2553,6 +2975,19 @@ mod tests {
             reject_message(Reject::IllegalTarget).key.as_str(),
             "reject.illegal_target"
         );
+    }
+
+    #[test]
+    #[ignore]
+    fn bless_rust_keys_fixture() {
+        std::fs::write(
+            concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../client/app/domain/i18n/rustKeys.json"
+            ),
+            rust_keys_fixture(),
+        )
+        .unwrap();
     }
 
     #[test]

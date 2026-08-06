@@ -188,6 +188,11 @@ pub enum VisibleEvent {
     RegenerationShieldsExpired {
         object: ObjectId,
     },
+    /// A permanent was marked "can't be regenerated this turn" (CR 701.15d) with no accompanying
+    /// damage — Clergy of the Holy Nimbus's second ability.
+    CantBeRegeneratedThisTurnMarked {
+        object: ObjectId,
+    },
     LostSummoningSickness {
         object: ObjectId,
     },
@@ -483,6 +488,11 @@ pub enum VisibleEvent {
     /// `player` may, at mana-ability timing, pay 1 life to add {C} for the rest of the turn (CR
     /// 605 — Yavimaya Bloomsage's Channel). Public — no hidden information.
     ChannelColorlessManaGranted {
+        player: u8,
+    },
+    /// `player` may spend mana as though it were mana of any type to pay one spell's mana cost this
+    /// turn (CR 609.4b — North Star). Public — no hidden information.
+    SpendManaAsAnyTypeGranted {
         player: u8,
     },
     CommanderDamageDealt {
@@ -789,6 +799,8 @@ pub enum VisibleEvent {
     PlayerLost {
         player: u8,
     },
+    /// The game ended in a draw (CR 104.4 — Divine Intervention): no winner, no loser.
+    GameDrawn,
     /// `player` got the city's blessing (CR 702.131 Ascend) — fully public.
     CitysBlessingGained {
         player: u8,

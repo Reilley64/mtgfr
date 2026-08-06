@@ -16,6 +16,16 @@ impl Game {
         let Object::Card(c) = &self.objects[id as usize] else {
             return None;
         };
+        // Firestorm Phoenix's returned card "can't be played" until its owner's next turn — the
+        // whole clause, cast and land drop alike, which is why it sits at this shared choke rather
+        // than in `cast`'s own guards.
+        if self
+            .revealed_unplayable_until_next_turn
+            .iter()
+            .any(|&(card, _)| card == id)
+        {
+            return None;
+        }
         let playable = match c.zone {
             Zone::Hand => c.owner == player,
             Zone::Command => c.commander && c.owner == player,
@@ -536,6 +546,9 @@ impl Game {
                     from: id,
                     def,
                     player,
+                    // A cost discard is the caster's own payment (CR 601.2h), never something an
+                    // opponent's spell or ability caused — Psychic Purge's watch stays silent.
+                    cause: None,
                 },
             );
         }
@@ -847,6 +860,111 @@ impl Game {
     /// room to choose fewer or which), it's auto-filled here with no pause and the next clause runs;
     /// otherwise the caster answers a [`PendingChoice::ChooseTarget`] carrying this `clause`.
     /// See [`Self::choose_spell_targets`] for `anchor`/`chooser`.
+    /// Enchantment Alteration: "Attach target Aura attached to a creature or land to **another
+    /// permanent of that type**." Clause 1's legality depends on clause 0's chosen Aura (CR
+    /// 601.2c), which no `PermanentFilter` axis can see — so once the Aura is settled, drop every
+    /// clause-1 candidate that shares no card type with the Aura's current host (CR 613.4's
+    /// post-layer types), and the host itself ("another"). Every other clause passes through
+    /// untouched. The spell-side sibling of `Game::narrow_second_clause_to_shared_types`, which
+    /// narrows the *spec* — this narrows the legal set, since "not that one object" is not
+    /// something a `PermanentFilter` can say.
+    /// ponytail: no CR 608.2b re-check at resolution reads this narrowing (`target_still_legal`
+    /// only re-tests the declared spec), so a type-changing effect in response can leave a chosen
+    /// host that no longer shares a type. `resolve_move_aura`'s own attach-legality gate catches
+    /// the cases that matter for the pool; thread the narrowing through the re-check if one doesn't.
+    fn narrow_move_aura_second_clause(
+        &self,
+        spell: ObjectId,
+        clause: usize,
+        legal: Vec<Target>,
+    ) -> Vec<Target> {
+        if clause != 1 {
+            return legal;
+        }
+        let def = self.def_of(spell);
+        let is_move_aura = def.abilities.iter().any(|a| {
+            matches!(
+                (a.timing, &a.effect),
+                (
+                    Timing::Spell,
+                    Effect::Control(ControlEffect::MoveAura { .. })
+                )
+            )
+        });
+        if !is_move_aura {
+            return legal;
+        }
+        let Some(aura) = self
+            .spell(spell)
+            .targets
+            .iter()
+            .next()
+            .and_then(Target::object_id)
+        else {
+            return legal;
+        };
+        let Some(old_host) = self.attached_to(aura) else {
+            return legal;
+        };
+        let host_types = self.effective_types(old_host);
+        legal
+            .into_iter()
+            .filter(|&t| {
+                let Some(id) = t.object_id() else {
+                    return false;
+                };
+                id != old_host && self.effective_types(id).intersects(host_types)
+            })
+            .collect()
+    }
+
+    /// Glyph of Delusion: "Put X glyph counters on target creature that **target Wall** blocked
+    /// this turn." Clause 1 is the Wall ([`Effect::second_target`]); which Walls are legal depends
+    /// on the creature clause 0 named (CR 601.2c), so once that is settled, keep only the Walls
+    /// that actually blocked it this turn. Every other clause passes through untouched. The
+    /// blocked-this-turn sibling of [`Self::narrow_move_aura_second_clause`] — same shape, same
+    /// reason: "that one blocked that one" is not something a `PermanentFilter` can say.
+    /// ponytail: shares the MoveAura caveat above — no CR 608.2b re-check reads this narrowing, so
+    /// only the declared spec (any Wall blocked it) is re-tested at resolution. The ledger is
+    /// turn-scoped and append-only, so nothing in the pool can invalidate a chosen pair in
+    /// response; thread it through `target_still_legal` if something ever can.
+    fn narrow_blocked_by_target_wall_clause(
+        &self,
+        spell: ObjectId,
+        clause: usize,
+        legal: Vec<Target>,
+    ) -> Vec<Target> {
+        if clause != 1 {
+            return legal;
+        }
+        let def = self.def_of(spell);
+        let Some((TargetSpec::Permanent(first), _)) = self.spell_target_clause(&def, 0) else {
+            return legal;
+        };
+        if !first.blocked_by_a_wall_this_turn {
+            return legal;
+        }
+        let Some(blocked) = self
+            .spell(spell)
+            .targets
+            .iter()
+            .next()
+            .and_then(Target::object_id)
+        else {
+            return legal;
+        };
+        legal
+            .into_iter()
+            .filter(|&t| {
+                t.object_id().is_some_and(|wall| {
+                    self.blocked_by_this_turn(wall)
+                        .iter()
+                        .any(|&(a, _)| a == blocked)
+                })
+            })
+            .collect()
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn choose_spell_target_clause(
         &mut self,
@@ -865,6 +983,8 @@ impl Game {
             color_identity(&self.def_of(spell)),
             self.spell(spell).x,
         );
+        let legal = self.narrow_move_aura_second_clause(spell, clause, legal);
+        let legal = self.narrow_blocked_by_target_wall_clause(spell, clause, legal);
         let n = legal.len();
         // CR 601.2b: X is chosen before targets are chosen, so an `x_scaled` count (Curse of the
         // Swine's "exile X target creatures", Silkguard's "up to X") substitutes the spell's own
@@ -872,7 +992,7 @@ impl Game {
         // multi-target selection.
         // ponytail: the substituted X is clamped to MAX_TARGETS (the fixed TargetList width, CR
         // 601.2c's "maximum possible" is itself capped there) — bump that const before a real
-        // board needs an X-target spell targeting more than six.
+        // board needs an X-target spell targeting past it.
         // CR 601.2f: the sacrifice-defined sibling of the above — Immoral Bargain's X is settled
         // by the additional cost paid before the spell was even put on the stack (see
         // `Game::cast_with_kind`'s `sacrifice_cost` loop, which runs before this is reached), so
@@ -916,6 +1036,12 @@ impl Game {
             } else {
                 (count.min, count.min)
             }
+        } else if count.unbounded {
+            // CR 601.2c: "one or more target creatures" prints a floor and no ceiling, so the
+            // caster may name every legal target. The engine's fixed `TargetList` width is the
+            // only ceiling, and the clamp to `n` just below reduces it to the targets that
+            // actually exist — which is what CR 601.2c's "maximum possible number" means.
+            (count.min, MAX_TARGETS as u8)
         } else {
             (count.min, count.max)
         };
@@ -947,6 +1073,7 @@ impl Game {
             self,
             PendingChoice::ChooseTarget {
                 player: chooser,
+                controller: chooser,
                 source: spell,
                 effect: None,
                 legal,
@@ -965,7 +1092,7 @@ impl Game {
     /// divided as you choose among any number of targets"). A no-op for a spell with no divided
     /// effect, or whose divided effect has no chosen targets (a legal "any number... including
     /// none" of zero). A single chosen target needs no choice — the whole amount is auto-assigned
-    /// to it, mirroring `next_undivided_multiblock`'s single-blocker skip for combat damage. Nor
+    /// to it, mirroring `next_undivided_division`'s single-recipient skip for combat damage. Nor
     /// does [`Division::Evenly`] (Fireball), whose split is computed rather than chosen.
     /// Called from both `choose_spell_targets`'s forced-autofill branch above and
     /// `Game::choose_spell_targets_answer`'s player-chosen branch.
@@ -1179,6 +1306,23 @@ impl Game {
                     return Err(Reject::CannotActivate);
                 }
                 let mut chosen: Vec<ObjectId> = Vec::with_capacity(named.len());
+                for &s in named {
+                    let legal = !chosen.contains(&s)
+                        && self.as_permanent(s).is_some()
+                        && self.controller_of(s) == player
+                        && self.permanent_matches(&filter, s, player, Some(source));
+                    if !legal {
+                        return Err(Reject::CannotActivate);
+                    }
+                    chosen.push(s);
+                }
+                Ok(chosen)
+            }
+            // "Sacrifice this artifact and any number of creatures you control" (Sword of the
+            // Ages): the source is always sacrificed and goes first, then whatever else was
+            // named — zero picks is a legal payment (CR 601.2f), so there is no count check.
+            SacrificeCost::ThisAndAnyNumber { filter } => {
+                let mut chosen = vec![source];
                 for &s in named {
                     let legal = !chosen.contains(&s)
                         && self.as_permanent(s).is_some()
@@ -1547,6 +1691,7 @@ impl Game {
                         toughness: 0,
                         keywords: HASTE,
                         source_name: printed.name,
+                        ends_at_end_of_combat: false,
                     },
                 );
                 self.push_apply(
@@ -2160,12 +2305,6 @@ impl Game {
         } else if perm.is_none() {
             return Err(Reject::CannotActivate);
         }
-        // CR 602.2: only a permanent's *controller* may activate its abilities — a stolen
-        // permanent activates for its thief, not its owner. (A `functions_in_graveyard` card
-        // activates from its owner's graveyard, where control and ownership coincide.)
-        if self.controller_of(source) != player {
-            return Err(Reject::CannotActivate);
-        }
         // CR 613.1e/701 "loses all abilities": a printed activated ability is suppressed while an
         // ability-removing Aura (Darksteel Mutation) is attached. The Aura's own granted abilities
         // (indices past the printed slice) sit after the removal in CR 613 order, so stay active.
@@ -2178,6 +2317,23 @@ impl Game {
         let Timing::Activated(mut cost) = ability.timing else {
             return Err(Reject::CannotActivate);
         };
+        // Who may activate this ability (CR 602.2/602.2b/602.5b/c) — see `Activator`.
+        // `Controller` is CR 602.2's baseline: only a permanent's *controller* may activate its
+        // abilities (a stolen permanent activates for its thief, not its owner; a
+        // `functions_in_graveyard` card activates from its owner's graveyard, where control and
+        // ownership coincide). `Opponents`/`AnyPlayer` are printed widenings past that baseline
+        // (Land's Edge, Clergy of the Holy Nimbus); `Owner` is CR 602.5c's ownership-keyed
+        // restriction (Personal Incarnation) — unlike the other three, it stays activatable by an
+        // owner who has lost control.
+        let eligible_activator = match cost.activator {
+            Activator::Controller => self.controller_of(source) == player,
+            Activator::Opponents => self.controller_of(source) != player,
+            Activator::AnyPlayer => true,
+            Activator::Owner => self.owner_of(source) == player,
+        };
+        if !eligible_activator {
+            return Err(Reject::CannotActivate);
+        }
         // Gloom's "Activated abilities of white enchantments cost {3} more to activate"
         // (CR 602.2b). Folded in here, at the single gate every read of an activation cost routes
         // through — the activation itself, the priority scans, the playability previews — so no
@@ -2271,16 +2427,24 @@ impl Game {
             return Err(Reject::CannotActivate);
         }
         // "Activate only once each turn" (CR 602.2b — an activation restriction; Beledros
-        // Witherbloom's untap ability): already activated this turn, so this activation is
-        // illegal.
-        if cost.once_each_turn
-            && self
+        // Witherbloom's untap ability) or "Activate no more than N times each turn" (Vampire
+        // Bats: "Activate no more than twice each turn"): already activated this turn at least
+        // as many times as the cap, so this activation is illegal. `once_each_turn` is the
+        // `cap == 1` sugar; `max_activations_per_turn` is the general form and wins when both are
+        // set (no pool card sets both).
+        if let Some(cap) = cost
+            .max_activations_per_turn
+            .or(cost.once_each_turn.then_some(1))
+        {
+            let activations_so_far = self
                 .once_per_turn
                 .activated
                 .iter()
-                .any(|&(o, i)| o == source && i == index)
-        {
-            return Err(Reject::CannotActivate);
+                .filter(|&&(o, i)| o == source && i == index)
+                .count() as u32;
+            if activations_so_far >= cap {
+                return Err(Reject::CannotActivate);
+            }
         }
         // "Activate only as a sorcery" (CR 602.5b — Ozolith, the Shattered Spire's counter
         // ability): an ordinary activated ability restricted to a legal sorcery-speed moment. (CR 602, CR 113)
@@ -2313,10 +2477,31 @@ impl Game {
         {
             return Err(Reject::WrongTiming);
         }
-        // "Only this creature's owner may activate this ability" (CR 602.5c — Personal
-        // Incarnation). The controller check above has already passed, so this only bites a
-        // permanent whose control has moved away from its owner.
-        if cost.only_owner_may_activate && self.owner_of(source) != player {
+        // "Activate only during the declare blockers step" (CR 602.5b — Lesser Werewolf): the
+        // step alone, no controller half — the ability reads a declared block, which exists for
+        // attacker and blocker alike.
+        if cost.only_during_declare_blockers && self.step != Step::DeclareBlockers {
+            return Err(Reject::WrongTiming);
+        }
+        // "Activate only before the combat damage step" (CR 602.5b — Angus Mackenzie): the
+        // activation-side twin of `cast_only_before_combat_damage` (Berserk), and the same
+        // boundary for the same reason — `Step::FirstStrikeCombatDamage` is the *first* combat
+        // damage step wherever it exists, and the engine only creates it when a first striker is
+        // in combat (CR 510.5). Not "during combat": the window is open from the untap step, and
+        // `Step`'s turn ordering means the postcombat main phase stays shut.
+        if cost.only_before_combat_damage_step && self.step >= Step::FirstStrikeCombatDamage {
+            return Err(Reject::WrongTiming);
+        }
+        // "Activate only if there are two or more hatchling counters on this artifact" (CR 602.2b —
+        // Triassic Egg): a board-state activation restriction, spelled with the same
+        // `[abilities.condition]` a trigger uses for its intervening-if (CR 603.4) and a spell for
+        // its cast restriction (CR 601.3e). Unlike those two it is checked *only* here, at
+        // announcement — an ability already on the stack whose gate stops holding still resolves.
+        // Evaluated with the source in hand, so a counter- or P/T-reading operand has a permanent
+        // to read.
+        if let Some(condition) = ability.condition
+            && !self.ability_condition_holds(condition, source, TriggerContext::of(player))
+        {
             return Err(Reject::CannotActivate);
         }
         Ok((ability, cost))
@@ -2336,6 +2521,14 @@ impl Game {
         x: u32,
     ) -> Result<Vec<Event>, Reject> {
         let (ability, cost) = self.ability_activation_gate(player, object, ability_index)?;
+        // CR 107.3b: a card-*defined* {X} (Voodoo Doll's "X is the number of pin counters on this
+        // artifact") is never announced, so whatever the activator passed is discarded and the
+        // cost's own amount is resolved against the source instead. Computed here, before any cost
+        // event lands, so `{X}{X}` reads the pin-counter count as it stood at activation.
+        let x = match cost.mana.x_defined {
+            Some(amount) => self.resolve_amount(amount, player, object, None, 0).max(0) as u32,
+            None => x,
+        };
         // A player-declared-X counter-removal cost (CR 601.2b/602.2b — Fungal Reaches' "Remove X
         // storage counters from this land"): the chosen `x` can't exceed the source's actual count
         // of that kind (X = 0 is always legal, CR 107.3c, so this only ever rejects a too-large X,
@@ -2367,14 +2560,59 @@ impl Game {
                     None => return Err(Reject::IllegalTarget),
                 }
             }
-            // An ordinary chosen target isn't re-validated at activation (this engine's
-            // established posture — see `deekah_grant_unblockable_lets_token_through`, which
-            // relies on an illegal target fizzling at resolution, CR 608.2b, rather than
-            // rejecting the activation outright); `Game::resolve_top`'s `target_still_legal`
-            // re-check is where protection (CR 702.16b) actually filters it, with these same
-            // `source_colors`.
-            _ => target,
+            // "Target creature you control" (Kry Shield, Mother of Runes) is a restriction on
+            // what may be *chosen* (CR 115.4), so naming an opponent's creature is an illegal
+            // declaration rather than something that fizzles at resolution — the same shape as
+            // the Equip gate below (CR 702.6e).
+            TargetSpec::CreatureYouControl => {
+                let yours = matches!(target, Some(Target::Object(creature))
+                    if self.is_creature_on_battlefield(creature)
+                        && self.controller_of(creature) == player);
+                if !yours {
+                    return Err(Reject::IllegalTarget);
+                }
+                target
+            }
+            // An ability that targets nothing ignores whatever the intent carried.
+            TargetSpec::None => target,
+            // CR 602.2b routes activation through CR 601.2c: the targets are *chosen* as the
+            // ability is announced, and only a legal choice may be named — an illegal one makes
+            // the activation illegal rather than putting an ability on the stack to fizzle.
+            // (`Game::resolve_top`'s `target_still_legal` is the separate CR 608.2b re-check, for
+            // a target that stops qualifying *after* announcement.) Only a single-target ability
+            // names its target on the intent; a multi-target one leaves `target` `None` and picks
+            // at a `ChooseTarget` pause, which validates there.
+            spec => {
+                if let Some(chosen) = target
+                    && !self
+                        .legal_targets_for(spec, object, player, source_colors, x)
+                        .contains(&chosen)
+                {
+                    return Err(Reject::IllegalTarget);
+                }
+                target
+            }
         };
+        // A mandatory *second* target clause (CR 601.2c/603.3d — Spurnmage Advocate's "Return two
+        // target cards from an opponent's graveyard") needs its full complement of legal targets
+        // for the activation to be legal at all, the same rule the graveyard-exile cost check
+        // below enforces. `Game::place_ability_second_clause` clamps its pick to what is legal, so
+        // without this gate an activation with too few cards would pay its costs and then quietly
+        // take fewer targets than the ability calls for.
+        // ponytail: read off the clause's declared spec, not the first-target-narrowed one
+        // (Gauntlets of Chaos' "shares one of those types with it") — narrowing only ever shrinks
+        // the legal set, so this gate is conservative rather than wrong. Narrow here too if a card
+        // needs the tighter gate.
+        if let Some((spec, count)) =
+            self.ability_second_target_clause(ability.effect.clone(), object, player)
+            && count.min > 0
+        {
+            let clause_x = self.ability_source_x(object);
+            let legal = self.legal_targets_for(spec, object, player, source_colors, clause_x);
+            if legal.len() < count.min as usize {
+                return Err(Reject::IllegalTarget);
+            }
+        }
         // A loyalty ability's change (+N / 0 / −N) is paid as a cost before the effect goes
         // on the stack.
         // ponytail: loyalty abilities in the pool carry no mana/tap/sacrifice cost, so only the
@@ -2472,15 +2710,28 @@ impl Game {
         // Steeper's "+X/+0"; Dina, Essence Brewer's "gain X life and put X counters", X = that
         // power; Miren, the Moaning Well's "gain life equal to the sacrificed creature's
         // toughness") — by the time the ability resolves off the stack, the creature is gone and
-        // there's nothing left to read `Amount::SourcePower`/`SourceToughness` from. No pool card
-        // combines `SourcePower`/`SourceToughness` with a multi-creature sacrifice cost, so the
-        // first sacrificed creature is the only one that can matter here.
-        let effect = match sacrificed.first() {
-            Some(&id) => {
-                contextualize_sacrifice_effect(ability.effect, self.power(id), self.toughness(id))
-            }
-            None => ability.effect,
+        // there's nothing left to read `Amount::SourcePower`/`SourceToughness` from. Summed over
+        // every permanent sacrificed, which is Sword of the Ages' "X is the total power of the
+        // creatures sacrificed this way" and is identical to reading the single creature for every
+        // one-creature sacrifice cost in the pool.
+        let effect = match sacrificed.is_empty() {
+            false => contextualize_sacrifice_effect(
+                ability.effect,
+                sacrificed.iter().map(|&id| self.power(id)).sum(),
+                sacrificed.iter().map(|&id| self.toughness(id)).sum(),
+            ),
+            true => ability.effect,
         };
+        // "…then exile this artifact and those creature cards" (Sword of the Ages) — the cards are
+        // pinned here, as the cost is paid, for the same reason the power above is.
+        let effect = contextualize_exiled_sacrifices(effect, &sacrificed);
+        // "If the discarded card was a land card, ~" (Land's Edge, CR 602.2b) — read before the
+        // discard events fire below, same reason as the sacrifice read above. `named` is empty
+        // (so `was_land` is trivially `false`) for every ability without a discard cost.
+        let was_land = named
+            .iter()
+            .any(|&id| matches!(self.def_of(id).kind, CardKind::Land { .. }));
+        let effect = contextualize_discard_effect(effect, was_land);
         // Pay the cost. The mana settles first (auto-tapping lands for a pool shortfall) so an
         // unpayable activation rejects before any other cost event lands; its own source is
         // excluded from the auto-tap plan when the activation already taps it.
@@ -2577,6 +2828,9 @@ impl Game {
                     from: id,
                     def,
                     player,
+                    // A cost discard is the caster's own payment (CR 601.2h), never something an
+                    // opponent's spell or ability caused — Psychic Purge's watch stays silent.
+                    cause: None,
                 },
             );
         }
@@ -2810,6 +3064,13 @@ impl Game {
         // so a fixed-cost activation queues nothing.
         if cost.mana.x > 0 {
             self.queue_activate_ability_triggers(player, object);
+        }
+        // Imprison's "whenever a player activates an ability of enchanted creature with {T} in its
+        // activation cost that isn't a mana ability". Fired off the just-placed ability so the
+        // counter trigger lands above it (CR 603.3b); a mana ability never reaches here (it
+        // resolved above, CR 605.3a), so `taps_self` is the whole test.
+        if cost.taps_self {
+            self.queue_enchanted_creature_activates_tap_ability_triggers(object);
         }
         Ok(events)
     }

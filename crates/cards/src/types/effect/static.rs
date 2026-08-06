@@ -30,9 +30,17 @@ pub enum StaticEffect {
     /// a land *also* is: Kormus Bell's Swamps stay Swamps.
     AllLandsOfTypeBecome {
         /// The land types this applies to — a land carrying any of them is caught. Each of the
-        /// three cards names exactly one.
-        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        /// three type-scoped cards names exactly one. Ignored when `all_lands` is set.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_str_slice")
+        )]
         land_types: &'static [&'static str],
+        /// Living Plane's "All **lands** are 1/1 creatures that are still lands" — scope the sweep
+        /// by the card type instead of by a land subtype, so a nonbasic with no land subtype at
+        /// all is caught too. Set this or `land_types`, not both.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        all_lands: bool,
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_str_slice")
@@ -53,6 +61,16 @@ pub enum StaticEffect {
         )]
         add_colors: &'static [Color],
     },
+
+    /// Land Equilibrium's "If an opponent who controls at least as many lands as you do would put
+    /// a land onto the battlefield, that player instead puts that land onto the battlefield then
+    /// sacrifices a land of their choice."
+    ///
+    /// A CR 614 replacement whose *body* is a sacrifice, not a substitution: the land still enters.
+    /// It keys off any way a land enters — a land drop, a search, a reanimation — because "put onto
+    /// the battlefield" is the whole event class, and the land count is compared as it stood before
+    /// the land entered.
+    OpponentLandEntryCostsALand,
 
     Anthem {
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -131,6 +149,23 @@ pub enum StaticEffect {
         when: DefiningPtWhen,
     },
 
+    /// "Non-Eye creatures you control can't attack" (Evil Eye of Orms-by-Gore) / "Except for
+    /// creatures named Akron Legionnaire and artifact creatures, creatures you control can't
+    /// attack" (Akron Legionnaire): an attack ban on every creature matching `filter`, wherever
+    /// that creature is (CR 508.1a). The mirror of [`CantBlockFilter`](Self::CantBlockFilter) —
+    /// like it, the whole battlefield is scanned for the static and `filter` is read from the
+    /// static's *own* controller's perspective, so `controller = "you"` scopes the ban to the
+    /// source's controller and `controller = "any"` makes it board-wide (Moat).
+    ///
+    /// An "except for X" clause is authored inverted, as the *banned* set — Akron Legionnaire's
+    /// exemptions become `exclude = "artifact"` plus `exclude_name = "Akron Legionnaire"` — the
+    /// same convention [`CantBeBlockedBy`](Self::CantBeBlockedBy) uses. Folded into
+    /// [`Game::can_attack`](crate::Game), so a banned creature is not "able" to attack and goad
+    /// cannot demand an attack the card forbids (CR 509.1a).
+    CantAttackFilter {
+        filter: PermanentFilter,
+    },
+
     /// "Each opponent who cast a spell this turn can't attack with creatures" (Angelic Arbiter):
     /// a blanket per-player attack ban, unlike [`StaticEffect::CantBeAttackedBy`]'s
     /// defender-scoped filter — the gated player can't declare *any* attacker, not just ones
@@ -183,6 +218,50 @@ pub enum StaticEffect {
     CanBlockAdditional {
         count: u8,
     },
+
+    /// Caverns of Despair's "No more than two creatures can attack each combat" (CR 508.1a): a
+    /// table-wide ceiling on the *size of the declaration*, not a per-creature ban. Board-scanned
+    /// like [`CantAttackFilter`](Self::CantAttackFilter), but read only in
+    /// `Game::declare_attackers` — a single creature can't tell whether it is the third one, so
+    /// this is a whole-declaration rule in the mould of menace, and the lowest ceiling on the
+    /// battlefield wins (CR 613 sequencing is irrelevant: they are all restrictions, so they all
+    /// apply).
+    ///
+    /// Because it is a restriction, it also caps what a requirement may demand (CR 509.1a /
+    /// 508.1a): a declaration already at the ceiling discharges every "attacks if able" the
+    /// declaring player is under, so goad can't make a legal combat impossible.
+    MaxAttackersEachCombat {
+        count: u8,
+    },
+
+    /// Caverns of Despair's "No more than two creatures can block each combat" (CR 509.1b): the
+    /// block-side twin of [`MaxAttackersEachCombat`](Self::MaxAttackersEachCombat). Counted in
+    /// *blocking creatures*, not blocks — one creature blocking two attackers (Two-Headed Giant of
+    /// Foriys) still spends one of the two slots.
+    ///
+    /// Each defending player declares separately (CR 509.1a), so the ceiling is checked against
+    /// the blockers already sealed this combat plus the ones being declared now; the first seat to
+    /// declare can spend the whole allowance.
+    MaxBlockersEachCombat {
+        count: u8,
+    },
+
+    /// Giant Turtle's "This creature can't attack if it attacked during your last turn" (CR
+    /// 508.1a): a restriction on the printing permanent alone, read by `Game::can_attack` off
+    /// [`Permanent::attacked_on_last_own_turn`], which `Game::roll_own_turn_history` rolls once per
+    /// turn at its controller's cleanup step.
+    CantAttackIfAttackedLastOwnTurn,
+
+    /// Arboria's "Creatures can't attack a player unless that player cast a spell or put a
+    /// nontoken permanent onto the battlefield during their last turn" (CR 508.1a): a restriction
+    /// on the *defender*, not on any attacking creature, so it is read where the declaration picks
+    /// a defending player (`Game::may_attack_defender`) rather than per attacker. Board-wide like
+    /// [`CantAttackFilter`](Self::CantAttackFilter) — the printed sentence names no controller.
+    ///
+    /// The "did they act" memory is [`Player::acted_on_last_own_turn`], rolled beside the Giant
+    /// Turtle flag above; a player who has not yet taken a turn has done nothing during it and so
+    /// can't be attacked.
+    CantAttackPlayerUnlessTheyActed,
 
     /// Juggernaut's "This creature can't be blocked by Walls" (CR 509.1b): `filter` names the
     /// creatures turned away, so a blocker matching it can never be declared against this
@@ -256,11 +335,44 @@ pub enum StaticEffect {
         filter: Option<PermanentFilter>,
     },
 
+    /// "Rasputin can't have more than seven dream counters on it" (CR 122.6) — a ceiling on the
+    /// *source's own* total of one named kind, enforced wherever counters are placed
+    /// ([`Game::kind_counters_after_replacements`]), so proliferate and foreign effects hit it
+    /// too. The sibling of [`CountersEffect::PutCounters`](crate::CountersEffect)'s `max_total`,
+    /// which is Clockwork Beast's narrower "*this ability* can't cause …": that one binds one
+    /// ability, this one binds the permanent.
+    ///
+    /// Self-scoped on purpose — every printing of this clause in Magic says "on it", so there is
+    /// no filter axis to grow until a card caps something other than itself.
+    CounterMaximum {
+        kind: CounterKind,
+        max: u8,
+    },
+
     CounterScaledAttackTax,
 
     CreaturesYouControlEnterWithCounters {
         filter: PermanentFilter,
         count: Amount,
+    },
+
+    /// "Artifacts, creatures, and lands your opponents control enter tapped" (Kismet) — a CR
+    /// 614.13 replacement on entering the battlefield, read by
+    /// [`Game::static_enters_tapped`](crate::Game) at every site that mints a permanent. The
+    /// sibling of a card's own printed [`CardDef::enters_tapped`](crate::CardDef): that one is a
+    /// property of the card arriving, this one a property of the board it arrives on.
+    ///
+    /// Gated by a bare [`TypeSet`](crate::TypeSet) rather than a
+    /// [`PermanentFilter`](crate::PermanentFilter), and with "your opponents" baked into the
+    /// name rather than read from `filter.controller`: the permanent does not exist yet when
+    /// this is asked, so there is no [`ObjectId`](crate::ObjectId) for
+    /// [`Game::permanent_matches`](crate::Game) to look at, and card types are the one axis
+    /// answerable from a [`CardDef`](crate::CardDef) alone. A card that gates on anything richer
+    /// (power, colour, its own controller) needs a def-level matcher first.
+    OpponentsPermanentsEnterTapped {
+        /// The card types this catches — Kismet's "artifacts, creatures, and lands". A permanent
+        /// carrying any of them enters tapped; Kismet leaves enchantments and planeswalkers alone.
+        types: TypeSet,
     },
 
     /// "This artifact doesn't untap during your untap step" (Mana Vault, Basalt Monolith) /
@@ -282,6 +394,15 @@ pub enum StaticEffect {
     /// "whenever you discard" watcher — only its destination changes.
     DiscardToLibraryTopInstead,
 
+    /// Firestorm Phoenix's "If this creature would die, return it to its owner's hand instead.
+    /// Until that player's next turn, that player plays with that card revealed in their hand and
+    /// can't play it." (CR 614.1b — a self-replacement from a static ability.) Read by
+    /// [`Game::graveyard_or_command`](crate::Game), the one choke every death routes through, and
+    /// by the [`Event::ReturnedToHand`](crate::Event) apply arm that arms the revealed-and-shut
+    /// window on the card that comes back. Unscoped: the printed sentence only ever names its own
+    /// source, so there is no filter to carry.
+    ReturnToHandInsteadOfDying,
+
     DoesntUntap {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         self_only: bool,
@@ -301,6 +422,23 @@ pub enum StaticEffect {
     /// why a phased-out permanent stays phased out under Stasis (CR 502.1) where `DoesntUntap`
     /// would let it back in.
     PlayersSkipUntapSteps,
+
+    /// Revelation's "Players play with their hands revealed." Read by
+    /// [`Game::hands_revealed_to_all`](crate::Game) — and *only* by the projection layer in
+    /// `crate::schema`, which widens its per-viewer privacy gate. No rules logic branches on it:
+    /// a revealed hand is still a hand, so nothing about casting, discarding, or targeting from it
+    /// changes (CR 400.2).
+    ///
+    /// Unscoped like [`PlayersSkipUntapSteps`](Self::PlayersSkipUntapSteps) — "players" is
+    /// everyone, the enchantment's own controller included.
+    PlayersPlayWithHandsRevealed,
+
+    /// Field of Dreams' "Players play with the top card of their libraries revealed." The library
+    /// twin of [`PlayersPlayWithHandsRevealed`](Self::PlayersPlayWithHandsRevealed), read by
+    /// [`Game::library_tops_revealed_to_all`](crate::Game): exactly the one card
+    /// [`Game::library_top`](crate::Game) names per player, never the cards beneath it, and the
+    /// library stays unordered-to-the-client in every other respect.
+    PlayersPlayWithLibraryTopsRevealed,
 
     /// Smoke's "Players can't untap more than one creature during their untap steps" and Winter
     /// Orb's land twin (CR 502.2). Read by
@@ -341,6 +479,16 @@ pub enum StaticEffect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         kind: Option<CounterKind>,
     },
+
+    /// Clergy of the Holy Nimbus's "If this creature would be destroyed, regenerate it." — a
+    /// standing regeneration shield (CR 701.15) rather than the one-shot, cost-paid
+    /// [`ControlEffect::RegenerateShield`](crate::ControlEffect::RegenerateShield) the activated
+    /// `{cost}: Regenerate` prints: it replaces *every* destruction, is never used up, and needs
+    /// no activation. Still turned off by "can't be regenerated this turn" (CR 701.15d), which is
+    /// what Clergy's own second ability sells to opponents.
+    ///
+    /// Fieldless: "this creature" is the source and the replacement is unconditional.
+    RegeneratesInsteadOfBeingDestroyed,
 
     /// Zombie Master's "Other Zombies have '{B}: Regenerate this permanent.'" — an activated
     /// ability granted to every permanent matching `filter`, wherever it is on the battlefield.
@@ -444,16 +592,108 @@ pub enum StaticEffect {
         legendary_only: bool,
     },
 
-    KeywordAnthem {
+    /// Bartel Runeaxe's "Bartel Runeaxe can't be the target of Aura spells" and Anti-Magic Aura's
+    /// "Enchanted creature can't be the target of spells" — a *filtered* targeting restriction (CR
+    /// 115.4/115.6), deliberately not [`Keyword::Shroud`](crate::Keyword): shroud turns away
+    /// abilities too, and these clauses name only spells (Anti-Magic Aura) or only Aura spells
+    /// (Bartel Runeaxe, Tetsuo Umezawa). Enforced alongside
+    /// shroud/hexproof/protection in the engine's target enumeration, so a spell that tries anyway
+    /// is rejected at target selection like any other illegal target.
+    CantBeTargetedBy {
+        /// Which spells are turned away — [`SpellFilter::Aura`] for "Aura spells",
+        /// [`SpellFilter::AllSpells`] for the unqualified "spells".
+        spells: SpellFilter,
+        /// The shield lands on the host this Aura is attached to (Anti-Magic Aura's "Enchanted
+        /// creature") rather than on the ability's own source (Bartel Runeaxe naming itself).
+        /// `false` (default) is the self-shield.
+        ///
+        /// A flag here rather than a `cant_be_targeted_by` field on
+        /// [`GrantToAttached`](Self::GrantToAttached) — where the pool's other "Enchanted creature
+        /// …" clauses live — because the self-shielding creatures need this variant regardless, and
+        /// one variant carrying both scopes keeps the enforcement to a single battlefield scan.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        attached: bool,
+    },
+
+    /// Wall of Shadows' "This creature can't be the target of spells that can target only Walls
+    /// or of abilities that can target only Walls" (CR 115.4). The sibling of
+    /// [`CantBeTargetedBy`](Self::CantBeTargetedBy) above, and its opposite in what it reads: that
+    /// one asks what the *source* is (an Aura spell, a spell at all), which only a spell can
+    /// answer; this one asks what the source's own **target restriction** admits, which an
+    /// activated ability's restriction answers just as well — hence "or of abilities".
+    ///
+    /// `subtypes` names the restriction that shields: a source is turned away when its
+    /// [`TargetSpec`](crate::TargetSpec) requires at least one subtype and every subtype it
+    /// requires is one of these (Animate Wall's "Enchant Wall"). A source with no subtype
+    /// restriction can target non-Walls too, so it is never caught.
+    /// ponytail: read off the declared filter, so a source that happens to be able to hit only
+    /// Walls for some *other* reason (a toughness bound no non-Wall meets) is not caught. That is
+    /// also how the CR reads the clause — it is about the targeting restriction, not the board.
+    CantBeTargetedBySubtypeOnlyEffects {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        subtypes: &'static [&'static str],
+    },
+    /// The *filtered* anthem: a continuous grant to every permanent matching a full
+    /// [`PermanentFilter`], rather than [`Anthem`](Self::Anthem)'s fixed set of candidate axes.
+    /// Reach for it when the affected set needs something `Anthem` can't say — a printed name
+    /// (Ivory Guardians' "Creatures named Ivory Guardians") or a per-candidate combat state read
+    /// live (Arcades Sabboth's "Each untapped creature you control … as long as it's not
+    /// attacking") — and for `Anthem` when the plain "creatures you control" axes suffice.
+    ///
+    /// It grants keywords and/or a P/T delta, either alone — which is why the mode is spelled
+    /// `filtered_anthem` rather than the `keyword_anthem` it was named before it grew `power` /
+    /// `toughness`.
+    ///
+    /// Applied per candidate in `Game::anthem_continuous_effects` beside `Anthem`'s own scan, so
+    /// both kinds land in layer 7c/6 at the same timestamp choke and are re-read on every
+    /// recompute (CR 613.4) — the boost falls off the instant the filter stops matching.
+    FilteredAnthem {
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_slice")
         )]
         keywords: &'static [Keyword],
+        /// Keywords the matching permanents *lose* instead (Gravity Sphere's "All creatures lose
+        /// flying"). Folded into the same keyword layer as `keywords` at the same timestamp, so a
+        /// later grant still wins (CR 613.1f). A card may spell both; the pool's grants leave this
+        /// empty.
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        lose_keywords: &'static [Keyword],
         #[cfg_attr(feature = "card-dsl", serde(default))]
         filter: PermanentFilter,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         all_players: bool,
+        /// P/T delta granted alongside (or instead of) `keywords`. Both default to 0, so the
+        /// pool's keyword-only spellings are unchanged.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        power: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        toughness: Amount,
+        /// An "as long as …" board gate on the *whole* anthem, evaluated against the source's own
+        /// controller — Ivory Guardians' "as long as an opponent controls a nontoken red
+        /// permanent". The candidate-side half of a card's gate belongs in `filter` instead.
+        /// Same field and same live re-read as [`Anthem`](Self::Anthem)'s `condition`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        condition: Option<Condition>,
+    },
+
+    /// Crevasse's "Creatures with mountainwalk can be blocked as though they didn't have
+    /// mountainwalk" (and its four siblings, plus Gosta Dirk / Lord Magnus / Ur-Drago printing the
+    /// same static on a creature): the landwalk evasion for `land` stops being checked, board-wide.
+    ///
+    /// CR 702.14b's evasion is *checked* when blockers are declared, not a property removed from
+    /// the creature — the attacker keeps its [`Keyword::Landwalk`](crate::Keyword), so Island
+    /// Sanctuary's "except by creatures with … islandwalk" still sees it. Only
+    /// [`Game::can_block`](crate::Game)'s landwalk check is waived, via
+    /// [`Game::landwalk_negated`](crate::Game).
+    ///
+    /// One land type per variant, so Lord Magnus's two statics accumulate instead of one replacing
+    /// the other: the board scan finds each on its own.
+    LandwalkNegated {
+        land: BasicLandType,
     },
 
     /// Lich's "You don't lose the game for having 0 or less life" — CR 704.5a's exemption, read
@@ -468,6 +708,14 @@ pub enum StaticEffect {
     /// drains as well as a printed "you gain N life".
     LifeGainBecomesDraw,
 
+    /// Chains of Mephistopheles' "If a player would draw a card except the first one they draw in
+    /// each of their draw steps, that player discards a card instead. If the player discards a
+    /// card this way, they draw a card. If the player doesn't discard a card this way, they mill a
+    /// card." — a CR 614 replacement applying to *every* player's draws, not just the controller's,
+    /// checked at the one draw funnel (`Game::draw_with_replacements`). The replacement's own draw
+    /// is not replaced again (CR 614.5).
+    DrawsAfterTheFirstEachDrawStepBecomeDiscardThenDraw,
+
     LifeGainReplacement {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         plus: i32,
@@ -479,6 +727,17 @@ pub enum StaticEffect {
     MustAttackEachCombat {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         self_only: bool,
+    },
+
+    /// Marble Priest's "All Walls able to block this creature do so" (CR 509.1c): a blocking
+    /// *requirement* printed on the attacker, narrowed to the blockers `filter` names. The
+    /// filtered twin of [`GrantToAttached`](Self::GrantToAttached)'s `must_be_blocked_by_all`
+    /// (Lure's unfiltered "all creatures"), and the requirement mirror of
+    /// [`CantBeBlockedBy`](Self::CantBeBlockedBy) — that one says who may not block this
+    /// creature, this one says who must. Collected by `Game::required_blocks`, where "able to
+    /// block" is `Game::can_block`, so a tapped or otherwise barred Wall is never forced.
+    MustBeBlockedBy {
+        filter: PermanentFilter,
     },
 
     NoMaximumHandSize,
@@ -495,11 +754,42 @@ pub enum StaticEffect {
 
     PlayFromGraveyardOncePerTurn,
 
-    PreventCombatDamage {
+    /// A permanent's own printed prevention shield (CR 615): "Prevent all damage that would be
+    /// dealt to this creature by …". Applies as the damage would be dealt and never uses the
+    /// stack, so it is read at the damage chokes rather than placed as a triggered ability.
+    ///
+    /// `to_self` shields damage dealt *to* the permanent (Guard Gomazoa, every Wall in this
+    /// family); `by_self` shields damage it deals to others (Fog Bank's "and dealt by"). The three
+    /// gates below narrow *which* damage — an unset gate imposes no restriction, which is the
+    /// unqualified "prevent all combat damage" both 2ed cards print.
+    PreventDamage {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         to_self: bool,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         by_self: bool,
+        /// "Prevent all **combat** damage" (Fog Bank, Guard Gomazoa, Enchanted Being, Marble
+        /// Priest). `false` — Wall of Vapor's plain "prevent all damage" — covers combat and
+        /// noncombat damage alike. The word is the whole difference between Enchanted Being and
+        /// Wall of Putrid Flesh, which otherwise print the same shield.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        combat_only: bool,
+        /// "… by enchanted creatures" (Enchanted Being, Wall of Putrid Flesh) / "… by Walls"
+        /// (Marble Priest): a gate on the damage's *source*, read as an ordinary permanent
+        /// filter from the shielded permanent's controller's perspective. A source that isn't a
+        /// permanent (a spell) never matches one — see [`SourceRelation`] for those.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        source_filter: Option<PermanentFilter>,
+        /// "… by creatures it's blocking" (Wall of Shadows, Wall of Vapor) / "… by spells that
+        /// target it" (Bronze Horse): a *relationship* between the damage's source and the
+        /// shielded permanent, which no [`PermanentFilter`] axis can express.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        source_relation: Option<SourceRelation>,
+        /// The shield lands on the host this Aura is attached to (Gaseous Form's and Demonic
+        /// Torment's "enchanted creature") rather than on the ability's own source. `false`
+        /// (default) is the self-shield every creature in this family prints. Same flag, same
+        /// reasoning, as [`CantBeTargetedBy`](Self::CantBeTargetedBy)'s `attached`.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        attached: bool,
     },
 
     PreventDamageToSelfRemovingCounter,
@@ -530,6 +820,27 @@ pub enum StaticEffect {
     /// (an activated ability, say); no pool card creates that case, and the upgrade path is a
     /// per-turn "went unblocked" set the general damage choke could read.
     RedirectUnblockedDamageToSelf,
+
+    /// Forethought Amulet's "If an instant or sorcery source would deal 3 or more damage to you,
+    /// it deals 2 damage to you instead" (CR 615.9) — a *replacement* that rewrites the amount
+    /// rather than a prevention that subtracts from it, gated on the damage source and on a
+    /// threshold. Standing on the permanent, so it applies to every qualifying hit for as long as
+    /// the permanent is on the battlefield, unlike the armed-and-spent shields
+    /// [`MiscEffect::PreventNextDamage`](crate::MiscEffect::PreventNextDamage) mints.
+    ///
+    /// "to you" is the permanent's own controller — no `TargetSpec` names it, exactly as
+    /// [`PreventNoncombatDamageToOtherCreaturesYouControl`](Self::PreventNoncombatDamageToOtherCreaturesYouControl)
+    /// reads its own controller's creatures.
+    ReplaceDamageToYou {
+        /// "an **instant or sorcery** source" — matched against the damage source's own card,
+        /// so a permanent source never qualifies.
+        source: SpellFilter,
+        /// "would deal **3 or more** damage": the threshold at or above which the rewrite
+        /// applies. A smaller hit is dealt as printed.
+        at_least: i32,
+        /// "it deals **2** damage to you instead": what a qualifying hit becomes.
+        becomes: i32,
+    },
 
     ReduceSpellCost {
         amount: Amount,
@@ -686,4 +997,32 @@ pub enum CounterRecipients {
 pub enum CounterPlacer {
     You,
     Opponents,
+}
+
+/// How a prevention shield's *source* gate reads the shielded object rather than the source's own
+/// characteristics (CR 615) — the two Legends shields whose "by …" clause names a relationship
+/// instead of a class of permanents. A [`PermanentFilter`] can say "by Walls"; neither of these
+/// can be said that way, because both depend on the shielded object.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[cfg_attr(feature = "card-schema", derive(schemars::JsonSchema))]
+pub enum SourceRelation {
+    /// "by creatures it's blocking" (Wall of Shadows, Wall of Vapor): the shielded permanent is
+    /// blocking the damage's source. Read per damage source, not per combat — a creature can
+    /// block two attackers (CR 509.1), and the shield stands in front of each of them.
+    BlockedByThis,
+    /// "by spells that target it" (Bronze Horse): the damage's source is a spell on the stack
+    /// among whose chosen targets the shielded permanent is. An *ability* that targets it is not
+    /// covered — see [`Self::SpellOrAbilityTargetingThis`] for the wider wording.
+    SpellTargetingThis,
+    /// "if a spell or ability that targets that creature would cause a source to deal damage to
+    /// it" (Silhouette): the stack item now resolving targets the shielded permanent, whatever
+    /// source that item points the damage at. Wider than [`Self::SpellTargetingThis`] in both
+    /// directions — activated and triggered abilities count, and the damage's own source need not
+    /// be the targeting item (a fight, a "target creature deals damage to target creature").
+    SpellOrAbilityTargetingThis,
 }

@@ -1,0 +1,31 @@
+# All damage that would be dealt this turn by target sorcery spell is dealt to that spell's
+# controller instead.
+name = "Reverberation"
+otags = ["damage-prevention", "damage-redirection", "single-english-word-name", "single-target-instant-sorcery"]
+sets = ["leg"]
+id = "d3088e1d-62c9-4478-9ef7-fc3c9e5cfadb"
+default_print = "a3d1f470-058d-41b7-acaf-4f68431de9ed"
+oracle = "All damage that would be dealt this turn by target sorcery spell is dealt to that spell's controller instead."
+
+[cost]
+generic = 2
+blue = 2
+
+[kind]
+type = "instant"
+
+# All damage that would be dealt this turn by target sorcery spell is dealt to that spell's
+# controller instead.
+[[abilities]]
+timing = "spell"
+
+# All damage that would be dealt this turn by target sorcery spell is dealt to that spell's
+# controller instead.
+[[abilities.effects]]
+type = "misc"
+mode = "prevent_next_damage"
+target = { spell_on_stack = "sorcery" }
+target_is_source = true
+any_recipient = true
+all_damage = true
+redirect_to_target_controller = true

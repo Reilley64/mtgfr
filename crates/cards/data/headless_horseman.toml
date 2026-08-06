@@ -1,0 +1,16 @@
+# (no rules text — vanilla creature)
+name = "Headless Horseman"
+otags = ["alliteration", "type-errata"]
+sets = ["leg", "prm"]
+id = "5bb4961f-0a24-40f8-bfba-8618a9375c93"
+default_print = "d1aa37c8-98fa-4984-b09b-cf65ad84e97b"
+subtypes = ["Zombie", "Knight"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

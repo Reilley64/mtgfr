@@ -1,5 +1,5 @@
 // Card art CDN — R2 bucket filled on miss from Scryfall.
-// Spec: docs/superpowers/specs/2026-07-30-card-image-cdn-design.md
+// OpenSpec: openspec/specs/production-and-ops/spec.md (Card art CDN)
 // Uploaded verbatim by iac/card-cdn.tf, so: plain ES module, no imports, no bundler.
 
 // Every size Scryfall serves as WebP. Admitting all of them — not just the two the client asks

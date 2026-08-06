@@ -17,7 +17,7 @@ import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/type
 import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } from "../action/execution";
 import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
-import { ZONE } from "../geometry/layout";
+import { STEP, ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
 import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
 import { type BoardViewModel, view as boardView, type ViewMessage } from "../view";
@@ -788,6 +788,44 @@ test("a looked-at opponent hand gets a chip that opens it in the pile overlay", 
   );
 });
 
+// Revelation — "Players play with their hands revealed." The server itemizes every hand to every
+// seat, so each opponent gets the same chip a Glasses of Urza look leaves, opening onto the cards
+// themselves.
+test("a revealed opponent hand opens card by card", () => {
+  const revealed = [
+    card(72, { owner: 1, controller: 1, zone: ZONE.Hand, name: "Shivan Dragon" }),
+    card(73, { owner: 1, controller: 1, zone: ZONE.Hand, name: "Counterspell" }),
+  ];
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState({ objects: revealed })),
+    Scene.expect(Scene.testId("seen-hand-1")).toHaveText("Bob's hand (2)"),
+  );
+
+  overlayScene(
+    overlayModel(
+      { ...initialBoardModel(), pileExpand: { zone: ZONE.Hand, owner: 1 } },
+      gameState({ objects: revealed }),
+    ),
+    Scene.expect(Scene.testId("pile-overlay-title")).toHaveText("Hand (2)"),
+    Scene.expect(Scene.testId("pile-overlay")).toContainText("Shivan Dragon"),
+    Scene.expect(Scene.testId("pile-overlay")).toContainText("Counterspell"),
+  );
+});
+
+// Field of Dreams — "Players play with the top card of their libraries revealed." The server sends
+// exactly one library card per seat, and the deck slot opens it here.
+test("a revealed library top opens under its own heading", () => {
+  const top = card(74, { owner: 1, controller: 1, zone: ZONE.Library, name: "Sol Ring" });
+  overlayScene(
+    overlayModel(
+      { ...initialBoardModel(), pileExpand: { zone: ZONE.Library, owner: 1 } },
+      gameState({ objects: [top] }),
+    ),
+    Scene.expect(Scene.testId("pile-overlay-title")).toHaveText("Library (1)"),
+    Scene.expect(Scene.testId("pile-overlay")).toContainText("Sol Ring"),
+  );
+});
+
 test("no chip when this viewer has looked at nobody's hand", () => {
   overlayScene(
     overlayModel(initialBoardModel(), gameState({ objects: [card(71, { owner: 0, zone: ZONE.Hand })] })),
@@ -1450,6 +1488,33 @@ test("scry uses a center modal with Top and Bottom arrange lanes", () => {
     Scene.expect(Scene.testId("prompt-arrange-bottom-label")).toHaveText("Bottom of library"),
     Scene.expect(Scene.testId("prompt-card-1")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
+test("visions look-at-top shows the revealed cards with a single Done dismissal", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "look_at_top",
+          player: 0,
+          items: [
+            { id: 1, label: "Island" },
+            { id: 2, label: "Forest" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-look-at-top-modal")).toExist(),
+    Scene.expect(Scene.testId("prompt-look-at-top-cards")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-2")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveText("Done"),
+    // The order is not the player's to set, so no Top/Bottom lanes.
+    Scene.expect(Scene.testId("pending-arrange-modal")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-arrange-lanes")).toBeAbsent(),
+    Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
   );
 });
 
@@ -3288,6 +3353,85 @@ test("mana tray precedes bitmap layer in board-mount composition (under permanen
     Scene.expect(Scene.testId("mana-tray")).toExist(),
     Scene.expect(Scene.testId("board-bitmap-layer")).toExist(),
     Scene.expect(Scene.testId("board-flight-layer")).toHaveClass("z-30"),
+  );
+});
+
+// CR 702.22c banding: the grouping affordance opens only when a staged attacker can band, so an
+// ordinary attack pays nothing for it. Legality is the engine's (`Game::band_is_legal`).
+function bandingCombat(board: Partial<BoardModel> = {}) {
+  const bander = card(30, {
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    name: "Cathedral Knight",
+    keywords: ["bands_with:legendary"],
+    zone: ZONE.Battlefield,
+  });
+  const partner = card(31, {
+    kind: { kind: "creature", power: 1, toughness: 1 },
+    name: "Legendary Ally",
+    zone: ZONE.Battlefield,
+  });
+  return overlayModel(
+    {
+      ...initialBoardModel(),
+      combatAttackers: [
+        { attacker: bander.id, defender: 1 },
+        { attacker: partner.id, defender: 1 },
+      ],
+      ...board,
+    },
+    gameState({
+      step: STEP.DeclareAttackers,
+      objects: [bander, partner],
+      actions: [action(1, { kind: "declare_attackers", section: "combat", declare_for: [0] })],
+    }),
+  );
+}
+
+test("band panel offers every staged attacker once one of them can band", () => {
+  overlayScene(
+    bandingCombat(),
+    Scene.expect(Scene.testId("board-band-panel")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="board-band-panel"] [data-testid="board-band-chip-30"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="board-band-panel"] [data-testid="board-band-chip-31"]')).toExist(),
+    Scene.expect(Scene.testId("board-band-chip-30")).toHaveAttr("data-banded", "false"),
+  );
+});
+
+test("banded chips carry data-banded so Tailwind variants own the look", () => {
+  overlayScene(
+    bandingCombat({ combatBand: [30] }),
+    Scene.expect(Scene.testId("board-band-chip-30")).toHaveAttr("data-banded", "true"),
+    Scene.expect(Scene.testId("board-band-chip-30")).toHaveAttr("aria-pressed", "true"),
+    Scene.expect(Scene.testId("board-band-chip-31")).toHaveAttr("data-banded", "false"),
+  );
+});
+
+test("an ordinary attack with no banding creature never renders the band panel", () => {
+  const plain = card(30, { kind: { kind: "creature", power: 2, toughness: 2 }, zone: ZONE.Battlefield });
+  const other = card(31, { kind: { kind: "creature", power: 1, toughness: 1 }, zone: ZONE.Battlefield });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        combatAttackers: [
+          { attacker: plain.id, defender: 1 },
+          { attacker: other.id, defender: 1 },
+        ],
+      },
+      gameState({
+        step: STEP.DeclareAttackers,
+        objects: [plain, other],
+        actions: [action(1, { kind: "declare_attackers", section: "combat", declare_for: [0] })],
+      }),
+    ),
+    Scene.expect(Scene.testId("board-band-panel")).toBeAbsent(),
+  );
+});
+
+test("the band panel closes once the declaration is confirmed", () => {
+  overlayScene(
+    bandingCombat({ attackersConfirmed: true }),
+    Scene.expect(Scene.testId("board-band-panel")).toBeAbsent(),
   );
 });
 

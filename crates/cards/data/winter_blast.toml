@@ -1,0 +1,33 @@
+# Tap X target creatures. Winter Blast deals 2 damage to each of those creatures with flying.
+name = "Winter Blast"
+otags = ["burn-creature", "mass-tap", "multiple-targets", "removal-tap"]
+sets = ["4bb", "4ed", "5ed", "itp", "leg", "me1", "ren", "rqs"]
+id = "594827de-e85f-4aac-b0e6-d92878f0f26c"
+default_print = "fb846366-2105-4999-8af1-a11687f42e17"
+oracle = "Tap X target creatures. Winter Blast deals 2 damage to each of those creatures with flying."
+
+[cost]
+x = true
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Tap X target creatures. Winter Blast deals 2 damage to each of those creatures with flying.
+[[abilities]]
+timing = "spell"
+
+# Tap X target creatures.
+[[abilities.effects]]
+type = "control"
+mode = "tap_target"
+target = { permanent = { types = "creature" } }
+count = { min = 1, max = 1, x_scaled = true }
+
+# Winter Blast deals 2 damage to each of those creatures with flying. A rider over the targets
+# already chosen, not a second target clause — it repeats the tap step's spec so the two fold into
+# one clause and run together once per chosen creature.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "target_matches", filter = { types = "creature", with_flying = true } }
+then = [{ type = "damage", mode = "target", amount = 2, target = { permanent = { types = "creature" } } }]

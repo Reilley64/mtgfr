@@ -32,7 +32,9 @@ fn card_schema() -> Value {
 fn token_schema(card: &Value) -> Value {
     let mut schema = card.clone();
     normalize_schema(&mut schema, "mtgfr token TOML");
-    require_non_empty_string(&mut schema, "default_print");
+    // `default_print` stays optional for tokens (fidelity increment #97): a token predating
+    // printed token cards has no Scryfall printing to key, and an empty string already renders
+    // as the card back client-side. `id` stays required — it's the `token = "<id>"` lookup key.
     require_non_empty_string(&mut schema, "id");
     schema
 }

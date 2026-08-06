@@ -25,6 +25,12 @@ pub enum MillEffect {
 
     ExileTargetFromGraveyardWithThis,
 
+    /// Knowledge Vault's "{2}, {T}: Exile the top card of your library face down." The library twin
+    /// of [`ExileDiscardedWithThis`](Self::ExileDiscardedWithThis): the card joins the ability's own
+    /// source-linked pile (CR 400.10a's "exiled with"), face down and with no permission to play it
+    /// — [`ZoneEffect::ReturnAllExiledWithThis`](crate::ZoneEffect) is the only way back out.
+    ExileTopFaceDownWithThis,
+
     ExileTopMayPlay {
         count: Amount,
         #[cfg_attr(feature = "card-dsl", serde(default))]

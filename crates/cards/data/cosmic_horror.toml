@@ -1,0 +1,38 @@
+# First strike
+# At the beginning of your upkeep, destroy this creature unless you pay {3}{B}{B}{B}. If this
+# creature is destroyed this way, it deals 7 damage to you.
+name = "Cosmic Horror"
+otags = ["burn-you", "drawback", "triggered-ability", "upkeep-cost"]
+sets = ["4bb", "4ed", "leg", "me3", "ren"]
+id = "d73df13d-942a-4104-ac9d-de7c100c086f"
+default_print = "64288873-d3bf-49f6-b0e4-a1e712f8ba58"
+oracle = "First strike\nAt the beginning of your upkeep, destroy this creature unless you pay {3}{B}{B}{B}. If this creature is destroyed this way, it deals 7 damage to you."
+subtypes = ["Horror"]
+keywords = ["first_strike"]
+
+[cost]
+generic = 3
+black = 3
+
+[kind]
+type = "creature"
+power = 7
+toughness = 7
+
+# At the beginning of your upkeep, destroy this creature unless you pay {3}{B}{B}{B}. If this
+# creature is destroyed this way, it deals 7 damage to you.
+[[abilities]]
+timing = "upkeep"
+
+# destroy this creature unless you pay {3}{B}{B}{B}. If this creature is destroyed this way, it
+# deals 7 damage to you.
+[[abilities.effects]]
+type = "choice"
+mode = "pay_or_else"
+cost = { generic = 3, black = 3 }
+otherwise = [
+  # destroy this creature
+  { type = "destroy", mode = "target", target = "this" },
+  # If this creature is destroyed this way, it deals 7 damage to you.
+  { type = "conditional", condition = { type = "compare", left = { permanents_destroyed_this_way = {} }, op = "at_least", right = 1 }, then = [{ type = "damage", mode = "to_players", amount = 7 }] },
+]

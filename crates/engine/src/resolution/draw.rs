@@ -9,6 +9,12 @@ use crate::*;
 
 impl Game {
     /// Mint events for the Draw Effect family.
+    ///
+    /// ponytail: [`Game::run`] intercepts every `Effect::Draw` and routes it through
+    /// [`Game::draw_with_replacements`] instead, so the only caller that can still land here is
+    /// `Game::cast`'s alternative-cost rider — no printed rider draws, and one that did would
+    /// bypass dredge and Chains of Mephistopheles. Route that rider through the funnel if a card
+    /// ever prints one.
     pub(crate) fn mint_draw(
         &self,
         effect: DrawEffect,
