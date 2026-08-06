@@ -3,7 +3,6 @@
 # {R}{R}{R}: Regenerate enchanted creature.
 name = "The Brute"
 otags = ["activated-ability", "protects-creature", "regenerates-other", "virtual-legendary"]
-sets = ["4bb", "4ed", "5ed", "leg", "ren"]
 id = "99587b7a-cbd0-4ade-b517-50aaf0635fb1"
 default_print = "d3ded8fa-facf-4196-8964-56ebc6424be1"
 oracle = "Enchant creature\nEnchanted creature gets +1/+0.\n{R}{R}{R}: Regenerate enchanted creature."
@@ -18,6 +17,7 @@ type = "aura"
 
 # Enchanted creature gets +1/+0.
 [[abilities]]
+oracle = "Enchanted creature gets +1/+0."
 timing = "static"
 
 # Enchanted creature gets +1/+0.
@@ -29,6 +29,7 @@ toughness = 0
 
 # {R}{R}{R}: Regenerate enchanted creature.
 [[abilities]]
+oracle = "{R}{R}{R}: Regenerate enchanted creature."
 timing = "activated"
 activation_cost = { red = 3 }
 

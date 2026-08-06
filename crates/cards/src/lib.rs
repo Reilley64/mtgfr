@@ -21,6 +21,7 @@
 #[cfg(feature = "card-dsl")]
 mod de;
 mod defs;
+mod printings;
 #[cfg(feature = "card-dsl")]
 pub mod toml_surface;
 pub mod types;
@@ -29,6 +30,7 @@ pub mod types;
 #[cfg(feature = "card-dsl")]
 pub use de::{install_token_defs, token_def};
 pub use defs::{CardId, card_def, intern_card_def, interned_len};
+pub use printings::print_flavor;
 #[cfg(feature = "card-dsl")]
 pub use toml_surface::CardToml;
 pub use types::*;
@@ -198,6 +200,8 @@ fn load_from_data_dir() -> Pool {
     let dir = data_dir();
     // Tokens first so `token = "<id>"` resolves while parsing deckable cards.
     load_token_defs(&dir);
+    // Printings before cards: `sets` is derived from the records, not written in the card TOML.
+    printings::install(printings::load(&dir));
 
     let entries =
         std::fs::read_dir(&dir).unwrap_or_else(|e| panic!("reading card data dir {dir:?}: {e}"));
@@ -213,13 +217,14 @@ fn load_from_data_dir() -> Pool {
         if path.extension().and_then(|e| e.to_str()) != Some("toml") {
             continue;
         }
-        let def = load_toml_file(&path);
+        let mut def = load_toml_file(&path);
         if def.id.is_empty() {
             panic!(
                 "{}: CardDef.id (Scryfall oracle id) is required",
                 path.display()
             );
         }
+        def.sets = printings::loaded().sets_of(def.id);
         if def.default_print.is_empty() {
             panic!(
                 "{}: CardDef.default_print (Scryfall card UUID) is required",

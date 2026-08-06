@@ -4,7 +4,6 @@ otags = ["multi-removal", "namesake-spell", "poison-opponents", "removal-creatur
 id = "33fd9192-3e9b-4d3a-92aa-06de29d449df"
 default_print = "0173b7b4-2832-4943-ba45-8ba498d7a056"
 oracle = "Each opponent sacrifices a creature or planeswalker of their choice and gets a poison counter."
-sets = ["one"]
 
 [cost]
 generic = 2
@@ -15,6 +14,7 @@ type = "instant"
 
 # Each opponent sacrifices a creature or planeswalker of their choice and gets a poison counter.
 [[abilities]]
+oracle = "Each opponent sacrifices a creature or planeswalker of their choice and gets a poison counter."
 timing = "spell"
 
 # Each opponent sacrifices a creature or planeswalker of their choice

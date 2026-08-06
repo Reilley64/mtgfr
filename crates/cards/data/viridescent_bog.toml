@@ -2,7 +2,6 @@
 # Viridescent Bog (soc): "{1}, {T}: Add {B}{G}." No `produces` — a land with no free base tap;
 # the only mana ability is the scripted "{1}, {T}: Add {B}{G}" (same shape as a Signet).
 name = "Viridescent Bog"
-sets = ["blc", "dsc", "eoc", "m3c", "otc", "pip", "soc"]
 id = "6bd6d259-1af7-4dff-a79c-48a616d2a36e"
 default_print = "54d852fc-0f3a-4791-a147-b21ca6964763"
 otags = ["activated-ability", "cycle-pip-enemy-filterland"]
@@ -13,6 +12,7 @@ type = "land"
 
 # {1}, {T}: Add {B}{G}.
 [[abilities]]
+oracle = "{1}, {T}: Add {B}{G}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

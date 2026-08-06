@@ -2,7 +2,8 @@
 
 use schema::{
     ActionView, ChoiceItem, CombatView, ModalView, ModeView, ModifierSourceView, ObjectView,
-    PendingChoiceView, PlayerView, StackObjectView, StreamFrame, VisibleEvent, VisibleState,
+    PendingChoiceView, PlayerView, StackObjectView, StackSourceFaceView, StreamFrame, VisibleEvent,
+    VisibleState,
 };
 
 use crate::grpc::map::common::{
@@ -70,6 +71,17 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         print: entry.print,
         card_id: entry.card_id,
         name: entry.name,
+        ability_oracle: entry.ability_oracle,
+        source_face: entry.source_face.map(stack_source_face_view_to_pb),
+    }
+}
+
+fn stack_source_face_view_to_pb(face: StackSourceFaceView) -> pb::StackSourceFaceView {
+    pb::StackSourceFaceView {
+        kind: Some(wire_kind_to_pb(face.kind)),
+        colors: face.colors.into_iter().map(u32::from).collect(),
+        is_token: face.is_token,
+        legendary: face.legendary,
     }
 }
 
@@ -103,6 +115,9 @@ pub fn object_view_to_pb(obj: ObjectView) -> pb::ObjectView {
         plus_counters: obj.plus_counters,
         marked_damage: obj.marked_damage,
         is_commander: obj.is_commander,
+        is_token: obj.is_token,
+        legendary: obj.legendary,
+        colors: obj.colors.into_iter().map(u32::from).collect(),
         goaded: obj.goaded,
         taps_for_mana: obj.taps_for_mana,
         prepared: obj.prepared,
@@ -1665,6 +1680,16 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
     Some(pb::VisibleEvent { event: Some(event) })
 }
 
+fn card_text_to_pb(text: schema::CardTextView) -> pb::CardTextView {
+    pb::CardTextView {
+        card_id: text.card_id,
+        print: text.print,
+        type_line: text.type_line,
+        oracle: text.oracle,
+        flavor: text.flavor,
+    }
+}
+
 pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
     pb::VisibleState {
         viewer: u32::from(state.viewer),
@@ -1692,9 +1717,14 @@ pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
 pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamResponse {
     use pb::stream_response::Frame;
     let frame = match frame {
-        StreamFrame::Snapshot { seq, state } => Frame::Snapshot(pb::SnapshotFrame {
+        StreamFrame::Snapshot {
+            seq,
+            state,
+            card_text,
+        } => Frame::Snapshot(pb::SnapshotFrame {
             seq,
             state: Some(visible_state_to_pb(state)),
+            card_text: card_text.into_iter().map(card_text_to_pb).collect(),
         }),
         StreamFrame::Delta(envelope) => Frame::Delta(pb::DeltaEnvelope {
             seq: envelope.seq,
@@ -1708,6 +1738,11 @@ pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamResponse {
                 .auto_actions
                 .into_iter()
                 .map(message_ref_to_pb)
+                .collect(),
+            card_text: envelope
+                .card_text
+                .into_iter()
+                .map(card_text_to_pb)
                 .collect(),
         }),
         StreamFrame::Heartbeat => Frame::Heartbeat(pb::Heartbeat {}),
@@ -1768,8 +1803,7 @@ mod tests {
                 mana_cost: WireCost {
                     generic: 1,
                     colored: [0, 0, 0, 0, 1],
-                    has_x: false,
-                    x_symbols: 0,
+                    ..Default::default()
                 },
                 needs_target: false,
                 tapped: false,
@@ -1782,6 +1816,9 @@ mod tests {
                 plus_counters: 0,
                 marked_damage: 0,
                 is_commander: false,
+                is_token: false,
+                legendary: false,
+                colors: vec![4],
                 goaded: false,
                 taps_for_mana: false,
                 prepared: false,
@@ -1800,6 +1837,8 @@ mod tests {
                 print: "shock-print".into(),
                 card_id: "shock-id".into(),
                 name: "Shock".into(),
+                ability_oracle: String::new(),
+                source_face: None,
             }],
             combat: CombatView::default(),
             can_act: true,
@@ -1864,11 +1903,22 @@ mod tests {
         let pb = stream_frame_to_pb(StreamFrame::Snapshot {
             seq: 9,
             state: state.clone(),
+            card_text: vec![schema::CardTextView {
+                card_id: "bear".into(),
+                print: "bear-print".into(),
+                type_line: "Creature — Bear".into(),
+                oracle: String::new(),
+                flavor: "Rrrrr.".into(),
+            }],
         });
         let Some(pb::stream_response::Frame::Snapshot(snap)) = pb.frame else {
             panic!("expected Snapshot frame");
         };
         assert_eq!(snap.seq, 9);
+        // The printed words ride the snapshot: the board never asks a card API per card.
+        assert_eq!(snap.card_text.len(), 1);
+        assert_eq!(snap.card_text[0].type_line, "Creature — Bear");
+        assert_eq!(snap.card_text[0].flavor, "Rrrrr.");
         let st = snap.state.expect("snapshot state");
         assert_eq!(st.viewer, 0);
         assert_eq!(st.objects.len(), 1);
@@ -1879,6 +1929,8 @@ mod tests {
                 toughness: 2,
             }))
         );
+        // WUBRG indices, widened u8 -> u32 — the frame the client draws the Bear in.
+        assert_eq!(st.objects[0].colors, vec![4]);
         assert!(matches!(
             st.pending_choice.as_ref().and_then(|c| c.choice.as_ref()),
             Some(pb::pending_choice_view::Choice::ChooseTarget(_))
@@ -1918,6 +1970,7 @@ mod tests {
                     .with_params(vec![MessageParam::string("name", "Goblin")])
                     .with_children(vec![MessageRef::key("auto.automatic")]),
             ],
+            card_text: vec![],
         }));
         let Some(pb::stream_response::Frame::Delta(delta)) = pb.frame else {
             panic!("expected Delta frame");
@@ -1966,6 +2019,7 @@ mod tests {
             ],
             state,
             auto_actions: vec![],
+            card_text: vec![],
         }));
         let Some(pb::stream_response::Frame::Delta(delta)) = pb.frame else {
             panic!("expected Delta frame");

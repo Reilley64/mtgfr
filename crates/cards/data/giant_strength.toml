@@ -2,7 +2,6 @@
 # Enchanted creature gets +2/+2.
 name = "Giant Strength"
 otags = ["tmp-storyline-in-cards", "vanilla-aura"]
-sets = ["4bb", "4ed", "5ed", "6ed", "leg", "ren", "tmp", "vma"]
 id = "db85ba13-f00d-4cdd-99e1-22a4d39c8837"
 default_print = "eaa8fde3-d887-4b52-85ec-0100e7ccdb03"
 oracle = "Enchant creature\nEnchanted creature gets +2/+2."
@@ -16,6 +15,7 @@ type = "aura"
 
 # Enchanted creature gets +2/+2.
 [[abilities]]
+oracle = "Enchanted creature gets +2/+2."
 timing = "static"
 
 # Enchanted creature gets +2/+2.

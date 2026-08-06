@@ -1,7 +1,6 @@
 # Each player puts a vow counter on a creature they control and sacrifices the rest. Each of those creatures can't
 # attack you or planeswalkers you control for as long as it has a vow counter on it.
 name = "Promise of Loyalty"
-sets = ["blc", "c21", "cmm", "fic", "mkc", "moc", "msc", "prm", "soc"]
 id = "e1d294e8-67b1-4a4a-86b8-f98f28a327d9"
 default_print = "dcca54de-3b2e-4801-bb66-3809382d6f01"
 otags = ["fun-ruling", "functional-reminder-counter", "prevent-attack", "removal-creature", "removal-sacrifice", "sweeper", "synergy-planeswalker", "unique-counter"]
@@ -16,6 +15,7 @@ type = "sorcery"
 # Each player puts a vow counter on a creature they control and sacrifices the rest. Each of those
 # creatures can't attack you or planeswalkers you control for as long as it has a vow counter on it.
 [[abilities]]
+oracle = "Each player puts a vow counter on a creature they control and sacrifices the rest. Each of those creatures can't attack you or planeswalkers you control for as long as it has a vow counter on it."
 timing = "spell"
 
 # Each player puts a vow counter on a creature they control and sacrifices the rest.

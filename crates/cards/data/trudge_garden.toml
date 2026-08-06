@@ -2,7 +2,6 @@
 # Trudge Garden (soc): "Whenever you gain life, you may pay {2}. If you do, create a 4/4 green
 # Fungus Beast creature token with trample."
 name = "Trudge Garden"
-sets = ["c21", "prm", "soc"]
 id = "be175e92-567a-42e3-ad54-136c0631fe0e"
 default_print = "80dd8180-668a-41e4-a4e9-ebdd71345841"
 otags = ["lifegain-matters", "mana-sink", "repeatable-creature-tokens", "triggered-ability"]
@@ -18,6 +17,7 @@ type = "enchantment"
 # Whenever you gain life, you may pay {2}. If you do, create a 4/4 green Fungus Beast creature
 # token with trample.
 [[abilities]]
+oracle = "Whenever you gain life, you may pay {2}. If you do, create a 4/4 green Fungus Beast creature token with trample."
 timing = "you_gain_life"
 optional = true
 

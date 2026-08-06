@@ -6,7 +6,6 @@
 # {1}{R}: Level 3
 # Spells you cast from anywhere other than your hand cost {2} less to cast.
 name = "Advanced Reconstruction"
-sets = ["soc"]
 id = "f00bc101-8082-4459-b987-f0c4b7a12344"
 default_print = "cc912fec-827d-4deb-8430-79f5ea31ca9b"
 otags = ["activated-ability", "burn-player", "cost-reducer", "graveyard-fuel", "group-slug", "impulsive-recursion", "leaves-graveyard-trigger", "mill-self", "paradox", "pinger", "repeatable-impulsive-draw"]
@@ -23,6 +22,7 @@ type = "enchantment"
 # At the beginning of your first main phase, mill a card, then exile a card from your graveyard at
 # random. You may play the exiled card this turn.
 [[abilities]]
+oracle = "At the beginning of your first main phase, mill a card, then exile a card from your graveyard at random. You may play the exiled card this turn."
 timing = "first_main_phase"
 
 # mill a card,
@@ -38,6 +38,7 @@ mode = "exile_random_from_graveyard_may_play"
 
 # {1}{R}: Level 2
 [[abilities]]
+oracle = "{1}{R}: Level 2"
 timing = "activated"
 sorcery_speed = true
 
@@ -53,6 +54,7 @@ level = 2
 
 # Whenever one or more cards leave your graveyard, this Class deals 2 damage to each opponent.
 [[abilities]]
+oracle = "Whenever one or more cards leave your graveyard, this Class deals 2 damage to each opponent."
 timing = "cards_leave_your_graveyard"
 min_level = 2
 
@@ -65,6 +67,7 @@ amount = 2
 
 # {1}{R}: Level 3
 [[abilities]]
+oracle = "{1}{R}: Level 3"
 timing = "activated"
 sorcery_speed = true
 
@@ -80,6 +83,7 @@ level = 3
 
 # Spells you cast from anywhere other than your hand cost {2} less to cast.
 [[abilities]]
+oracle = "Spells you cast from anywhere other than your hand cost {2} less to cast."
 timing = "static"
 min_level = 3
 

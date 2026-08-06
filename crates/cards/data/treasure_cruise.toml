@@ -2,7 +2,6 @@
 # Draw three cards.
 # Treasure Cruise: {7}{U} Sorcery. "Delve. Draw three cards."
 name = "Treasure Cruise"
-sets = ["c16", "c21", "cm2", "ktk", "m3c", "mb2", "ncc", "otc", "pewk", "pio", "plst", "soc", "tdc", "tsr", "uma"]
 id = "5b6bdf5a-2742-4851-92cd-a857a3852836"
 default_print = "42c45880-15c7-4259-8066-c04d031d8216"
 otags = ["burst-draw", "delve", "hand-positive", "pure-draw"]
@@ -18,6 +17,7 @@ type = "sorcery"
 
 # Draw three cards.
 [[abilities]]
+oracle = "Draw three cards."
 timing = "spell"
 
 # Draw three cards.

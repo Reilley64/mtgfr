@@ -2,8 +2,7 @@
 # owner's graveyard to the battlefield under the control of that creature's owner.
 name = "Reincarnation"
 otags = ["delayed-trigger", "reanimate-creature", "single-target-instant-sorcery"]
-sets = ["c13", "leg", "me3"]
-id = "7ee379cd-b3fb-487b-846c-eab02902de79"
+id = "d6bf5e22-8d33-43a9-8824-435068e0a87a"
 default_print = "969c104e-daf4-480d-99a2-dd93c498b48e"
 oracle = "Choose target creature. When that creature dies this turn, return a creature card from its owner's graveyard to the battlefield under the control of that creature's owner."
 
@@ -17,6 +16,7 @@ type = "instant"
 # Choose target creature. When that creature dies this turn, return a creature card from its
 # owner's graveyard to the battlefield under the control of that creature's owner.
 [[abilities]]
+oracle = "Choose target creature. When that creature dies this turn, return a creature card from its owner's graveyard to the battlefield under the control of that creature's owner."
 timing = "spell"
 
 # Choose target creature. When that creature dies this turn, …

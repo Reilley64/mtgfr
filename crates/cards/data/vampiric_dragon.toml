@@ -3,7 +3,6 @@
 # {1}{R}: This creature deals 1 damage to target creature.
 name = "Vampiric Dragon"
 otags = ["activated-ability", "burn-creature", "cycle-ody-r-two-color", "evasion", "hunger", "pinger", "repeatable-crime", "repeatable-pp-counters", "repeatable-removal", "spot-removal"]
-sets = ["arc", "ody", "ps11", "td0", "voc"]
 id = "e8941499-2b31-417b-b2d2-10a144826703"
 default_print = "4f21d595-c248-4aae-9fd7-4e5787ab8781"
 oracle = "Flying\nWhenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this creature.\n{1}{R}: This creature deals 1 damage to target creature."
@@ -23,6 +22,7 @@ toughness = 5
 # Whenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this
 # creature.
 [[abilities]]
+oracle = "Whenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this creature."
 timing = "creature_dealt_damage_by_this_dies"
 
 # put a +1/+1 counter on this creature.
@@ -34,6 +34,7 @@ target = "this"
 
 # {1}{R}: This creature deals 1 damage to target creature.
 [[abilities]]
+oracle = "{1}{R}: This creature deals 1 damage to target creature."
 timing = "activated"
 
 [abilities.activation_cost]

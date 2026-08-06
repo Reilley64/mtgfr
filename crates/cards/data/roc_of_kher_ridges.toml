@@ -1,7 +1,6 @@
 # Flying
 name = "Roc of Kher Ridges"
 otags = ["alliteration", "evasion", "french-vanilla", "type-errata-roc"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "01f07ab9-3c3e-4fea-9cd6-543a5b7056b8"
 default_print = "7509b414-aea1-4f87-993a-ee7b9aee509b"
 oracle = "Flying"

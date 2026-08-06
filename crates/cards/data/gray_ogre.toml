@@ -1,7 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Gray Ogre"
 otags = ["cycle-lea-red-escalate"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "83c8a3a6-2e1a-4e26-8847-6d066f42d906"
 default_print = "11bf2cc0-799f-4eb8-b338-ed7543f469e7"
 subtypes = ["Ogre"]

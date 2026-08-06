@@ -6,7 +6,6 @@
 # When this enchantment is put into a graveyard from the battlefield, you lose the game.
 name = "Lich"
 otags = ["alternate-loss-condition", "deal-with-the-devil", "death-trigger-self", "draw-engine", "lifegain-matters", "notorious-templating", "prevents-win-loss", "repeatable-pure-draw", "repeatable-sacrifice-outlet", "sacrifice-outlet-permanent", "set-life-total", "single-english-word-name"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me4"]
 id = "5b7515f2-7a5a-4e2a-9784-6cbacd768172"
 default_print = "5bded615-62bc-40f6-9a54-7c9d0d551d4c"
 oracle = "As this enchantment enters, you lose life equal to your life total.\nYou don't lose the game for having 0 or less life.\nIf you would gain life, draw that many cards instead.\nWhenever you're dealt damage, sacrifice that many nontoken permanents. If you can't, you lose the game.\nWhen this enchantment is put into a graveyard from the battlefield, you lose the game."
@@ -19,6 +18,7 @@ type = "enchantment"
 
 # As this enchantment enters, you lose life equal to your life total.
 [[abilities]]
+oracle = "As this enchantment enters, you lose life equal to your life total."
 timing = "as_enters"
 
 # As this enchantment enters, you lose life equal to your life total.
@@ -29,6 +29,7 @@ amount = "your_life_total"
 
 # You don't lose the game for having 0 or less life.
 [[abilities]]
+oracle = "You don't lose the game for having 0 or less life."
 timing = "static"
 
 # You don't lose the game for having 0 or less life.
@@ -38,6 +39,7 @@ mode = "you_dont_lose_at_zero_life"
 
 # If you would gain life, draw that many cards instead.
 [[abilities]]
+oracle = "If you would gain life, draw that many cards instead."
 timing = "static"
 
 # If you would gain life, draw that many cards instead.
@@ -48,6 +50,7 @@ mode = "life_gain_becomes_draw"
 # Whenever you're dealt damage, sacrifice that many nontoken permanents. If you can't, you lose
 # the game.
 [[abilities]]
+oracle = "Whenever you're dealt damage, sacrifice that many nontoken permanents. If you can't, you lose the game."
 timing = "you_are_dealt_damage"
 
 # Whenever you're dealt damage, sacrifice that many nontoken permanents. If you can't, you lose
@@ -62,6 +65,7 @@ lose_game_if_short = true
 
 # When this enchantment is put into a graveyard from the battlefield, you lose the game.
 [[abilities]]
+oracle = "When this enchantment is put into a graveyard from the battlefield, you lose the game."
 timing = "dies"
 
 # When this enchantment is put into a graveyard from the battlefield, you lose the game.

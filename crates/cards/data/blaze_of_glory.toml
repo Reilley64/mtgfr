@@ -3,7 +3,6 @@
 # blocks each attacking creature this turn if able.
 name = "Blaze of Glory"
 otags = ["block-unlimited", "combat-timing-restriction", "force-blocker", "single-target-instant-sorcery"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me4"]
 id = "b330ac89-790e-4cc9-96a5-532c48252088"
 default_print = "2d636573-287d-4f6f-93b0-12ddd8f3e6d1"
 oracle = "Cast this spell only during combat before blockers are declared.\nTarget creature defending player controls can block any number of creatures this turn. It blocks each attacking creature this turn if able."
@@ -22,6 +21,7 @@ type = "instant"
 # Target creature defending player controls can block any number of creatures this turn. It
 # blocks each attacking creature this turn if able.
 [[abilities]]
+oracle = "Target creature defending player controls can block any number of creatures this turn. It blocks each attacking creature this turn if able."
 timing = "spell"
 
 # Target creature defending player controls can block any number of creatures this turn. It

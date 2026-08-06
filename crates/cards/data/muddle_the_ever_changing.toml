@@ -3,7 +3,6 @@
 # you may create a token copy that's tapped and attacking that player or a planeswalker they control. Exile the tokens
 # at end of combat.)
 name = "Muddle, the Ever-Changing"
-sets = ["soc"]
 id = "9a8f6e5e-6cde-49df-861c-a26cb09c9b12"
 default_print = "916d3e31-3243-47b3-b7d2-ce9a6dd47aba"
 otags = ["cast-trigger-you", "copy-creature", "cycle-soc-alt-commander", "gains-myriad", "synergy-instant", "synergy-sorcery", "unique-type-line"]
@@ -24,6 +23,7 @@ toughness = 3
 # Whenever you cast an instant or sorcery spell, Muddle becomes a copy of up to one target
 # nonlegendary creature you control until end of turn, except it has myriad.
 [[abilities]]
+oracle = "Whenever you cast an instant or sorcery spell, Muddle becomes a copy of up to one target nonlegendary creature you control until end of turn, except it has myriad."
 timing = "magecraft"
 optional = true
 

@@ -1,7 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Lady Orca"
 otags = ["deprecated-legend-type"]
-sets = ["ath", "leg", "me3"]
 id = "fcae9e87-50af-46b4-ab48-42ed92985e10"
 default_print = "db766e38-5407-431c-bcf4-f33791a7e5f9"
 legendary = true

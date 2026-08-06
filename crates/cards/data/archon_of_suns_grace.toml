@@ -9,7 +9,6 @@
 #    Constellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus
 #    creature token with flying."
 name = "Archon of Sun's Grace"
-sets = ["ajmp", "cmm", "j22", "j25", "prm", "pthb", "soc", "thb", "woc"]
 id = "48a99dce-0aa9-4aac-81df-cec5f94c639d"
 default_print = "0d3af89d-d22c-45e8-9fec-170ac9bb0a34"
 otags = ["enchantmentfall", "evasion", "gives-lifelink", "keyword-anthem", "repeatable-creature-tokens", "repeatable-lifegain", "triggered-ability", "typal-pegasus"]
@@ -28,6 +27,7 @@ toughness = 4
 
 # Pegasus creatures you control have lifelink.
 [[abilities]]
+oracle = "Pegasus creatures you control have lifelink."
 timing = "static"
 
 # Pegasus creatures you control have lifelink.
@@ -40,6 +40,7 @@ subtypes = ["Pegasus"]
 # Constellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus creature
 # token with flying.
 [[abilities]]
+oracle = "Constellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus creature token with flying."
 timing = "permanent_enters"
 filter = "enchantment"
 controller = "you"

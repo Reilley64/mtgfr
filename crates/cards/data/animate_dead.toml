@@ -4,7 +4,6 @@
 # control and attach this Aura to it. When this Aura leaves the battlefield, that creature's controller sacrifices it.
 # Enchanted creature gets -1/-0.
 name = "Animate Dead"
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "ema", "fbb", "lea", "leb", "me1", "mkc", "p22", "pd3", "plst", "sld", "soc", "sum", "td0", "vma"]
 id = "c0d8fef4-65f4-4769-982d-b397d2b7e977"
 default_print = "cc0c2bab-4392-4e7b-9d14-2901f4ffbae8"
 otags = ["animate-dead-like", "delayed-trigger", "intervening-if-clause", "meme", "reanimate-creature", "reanimate-from-any", "rules-nightmare", "notorious-templating"]
@@ -23,6 +22,7 @@ type = "aura"
 # graveyard" and gains "enchant creature put onto the battlefield with this Aura." Return
 # enchanted creature card to the battlefield under your control and attach this Aura to it.
 [[abilities]]
+oracle = "When this Aura enters, if it's on the battlefield, it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto the battlefield with this Aura.\" Return enchanted creature card to the battlefield under your control and attach this Aura to it."
 timing = "etb"
 
 # Return enchanted creature card to the battlefield under your control
@@ -38,6 +38,7 @@ mode = "attach_self_to_reanimated"
 
 # Enchanted creature gets -1/-0.
 [[abilities]]
+oracle = "Enchanted creature gets -1/-0."
 timing = "static"
 
 # Enchanted creature gets -1/-0.
@@ -49,6 +50,7 @@ toughness = 0
 
 # When this Aura leaves the battlefield, that creature's controller sacrifices it.
 [[abilities]]
+oracle = "When this Aura leaves the battlefield, that creature's controller sacrifices it."
 timing = "this_leaves_battlefield"
 
 # that creature's controller sacrifices it

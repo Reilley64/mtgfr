@@ -1,7 +1,6 @@
 # Target spell or permanent becomes red. (Its mana symbols remain unchanged.)
 name = "Chaoslace"
 otags = ["color-change", "cycle-lea-lace", "interrupt", "single-target-instant-sorcery", "untracked-indefinite-effect"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "08842aa3-f923-46e9-a106-f542331e9cc1"
 default_print = "f2776675-8720-4a4d-8d7b-96de9ad14533"
 oracle = "Target spell or permanent becomes red. (Its mana symbols remain unchanged.)"
@@ -14,6 +13,7 @@ type = "instant"
 
 # Target spell or permanent becomes red. (Its mana symbols remain unchanged.)
 [[abilities]]
+oracle = "Target spell or permanent becomes red. (Its mana symbols remain unchanged.)"
 timing = "spell"
 
 # Target spell or permanent becomes red. The reminder text is a rules clarification, not an

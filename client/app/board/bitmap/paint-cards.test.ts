@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { colors } from "~/design-tokens.generated";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
 import {
@@ -19,6 +20,7 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
     counters: 0,
     faceDown: false,
     goaded: false,
+    face: BLANK_FACE,
     h: 134,
     hasHaste: false,
     id: 1,
@@ -130,16 +132,46 @@ describe("paintCard", () => {
     expect(ctx.drawImage).toHaveBeenCalledWith(image, 10, 20, 96, 134);
   });
 
-  it("turns a tapped card a quarter turn and leaves an untapped one upright", () => {
+  // A square tile has no long edge to swing, so a quarter turn reads as "nothing moved". Arena
+  // tilts the tile instead and darkens it, which is legible at four-seat zoom.
+  it("tilts a tapped card off square and leaves an untapped one upright", () => {
     const cache = { get: vi.fn(() => undefined) };
 
     const tappedCtx = mockCtx();
     paintCard(tappedCtx, { panX: 0, panY: 0, zoom: 1 }, card({ tapped: true }), cache, 0);
-    expect(tappedCtx.rotate).toHaveBeenCalledWith(Math.PI / 2);
+    const [angle] = (tappedCtx.rotate as unknown as { mock: { calls: number[][] } }).mock.calls[0];
+    expect(angle).toBeGreaterThan(0);
+    expect(angle).toBeLessThan(Math.PI / 8);
 
     const uprightCtx = mockCtx();
     paintCard(uprightCtx, { panX: 0, panY: 0, zoom: 1 }, card(), cache, 0);
     expect(uprightCtx.rotate).not.toHaveBeenCalled();
+  });
+
+  it("veils a tapped card in black and leaves an untapped one clear", () => {
+    const cache = { get: vi.fn(() => undefined) };
+
+    const calls: string[] = [];
+    paintCard(mockCtx(calls), { panX: 0, panY: 0, zoom: 1 }, card({ tapped: true }), cache, 0);
+    expect(calls.some((c) => c.startsWith("fill:rgba(0,0,0,"))).toBe(true);
+
+    const upright: string[] = [];
+    paintCard(mockCtx(upright), { panX: 0, panY: 0, zoom: 1 }, card(), cache, 0);
+    expect(upright.some((c) => c.startsWith("fill:rgba(0,0,0,"))).toBe(false);
+  });
+
+  // The veil follows the tap animation in, so a card mid-turn is only part-way darkened.
+  it("fades the veil in with the tap animation", () => {
+    const cache = { get: vi.fn(() => undefined) };
+    const veil = (calls: string[]) => calls.find((c) => c.startsWith("fill:rgba(0,0,0,")) ?? "";
+
+    const half: string[] = [];
+    paintCard(mockCtx(half), { panX: 0, panY: 0, zoom: 1 }, card({ tapped: true, tapFrac: 0.5 }), cache, 0);
+    const full: string[] = [];
+    paintCard(mockCtx(full), { panX: 0, panY: 0, zoom: 1 }, card({ tapped: true }), cache, 0);
+
+    expect(veil(half)).not.toBe("");
+    expect(veil(half)).not.toBe(veil(full));
   });
 
   it("keeps commander gold when adding a playable outline", () => {
@@ -159,5 +191,94 @@ describe("paintCard", () => {
     // Playable border on the card edge, then gold as the outer halo.
     expect(playableAt).toBeGreaterThan(-1);
     expect(goldAt).toBeGreaterThan(playableAt);
+  });
+});
+
+describe("paintCard: the rendered Arena face", () => {
+  const cam = { panX: 0, panY: 0, zoom: 1 };
+  const face = {} as CanvasImageSource;
+  const printed = {} as unknown as HTMLImageElement;
+  const printedCache = { get: vi.fn(() => printed) };
+
+  function drawn(ctx: CanvasRenderingContext2D) {
+    return (ctx.drawImage as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((args) => args[0]);
+  }
+
+  it("blits the rendered face instead of the printed image once the face is drawn", () => {
+    const ctx = mockCtx();
+
+    paintCard(ctx, cam, card(), printedCache, 0, { faces: { get: () => face, request: () => {} } });
+
+    expect(drawn(ctx)).toContain(face);
+    expect(drawn(ctx)).not.toContain(printed);
+  });
+
+  it("falls back to the printed image while the face is still being drawn", () => {
+    const ctx = mockCtx();
+
+    paintCard(ctx, cam, card(), printedCache, 0, { faces: { get: () => undefined, request: () => {} } });
+
+    expect(drawn(ctx)).toContain(printed);
+  });
+
+  it("asks the face cache for the permanent variant of this card's face", () => {
+    const ctx = mockCtx();
+    const request = vi.fn();
+    const bear = { ...BLANK_FACE, name: "Grizzly Bears", print: "print-id" };
+
+    paintCard(ctx, cam, card({ face: bear }), printedCache, 0, { faces: { get: () => undefined, request } });
+
+    expect(request).toHaveBeenCalledWith(bear, "permanent");
+  });
+
+  // The Arena square is a battlefield treatment. A graveyard/exile/commander pile is a stack of
+  // cards seen edge on, so it keeps the printed image.
+  it("leaves the zone-column piles on the printed image", () => {
+    const ctx = mockCtx();
+    const request = vi.fn();
+
+    paintCard(ctx, cam, card({ zone: ZONE.Graveyard, pile: 3 }), printedCache, 0, {
+      faces: { get: () => face, request },
+    });
+
+    expect(request).not.toHaveBeenCalled();
+    expect(drawn(ctx)).toContain(printed);
+    expect(drawn(ctx)).not.toContain(face);
+  });
+
+  // The rendered square carries the printed plate art, so a badge over it would be a second box.
+  it("writes the live power/toughness onto the rendered square's printed plate", () => {
+    const calls: string[] = [];
+    const ctx = mockCtx(calls);
+    const bear = { ...BLANK_FACE, name: "Grizzly Bears", power: "2", toughness: "2" };
+
+    paintCard(ctx, cam, card({ face: bear, pt: "4/4" }), printedCache, 0, {
+      faces: { get: () => face, request: () => {} },
+    });
+
+    expect(ctx.fillText).toHaveBeenCalledWith("4/4", expect.any(Number), expect.any(Number));
+    expect(calls).not.toContain("fill:#f4efe2"); // no badge behind it — the plate is the box
+  });
+
+  it("keeps the badge on a token, which prints no plate", () => {
+    const calls: string[] = [];
+    const ctx = mockCtx(calls);
+    const token = { ...BLANK_FACE, name: "Beast", isToken: true, power: "3", toughness: "3" };
+
+    paintCard(ctx, cam, card({ face: token, pt: "3/3" }), printedCache, 0, {
+      faces: { get: () => face, request: () => {} },
+    });
+
+    expect(calls).toContain("fill:#f4efe2");
+  });
+
+  it("does not ask for a face-down permanent — it is a card back, not a printing", () => {
+    const ctx = mockCtx();
+    const request = vi.fn();
+
+    paintCard(ctx, cam, card({ faceDown: true }), printedCache, 0, { faces: { get: () => face, request } });
+
+    expect(request).not.toHaveBeenCalled();
+    expect(drawn(ctx)).not.toContain(face);
   });
 });

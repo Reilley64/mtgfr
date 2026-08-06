@@ -1,7 +1,6 @@
 # Destroy all lands.
 name = "Armageddon"
 otags = ["removal-destroy", "removal-land", "single-english-word-name", "sweeper", "symmetrical", "mass-land-denial"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "a25", "ath", "ced", "cei", "fbb", "g04", "lea", "leb", "me1", "me4", "mp2", "p02", "por", "prm", "ptc", "s99", "sld", "soa", "sum", "v14", "vma", "wc00", "wc98"]
 id = "c9ed8b01-959a-47d6-891e-0abbdccf6e4f"
 default_print = "df2c5d5c-f1c9-4639-bf72-3f6bde554864"
 oracle = "Destroy all lands."
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # Destroy all lands.
 [[abilities]]
+oracle = "Destroy all lands."
 timing = "spell"
 
 # Destroy all lands.

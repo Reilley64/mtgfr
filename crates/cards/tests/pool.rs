@@ -156,11 +156,27 @@ mode = "source"
 }
 
 #[test]
-fn sets_and_subtypes_parse_and_default_empty() {
+fn print_flavor_joins_on_the_printing_the_deck_plays() {
+    let bolt = get_by_name("Lightning Bolt").expect("Lightning Bolt is in the pool");
+    assert!(bolt.sets.contains(&"lea"), "sets derived: {:?}", bolt.sets);
+
+    // M10 prints the sparkmage; Alpha prints nothing. Same card, different words.
+    let m10 = cards::print_flavor("435589bb-27c6-4a6d-9d63-394d5092b9d8")
+        .expect("the m10 printing prints flavor");
+    assert!(m10.starts_with("The sparkmage shrieked"), "{m10}");
+    assert_eq!(
+        cards::print_flavor("d573ef03-4730-45aa-93dd-e45ac1dbaf4a"),
+        None,
+        "the lea printing prints no flavor"
+    );
+    assert_eq!(cards::print_flavor("not-a-printing"), None);
+}
+
+#[test]
+fn subtypes_parse_and_sets_are_not_authored() {
     let card = r#"name = "Goblin Test"
 id = "00000000-0000-0000-0000-000000000001"
 default_print = "00000000-0000-0000-0000-000000000002"
-sets = ["soc", "c16"]
 subtypes = ["Goblin", "Wizard"]
 
 [kind]
@@ -168,28 +184,27 @@ type = "creature"
 power = 1
 toughness = 1
 "#;
-    let def: CardDef = toml::from_str(card).expect("sets + subtypes parse");
-    assert_eq!(def.sets.as_ref(), &["soc", "c16"]);
+    let def: CardDef = toml::from_str(card).expect("subtypes parse");
     assert_eq!(def.subtypes.as_ref(), &["Goblin", "Wizard"]);
-
-    let legacy = r#"name = "Legacy Set"
-id = "00000000-0000-0000-0000-000000000001"
-default_print = "00000000-0000-0000-0000-000000000002"
-set = "cmd"
-
-[kind]
-type = "creature"
-power = 1
-toughness = 1
-"#;
-    assert!(
-        toml::from_str::<CardDef>(legacy).is_err(),
-        "singular set metadata was removed; use sets = [...]"
-    );
-
-    let bare = "name = \"Bare\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
-    let def: CardDef = toml::from_str(bare).expect("omitted sets defaults empty");
+    // `sets` is derived at pool load from `data/prints/`, so a hand-parsed card has none.
     assert!(def.sets.is_empty());
+
+    for removed in ["set = \"cmd\"", "sets = [\"soc\", \"c16\"]"] {
+        let card = format!(
+            "name = \"Legacy Set\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n{removed}\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n"
+        );
+        assert!(
+            toml::from_str::<CardDef>(&card).is_err(),
+            "set metadata is not authored on the card: {removed}"
+        );
+    }
+
+    // Flavor is per printing, so it is not a card key either.
+    let flavor = "name = \"Flavored\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\nflavor = \"Rrrrr.\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
+    assert!(
+        toml::from_str::<CardDef>(flavor).is_err(),
+        "flavor belongs to data/prints/, not to the card"
+    );
 }
 
 #[test]
@@ -654,11 +669,11 @@ fn the_pool_loads_with_expected_card_shapes() {
         })
     ));
 
-    // Catalog metadata backfilled from Scryfall: set codes for printing-aware coverage,
-    // and creature subtypes for search.
+    // Catalog metadata derived from `data/prints/` at load: set codes for printing-aware
+    // coverage. Subtypes are still authored on the card.
     assert!(
         !bear.sets.is_empty(),
-        "every backfilled card carries at least one set code"
+        "every card's printings give it at least one set code"
     );
     let viper = get_by_name("Ambush Viper").expect("Ambush Viper is in the pool");
     assert!(
@@ -5984,5 +5999,42 @@ fn legends_reverberation_moves_a_sorcerys_damage_to_that_sorcerys_own_controller
             })
         ),
         "every point the targeted sorcery would deal goes to its controller, whoever that is"
+    );
+}
+
+/// An ability's `oracle` is the one printed sentence the stack shows while that ability waits to
+/// resolve — not the whole card's text box. Every ability that records one must therefore quote
+/// its own card verbatim, so this holds the pool to that: whitespace-normalised, an ability's
+/// sentence is a substring of its card's `oracle`. Abilities without one fall back to the
+/// effect's generated label, which is the default for the ~10% the backfill could not match.
+#[test]
+fn every_ability_oracle_quotes_its_own_card() {
+    let squash = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut wrong: Vec<String> = Vec::new();
+    for def in registry().values() {
+        let card = def.oracle.map(squash).unwrap_or_default();
+        for ability in def.abilities.iter() {
+            let Some(sentence) = ability.oracle else {
+                continue;
+            };
+            if !card.contains(&squash(sentence)) {
+                wrong.push(format!("{}: {sentence:?}", def.name));
+            }
+        }
+    }
+    wrong.sort();
+    assert!(
+        wrong.is_empty(),
+        "these ability oracles are not printed on their card: {}",
+        wrong.join("; ")
+    );
+}
+
+#[test]
+fn an_ability_carries_the_sentence_that_prints_it() {
+    let arena = get_by_name("Phyrexian Arena").expect("Phyrexian Arena is in the pool");
+    assert_eq!(
+        arena.abilities[0].oracle,
+        Some("At the beginning of your upkeep, you draw a card and you lose 1 life.")
     );
 }

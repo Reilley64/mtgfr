@@ -1,6 +1,5 @@
 # {1}, {T}: Add {R}{W}.
 name = "Sunscorched Divide"
-sets = ["blc", "fic", "otc", "pip", "soc"]
 id = "8d2b2675-19df-4f40-9e8e-196ec097b91c"
 default_print = "eae999f9-9c58-4609-8ade-aca0acf07519"
 otags = ["activated-ability", "cycle-pip-enemy-filterland"]
@@ -11,6 +10,7 @@ type = "land"
 
 # {1}, {T}: Add {R}{W}.
 [[abilities]]
+oracle = "{1}, {T}: Add {R}{W}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

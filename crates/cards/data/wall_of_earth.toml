@@ -1,7 +1,6 @@
 # Defender (This creature can't attack.)
 name = "Wall of Earth"
 otags = ["drawback", "french-vanilla"]
-sets = ["leg"]
 id = "1e3e1916-bb82-481e-9b10-225504ef06b3"
 default_print = "c12e97c1-ca28-432a-8140-3f08bb4485a3"
 oracle = "Defender (This creature can't attack.)"

@@ -3,7 +3,6 @@
 # A filter land: feed it one mana and tap it for two {B}/{G} mana (a net +1). The two outputs
 # are {B/G} dual credits, so they can be spent as BB, BG, or GG.
 name = "Twilight Mire"
-sets = ["2xm", "a25", "blc", "dsc", "eoc", "eve", "exp", "ncc", "otc", "prm", "soc", "tdc"]
 id = "db623754-e078-4030-ba07-818803c348a8"
 default_print = "3cc8186b-b46f-46c0-8dfb-9e423e430048"
 otags = ["activated-ability", "cycle-eve-filterland"]
@@ -14,6 +13,7 @@ type = "land"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 
@@ -25,6 +25,7 @@ mana = ["colorless"]
 
 # {B/G}, {T}: Add {B}{B}, {B}{G}, or {G}{G}.
 [[abilities]]
+oracle = "{B/G}, {T}: Add {B}{B}, {B}{G}, or {G}{G}."
 timing = "activated"
 taps_self = true
 activation_cost = { hybrid = [["black", "green"]] }

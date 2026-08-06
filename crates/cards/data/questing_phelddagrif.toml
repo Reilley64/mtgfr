@@ -2,7 +2,6 @@
 # {W}: This creature gains protection from black and from red until end of turn. Target opponent gains 2 life.
 # {U}: This creature gains flying until end of turn. Target opponent may draw a card.
 name = "Questing Phelddagrif"
-sets = ["pls", "plst", "ppls", "prm", "sld", "td0"]
 otags = ["activated-ability", "bottomless-mana-sink", "cycle-pls-r-tricolor", "donate-token", "drawback", "gains-flying", "gains-protection", "hate-black", "hate-red", "jump", "opponent-lifegain", "repeatable-crime"]
 subtypes = ["Phelddagrif"]
 id = "97f3afdb-dcee-44da-b210-c8d20030baff"
@@ -23,6 +22,7 @@ toughness = 4
 # {G}: This creature gets +1/+1 until end of turn. Target opponent creates a 1/1 green Hippo
 # creature token.
 [[abilities]]
+oracle = "{G}: This creature gets +1/+1 until end of turn. Target opponent creates a 1/1 green Hippo creature token."
 timing = "activated"
 activation_cost = { green = 1 }
 
@@ -43,6 +43,7 @@ token = "c0751938-a8c6-4b27-b8ac-88aa70516721"
 # {W}: This creature gains protection from black and from red until end of turn. Target opponent
 # gains 2 life.
 [[abilities]]
+oracle = "{W}: This creature gains protection from black and from red until end of turn. Target opponent gains 2 life."
 timing = "activated"
 activation_cost = { white = 1 }
 
@@ -63,6 +64,7 @@ amount = 2
 
 # {U}: This creature gains flying until end of turn. Target opponent may draw a card.
 [[abilities]]
+oracle = "{U}: This creature gains flying until end of turn. Target opponent may draw a card."
 timing = "activated"
 activation_cost = { blue = 1 }
 

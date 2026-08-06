@@ -2,7 +2,6 @@
 # Equip {0}
 # Lightning Greaves: {2} Artifact — Equipment. "Equipped creature has haste and shroud. Equip {0}."
 name = "Lightning Greaves"
-sets = ["2xm", "afc", "arc", "c15", "c16", "c17", "c19", "c20", "clb", "cm2", "cma", "cmd", "cmm", "dde", "drc", "dsc", "f09", "fic", "lcc", "ltc", "m3c", "mb2", "mps", "mrd", "msc", "ncc", "otc", "pip", "plst", "prm", "psal", "pz1", "scd", "sld", "soc", "td0", "tdc", "who"]
 id = "ca204b66-8d0c-431a-8d34-282f7c2d17da"
 default_print = "b61634ae-05be-4b56-8ebb-9d4ade902e42"
 otags = ["activated-ability", "french-vanilla-equipment", "gives-haste", "gives-shroud", "protects-creature"]
@@ -17,6 +16,7 @@ type = "artifact"
 
 # Equipped creature has haste and shroud.
 [[abilities]]
+oracle = "Equipped creature has haste and shroud."
 timing = "static"
 
 # Equipped creature has haste and shroud.
@@ -29,6 +29,7 @@ keywords = ["haste", "shroud"]
 
 # Equip {0}
 [[abilities]]
+oracle = "Equip {0}"
 timing = "activated"
 
 # Equip {0}

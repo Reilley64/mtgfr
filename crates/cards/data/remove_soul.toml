@@ -1,7 +1,6 @@
 # Counter target creature spell.
 name = "Remove Soul"
 otags = ["counterspell-creature", "interrupt", "single-target-instant-sorcery"]
-sets = ["10e", "5ed", "6ed", "7ed", "8ed", "9ed", "bchr", "chr", "leg", "me3", "p09", "prm", "s99"]
 id = "b13c0f76-fbda-4911-9442-c3d7e97f1aac"
 default_print = "75c4b4d6-2230-4fb0-b127-b9e820d56048"
 oracle = "Counter target creature spell."
@@ -15,6 +14,7 @@ type = "instant"
 
 # Counter target creature spell.
 [[abilities]]
+oracle = "Counter target creature spell."
 timing = "spell"
 
 # Counter target creature spell.

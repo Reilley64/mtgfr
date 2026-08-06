@@ -1,6 +1,5 @@
 # {T}: Draw a card, then discard a card.
 name = "Merfolk Looter"
-sets = ["10e", "7ed", "a25", "afc", "cn2", "ddt", "ema", "exo", "ha5", "m10", "m12", "plst", "td0", "tpr", "wc01", "wc02"]
 otags = ["activated-ability", "hand-neutral", "type-errata", "repeatable-loot"]
 subtypes = ["Merfolk", "Rogue"]
 id = "67362406-b1ca-49e2-800d-9050bfe8742a"
@@ -18,6 +17,7 @@ toughness = 1
 
 # {T}: Draw a card, then discard a card.
 [[abilities]]
+oracle = "{T}: Draw a card, then discard a card."
 timing = "activated"
 taps_self = true
 

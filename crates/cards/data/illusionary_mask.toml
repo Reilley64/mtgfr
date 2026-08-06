@@ -4,7 +4,6 @@
 # damage, or become tapped, instead it's turned face up and assigns or deals damage, is dealt damage, or becomes tapped.
 # Activate only as a sorcery.
 name = "Illusionary Mask"
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me3", "td0"]
 otags = ["activated-ability", "cast-on-resolution", "face-up-face-down-effects", "free-cast-another", "notorious-templating", "rules-nightmare", "uninspired", "unnoted-tracked-information"]
 id = "05ac866d-0405-4d25-986a-c10fcfc097e6"
 default_print = "937e977f-5e97-4e00-8a5a-42982862b997"

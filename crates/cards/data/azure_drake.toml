@@ -1,7 +1,6 @@
 # Flying
 name = "Azure Drake"
 otags = ["evasion", "french-vanilla"]
-sets = ["5ed", "9ed", "bchr", "brb", "chr", "j25", "leg", "m11"]
 id = "15cc068c-f424-433e-b165-8457c62a4b35"
 default_print = "6653bce7-b0fc-49e3-8f45-f0bfcade8870"
 oracle = "Flying"

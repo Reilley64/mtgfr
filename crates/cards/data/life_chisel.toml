@@ -2,7 +2,6 @@
 # only during your upkeep.
 name = "Life Chisel"
 otags = ["activated-ability", "free-sacrifice-outlet", "repeatable-lifegain", "sacrifice-outlet-creature", "toughness-matters"]
-sets = ["leg", "me3"]
 id = "2493fe65-2ecb-418f-8e4e-797f83475c73"
 default_print = "6d06edbe-2278-4818-b476-75bc02958418"
 oracle = "Sacrifice a creature: You gain life equal to the sacrificed creature's toughness. Activate only during your upkeep."
@@ -16,6 +15,7 @@ type = "artifact"
 # Sacrifice a creature: You gain life equal to the sacrificed creature's toughness. Activate
 # only during your upkeep.
 [[abilities]]
+oracle = "Sacrifice a creature: You gain life equal to the sacrificed creature's toughness. Activate only during your upkeep."
 timing = "activated"
 sacrifice = "creature"
 only_during_your_upkeep = true

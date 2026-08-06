@@ -3,7 +3,6 @@
 # X is the number of +1/+1 counters on it. If you don't, tap this creature and it deals X damage to
 # you.
 name = "Primordial Ooze"
-sets = ["5ed", "bchr", "chr", "leg"]
 id = "133109c3-a2ca-4231-b3b1-baa700800b07"
 default_print = "a53d8d6d-b8d3-4f71-a88a-5d639ce2925f"
 oracle = "This creature attacks each combat if able.\nAt the beginning of your upkeep, put a +1/+1 counter on this creature. Then you may pay {X}, where X is the number of +1/+1 counters on it. If you don't, tap this creature and it deals X damage to you."
@@ -29,6 +28,7 @@ toughness = 1
 
 # This creature attacks each combat if able.
 [[abilities]]
+oracle = "This creature attacks each combat if able."
 timing = "static"
 
 # This creature attacks each combat if able.
@@ -41,6 +41,7 @@ self_only = true
 # X is the number of +1/+1 counters on it. If you don't, tap this creature and it deals X damage to
 # you.
 [[abilities]]
+oracle = "At the beginning of your upkeep, put a +1/+1 counter on this creature. Then you may pay {X}, where X is the number of +1/+1 counters on it. If you don't, tap this creature and it deals X damage to you."
 timing = "upkeep"
 
 # put a +1/+1 counter on this creature.

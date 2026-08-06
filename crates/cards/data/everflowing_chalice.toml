@@ -6,7 +6,6 @@ otags = ["activated-ability", "adds-multiple-mana", "counters-matter", "mana-roc
 id = "0a79237e-0811-4a8a-bd4d-db3ca91bff22"
 default_print = "e4ed0052-d6dd-4f69-8313-10863baefac9"
 oracle = "Multikicker {2} (You may pay an additional {2} any number of times as you cast this spell.)\nThis artifact enters with a charge counter on it for each time it was kicked.\n{T}: Add {C} for each charge counter on this artifact."
-sets = ["eoc"]
 
 [cost]
 generic = 0
@@ -19,6 +18,7 @@ type = "artifact"
 
 # This artifact enters with a charge counter on it for each time it was kicked.
 [[abilities]]
+oracle = "This artifact enters with a charge counter on it for each time it was kicked."
 timing = "static"
 
 # This artifact enters with a charge counter on it for each time it was kicked.
@@ -30,6 +30,7 @@ kind = "charge"
 
 # {T}: Add {C} for each charge counter on this artifact.
 [[abilities]]
+oracle = "{T}: Add {C} for each charge counter on this artifact."
 timing = "activated"
 taps_self = true
 

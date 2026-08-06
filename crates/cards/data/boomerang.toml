@@ -1,7 +1,6 @@
 # Return target permanent to its owner's hand.
 name = "Boomerang"
 otags = ["removal-bounce", "removal-permanent", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
-sets = ["10e", "5ed", "6ed", "7ed", "8ed", "9ed", "bchr", "chr", "dci", "dpa", "leg", "me3", "mir", "plst", "prm", "ps11", "psal"]
 id = "dc4a4996-108a-4aac-850f-2d9f76403446"
 default_print = "e9c163b0-fb4b-488b-a955-987c79f7bdf8"
 oracle = "Return target permanent to its owner's hand."
@@ -14,6 +13,7 @@ type = "instant"
 
 # Return target permanent to its owner's hand.
 [[abilities]]
+oracle = "Return target permanent to its owner's hand."
 timing = "spell"
 
 # Return target permanent to its owner's hand.

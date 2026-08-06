@@ -12,6 +12,7 @@ import { testMessageRef } from "~/i18n/testMessageRef";
 import { testHtml } from "~/test-html";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
+import { BLANK_FACE } from "../domain/card-render/frame";
 import type { GameFoldState, LogLine } from "../game/fold";
 import { SetStackDwell, SubmitIntent } from "../game/intents";
 import { emptyCostPicks, type PlayModePick } from "./action/execution";
@@ -180,6 +181,8 @@ test("hand tile activates when clicked (below hand-bar threshold)", () => {
     has_haste: false,
     id: 42,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
     marked_damage: 0,
@@ -218,6 +221,8 @@ test("hand-drop planner ignores release below the hand-bar threshold", () => {
     has_haste: false,
     id: 42,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
     marked_damage: 0,
@@ -743,6 +748,8 @@ function creature(id: number, controller: number, overrides: Partial<ObjectView>
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
     marked_damage: 0,
@@ -784,6 +791,7 @@ function renderStub(id: number): RenderCard {
     hasHaste: true,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: 0,

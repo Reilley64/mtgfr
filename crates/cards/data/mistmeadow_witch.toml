@@ -1,7 +1,6 @@
 # {2}{W}{U}: Exile target creature. Return that card to the battlefield under its owner's control at the beginning
 # of the next end step.
 name = "Mistmeadow Witch"
-sets = ["2x2", "c13", "cma", "ddi", "khc", "mm3", "plst", "shm", "td0"]
 otags = ["activated-ability", "cycle-2x2-draft-signpost", "cycle-mm3-draft-signpost", "cycle-shm-witch", "delayed-trigger", "flicker-creature", "flicker-slow", "homeward-effect", "mana-sink", "protects-creature", "removal-creature", "repeatable-crime"]
 subtypes = ["Kithkin", "Wizard"]
 id = "38e274e2-bd04-48de-a1df-44f0ee987ba8"
@@ -20,6 +19,7 @@ toughness = 1
 # {2}{W}{U}: Exile target creature. Return that card to the battlefield under its owner's control at the beginning
 # of the next end step.
 [[abilities]]
+oracle = "{2}{W}{U}: Exile target creature. Return that card to the battlefield under its owner's control at the beginning of the next end step."
 timing = "activated"
 
 [abilities.activation_cost]

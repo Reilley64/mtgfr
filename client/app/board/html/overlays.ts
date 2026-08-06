@@ -91,6 +91,7 @@ export function boardOverlays(
             flyingIds: board.hideCardIds,
             hiddenIds,
             handDrag: board.handDrag,
+            cardText: board.cardText,
             discardCostIds: (() => {
               if (board.discardPick != null) return new Set(board.discardPick.action.discard_choices ?? []);
               const pending = pendingHandPickIds(state.pending_choice, state);

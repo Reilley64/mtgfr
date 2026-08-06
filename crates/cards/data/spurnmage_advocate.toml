@@ -1,7 +1,6 @@
 # {T}: Return two target cards from an opponent's graveyard to their hand. Destroy target
 # attacking creature.
 name = "Spurnmage Advocate"
-sets = ["cmd", "jud"]
 id = "0477b923-9f32-4e7f-ac08-c715cca819a4"
 default_print = "9c014b89-895c-432f-94f5-cda2dfac57e4"
 otags = ["activated-ability", "graveyard-hate", "removal-tempo"]

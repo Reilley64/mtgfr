@@ -1,7 +1,6 @@
 # Reach (This creature can block creatures with flying.)
 name = "Giant Spider"
 otags = ["creature-type-name", "french-vanilla", "type-errata-summon-creature"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "akh", "ath", "ced", "cei", "dmr", "dpa", "fbb", "gs1", "lea", "leb", "m10", "m11", "m12", "m14", "m19", "plst", "por", "ps11", "pz2", "sum"]
 id = "e740ce2f-2134-473c-afa1-1b6d2d1e38ef"
 default_print = "213c9202-b6f4-43ab-b57f-b97a1da5e263"
 oracle = "Reach (This creature can block creatures with flying.)"

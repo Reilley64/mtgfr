@@ -1,7 +1,6 @@
 # {T}: Target creature gets -1/-0 until end of turn.
 name = "Ghosts of the Damned"
 otags = ["activated-ability", "repeatable-crime", "shrink", "type-errata-ghost"]
-sets = ["leg", "me3"]
 id = "1b3bbd3c-f5ef-4940-82a2-d36f4d148b9a"
 default_print = "d15e5505-74ad-4540-8b23-ab5e5add9227"
 oracle = "{T}: Target creature gets -1/-0 until end of turn."
@@ -18,6 +17,7 @@ toughness = 2
 
 # {T}: Target creature gets -1/-0 until end of turn.
 [[abilities]]
+oracle = "{T}: Target creature gets -1/-0 until end of turn."
 timing = "activated"
 taps_self = true
 

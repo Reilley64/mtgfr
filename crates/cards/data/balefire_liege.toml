@@ -4,7 +4,6 @@
 # Whenever you cast a white spell, you gain 3 life.
 # Balefire Liege (soc): {2}{R/W}{R/W}{R/W} 2/4 Spirit Horror.
 name = "Balefire Liege"
-sets = ["2x2", "eve", "hop", "plst", "soc"]
 id = "ee35ed62-d5a2-4e65-a7eb-fcdcb3665532"
 default_print = "6f236f33-f6d2-4b07-a69d-42165670bd45"
 otags = ["anthem", "burn-planeswalker", "burn-player", "cast-trigger-you", "cycle-shm-liege", "power-boost-to-all", "repeatable-crime", "repeatable-lifegain", "repeatable-removal", "spot-removal", "synergy-red", "synergy-white"]
@@ -22,6 +21,7 @@ toughness = 4
 
 # Other red creatures you control get +1/+1.
 [[abilities]]
+oracle = "Other red creatures you control get +1/+1."
 timing = "static"
 
 # Other red creatures you control get +1/+1.
@@ -35,6 +35,7 @@ exclude_source = true
 
 # Other white creatures you control get +1/+1.
 [[abilities]]
+oracle = "Other white creatures you control get +1/+1."
 timing = "static"
 
 # Other white creatures you control get +1/+1.
@@ -48,6 +49,7 @@ exclude_source = true
 
 # Whenever you cast a red spell, this creature deals 3 damage to target player or planeswalker.
 [[abilities]]
+oracle = "Whenever you cast a red spell, this creature deals 3 damage to target player or planeswalker."
 timing = "cast_spell"
 spell_filter = { color = "red" }
 caster = "you"
@@ -61,6 +63,7 @@ target = "player_or_planeswalker"
 
 # Whenever you cast a white spell, you gain 3 life.
 [[abilities]]
+oracle = "Whenever you cast a white spell, you gain 3 life."
 timing = "cast_spell"
 spell_filter = { color = "white" }
 caster = "you"

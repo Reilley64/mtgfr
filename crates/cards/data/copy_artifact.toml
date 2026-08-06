@@ -2,7 +2,6 @@
 # an enchantment in addition to its other types.
 name = "Copy Artifact"
 otags = ["clone", "copy-artifact", "enchantmentize"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "prm", "sum"]
 id = "80bc56a9-40e0-48da-ae86-190e39c8a4a3"
 default_print = "dde40c1f-5ccc-435b-ac35-62eb58ffeea2"
 oracle = "You may have this enchantment enter as a copy of any artifact on the battlefield, except it's an enchantment in addition to its other types."

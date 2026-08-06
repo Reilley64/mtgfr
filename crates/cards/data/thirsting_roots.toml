@@ -7,7 +7,6 @@ id = "c0ef21d5-f4bf-4417-b701-d98c2dbbaa43"
 default_print = "75a4a340-453b-471a-82ba-48ebf20b271a"
 otags = ["counters-matter", "modal", "tutor-land-basic", "tutor-to-hand"]
 oracle = "Choose one —\n• Search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
-sets = ["one"]
 modal = true
 
 [cost]

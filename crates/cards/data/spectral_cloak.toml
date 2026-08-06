@@ -3,7 +3,6 @@
 # abilities.)
 name = "Spectral Cloak"
 otags = ["gives-shroud", "protects-creature", "synergy-untapped"]
-sets = ["leg"]
 id = "fadfa9f9-d096-4083-8630-1c18928133ff"
 default_print = "7524fd0d-a675-41d6-bc99-bd3ba336893b"
 oracle = "Enchant creature\nEnchanted creature has shroud as long as it's untapped. (It can't be the target of spells or abilities.)"
@@ -18,6 +17,7 @@ type = "aura"
 # Enchanted creature has shroud as long as it's untapped. (It can't be the target of spells or
 # abilities.)
 [[abilities]]
+oracle = "Enchanted creature has shroud as long as it's untapped. (It can't be the target of spells or abilities.)"
 timing = "static"
 # "as long as it's untapped" — "it" is the enchanted creature, not this Aura.
 condition = { type = "enchanted_permanent_untapped" }

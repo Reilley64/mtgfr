@@ -1,6 +1,5 @@
 # Blaze deals X damage to any target.
 name = "Blaze"
-sets = ["10e", "6ed", "7ed", "8ed", "9ed", "bbd", "dpa", "gn3", "hop", "j22", "p02", "plst", "por", "ps11", "ptk", "wc00"]
 id = "0596920f-9946-42f4-a03b-24aab67f9f1b"
 default_print = "b16d0422-61ea-4039-b1c1-e590ace9156e"
 otags = ["burn-any", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # Blaze deals X damage to any target.
 [[abilities]]
+oracle = "Blaze deals X damage to any target."
 timing = "spell"
 
 # Blaze deals X damage to any target.

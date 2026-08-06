@@ -8,9 +8,11 @@
 
 import { Option } from "effect";
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
+import { type FaceData, faceDataFrom } from "~/card-render/frame";
+import { cardTextFor } from "~/cardText";
 import { type CostPip, costPips } from "~/costPips";
-import { cardArt } from "~/ui/card-art";
-import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
+import { cardFace } from "~/ui/card-face";
+import type { ActionView, CardTextView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "../geometry/handBarHit";
 import { ZONE } from "../geometry/layout";
@@ -114,6 +116,9 @@ function tile(
     metrics: HandMetrics;
     name: string;
     print: string;
+    /** The rendered face this tile paints. Null only when the bar has an action but no object to
+     *  draw (a stale gy/exile action) — then the tile falls back to a name plate. */
+    face: FaceData | null;
     cardId?: string;
     zone: "hand" | "command" | "graveyard" | "exile";
     objectId?: number;
@@ -135,6 +140,7 @@ function tile(
     metrics,
     name,
     print,
+    face,
     cardId,
     zone,
     objectId,
@@ -249,13 +255,22 @@ function tile(
     );
   }
 
+  // Arena tucks the cost into the card's top-right corner rather than floating it clear above: the
+  // row slides down until the pips half-overlap the frame, and pulls in from the right so the disks
+  // sit inside the black border instead of straddling it.
+  const pipOverlap = Math.round(metrics.pipSize * 0.75);
+  const pipInset = Math.round(metrics.pipSize * 0.45);
   const pipRow =
     pips.length > 0
       ? h.div(
           [
             h.DataAttribute("testid", "hand-cost-pips"),
-            h.Class("absolute right-0 left-0 z-20 flex items-end justify-end gap-px pb-0.5"),
-            h.Style({ top: `-${metrics.pipRowH}px`, height: `${metrics.pipRowH}px` }),
+            h.Class("absolute right-0 left-0 z-20 flex items-end justify-end gap-px"),
+            h.Style({
+              top: `-${metrics.pipRowH - pipOverlap}px`,
+              height: `${metrics.pipRowH}px`,
+              paddingRight: `${pipInset}px`,
+            }),
             h.Attribute("aria-hidden", "true"),
           ],
           pips.map((pip: CostPip) => costPipView(pip.ms, pip.code, metrics.pipSize, h)),
@@ -271,22 +286,26 @@ function tile(
     cardFaceAttrs.push(h.DataAttribute("testid", `hand-card-face-${objectId}`));
   }
 
-  const art: Html = print
-    ? cardArt(h, {
-        print,
-        alt: name,
-        className: artClass,
-        style: cardBoxStyle,
-      })
-    : h.div(
-        [
-          h.Class(
-            "flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand transition-[filter,opacity] duration-[80ms] ease-state group-data-[drag-source=true]/hand-tile:opacity-25 group-hover/hand-tile:group-data-[playable=true]/hand-tile:brightness-110",
-          ),
-          h.Style(cardBoxStyle),
-        ],
-        [h.div([h.Class("overflow-hidden text-ellipsis whitespace-nowrap font-semibold")], [name])],
-      );
+  // ponytail: no printing → the plain name plate, as before. The rendered face doesn't need art to
+  // draw (frame + name would do), but a printless object is a fixture, not a card someone holds.
+  const art: Html =
+    face && print
+      ? cardFace(h, {
+          face,
+          width: metrics.cardW,
+          height: metrics.cardH,
+          className: artClass,
+          style: cardBoxStyle,
+        })
+      : h.div(
+          [
+            h.Class(
+              "flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand transition-[filter,opacity] duration-[80ms] ease-state group-data-[drag-source=true]/hand-tile:opacity-25 group-hover/hand-tile:group-data-[playable=true]/hand-tile:brightness-110",
+            ),
+            h.Style(cardBoxStyle),
+          ],
+          [h.div([h.Class("overflow-hidden text-ellipsis whitespace-nowrap font-semibold")], [name])],
+        );
 
   const tileAttrs: Attribute<Message>[] = [
     h.Class(
@@ -360,6 +379,8 @@ export type HandViewInputs = {
    * `board.handHidden` and any external hide set. */
   hiddenIds: ReadonlySet<number>;
   handDrag: HandDragState | null;
+  /** Printed words by `(card id, print)`, from the snapshot's book of the viewer's own deck. */
+  cardText?: ReadonlyMap<string, CardTextView>;
   /** Object ids legal for the live local discard cost; null when not discarding. */
   discardCostIds?: ReadonlySet<number> | null;
   /** Object ids currently selected for discard cost / pending discard pick. */
@@ -374,6 +395,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
     flyingIds,
     hiddenIds,
     handDrag,
+    cardText = new Map(),
     discardCostIds = null,
     discardSelectedIds = null,
   } = inputs;
@@ -391,12 +413,21 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
   const commanderTax = state.players.find((p) => p.player === viewer)?.commander_tax ?? 0;
   const objectsById = new Map(state.objects.map((o) => [o.id, o]));
 
+  /** The face to draw, with the catalog's words folded in once its lookup lands. */
+  const faceOf = (object: ObjectView): FaceData => {
+    const text = cardTextFor(cardText, object.card_id, object.print);
+    const face = faceDataFrom(object);
+    if (text == null) return face;
+    return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };
+  };
+
   const slotInert = (id: number) => id === hiddenId || flyingIds.has(id);
 
   const metaFor = (id: number | undefined | null) => {
     const obj = id != null ? objectsById.get(id) : undefined;
     return {
       print: obj?.print ?? "",
+      face: obj ? faceOf(obj) : null,
       cardId: obj?.card_id,
       kind: obj?.kind?.kind,
       manaCost: obj?.mana_cost ?? emptyCost(),
@@ -412,6 +443,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
         metrics,
         name: c.name,
         print: c.print ?? "",
+        face: faceOf(c),
         cardId: c.card_id,
         zone: "command",
         objectId: c.id,
@@ -431,6 +463,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
   type HandSlot = {
     name: string;
     print: string;
+    face: FaceData;
     cardId?: string;
     objectId?: number;
     objectKind?: string;
@@ -449,6 +482,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
     handSlots.push({
       name: c.name,
       print: c.print ?? "",
+      face: faceOf(c),
       cardId: c.card_id,
       objectId: c.id,
       objectKind: c.kind.kind,
@@ -485,6 +519,7 @@ export function handView(inputs: HandViewInputs, h: HtmlBuilder<Message>): Html 
           metrics,
           name: formatMessage(a.label),
           print: meta.print,
+          face: meta.face,
           cardId: meta.cardId,
           zone,
           objectId: id,

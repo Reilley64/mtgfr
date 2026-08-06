@@ -1,7 +1,6 @@
 # Trample
 name = "War Mammoth"
 otags = ["french-vanilla", "type-errata-mammoth"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "itp", "lea", "leb", "me4", "rqs", "sum"]
 id = "b2a8fcf9-2ec2-40a9-9955-90f8605b11a3"
 default_print = "c9ee4dea-20b2-43ed-a6d5-f2d62b0e189b"
 oracle = "Trample"

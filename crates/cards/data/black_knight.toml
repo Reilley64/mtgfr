@@ -3,7 +3,6 @@
 # by anything white.)
 name = "Black Knight"
 otags = ["evasion", "french-vanilla", "hate-white", "mirrored-knight", "type-addition-human"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ath", "ced", "cei", "f02", "fbb", "lea", "leb", "m10", "m11", "me1", "me4", "olep", "plst", "prm", "sum", "wc97"]
 id = "9456c5b6-946d-403a-8ed0-dff9f921d98c"
 default_print = "36b94d0d-fbe5-4f32-af02-bbe3ab2e234a"
 oracle = "First strike (This creature deals combat damage before creatures without first strike.)\nProtection from white (This creature can't be blocked, targeted, dealt damage, or enchanted by anything white.)"

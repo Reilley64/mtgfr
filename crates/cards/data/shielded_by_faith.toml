@@ -2,7 +2,6 @@
 # Enchanted creature has indestructible.
 # Whenever a creature enters, you may attach this Aura to that creature.
 name = "Shielded by Faith"
-sets = ["c15", "e02", "prm", "pz1", "soc", "ss2"]
 id = "79085dea-8daa-41c0-a975-61e3e6da2e26"
 default_print = "681149f2-0802-4ab7-9521-3b3c7281f55d"
 otags = ["creaturefall", "gives-indestructible", "protects-creature", "transferrable-aura", "triggered-ability"]
@@ -18,6 +17,7 @@ type = "aura"
 
 # Enchanted creature has indestructible.
 [[abilities]]
+oracle = "Enchanted creature has indestructible."
 timing = "static"
 
 # Enchanted creature has indestructible.
@@ -30,6 +30,7 @@ keywords = ["indestructible"]
 
 # Whenever a creature enters, you may attach this Aura to that creature.
 [[abilities]]
+oracle = "Whenever a creature enters, you may attach this Aura to that creature."
 timing = "permanent_enters"
 filter = "creature"
 controller = "any_player"

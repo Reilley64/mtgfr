@@ -1,7 +1,6 @@
 # Enchant land
 # Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color.
 name = "Fertile Ground"
-sets = ["8ed", "afc", "bbd", "brb", "c18", "dde", "ecc", "hop", "inv", "lrw", "pip", "plst", "psal", "sld", "td0", "usg", "woc"]
 otags = ["mana-increaser", "refund", "triggered-ability", "uninspired", "usg-storyline-in-cards"]
 subtypes = ["Aura"]
 id = "cf14d4e5-5965-45ad-97f7-26facf2884b5"
@@ -20,6 +19,7 @@ type = "aura"
 
 # Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color.
 [[abilities]]
+oracle = "Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color."
 timing = "static"
 
 # Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color.

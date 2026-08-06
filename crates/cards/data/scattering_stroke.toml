@@ -4,7 +4,6 @@
 # higher mana value.)
 name = "Scattering Stroke"
 otags = ["adds-multiple-mana", "aikido", "alliteration", "clash-like", "counterspell-with-set-mechanic", "delayed-trigger", "hate-high-mv", "ritual", "scales-with-mana-value", "scry-like", "single-target-instant-sorcery"]
-sets = ["cmd", "lrw"]
 id = "314a9604-34ec-4529-bd14-7b63be28669f"
 default_print = "20652385-465f-408b-adea-13a14fb05642"
 oracle = "Clash with an opponent. Counter target spell. If you win the clash, at the beginning of your next main phase, add {C} for each 1 mana in that spell's mana cost. (Each clashing player reveals the top card of their library, then puts that card on the top or bottom. A player wins if their card had a higher mana value.)"
@@ -19,6 +18,7 @@ type = "instant"
 # Clash with an opponent. Counter target spell. If you win the clash, at the beginning of your next
 # main phase, add {C} for each 1 mana in that spell's mana cost.
 [[abilities]]
+oracle = "Clash with an opponent. Counter target spell. If you win the clash, at the beginning of your next main phase, add {C} for each 1 mana in that spell's mana cost."
 timing = "spell"
 
 # Clash with an opponent.

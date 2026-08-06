@@ -5,7 +5,6 @@
 # it, put a +1/+1 counter on enchanted creature, and that creature gains flying.
 name = "Cocoon"
 otags = ["single-english-word-name", "triggered-ability"]
-sets = ["bchr", "chr", "leg"]
 id = "9e35d450-00af-4f40-a4ee-bc7844ff5628"
 default_print = "a82c87b1-de37-4423-a1a4-533a1d8108b2"
 oracle = "Enchant creature you control\nWhen this Aura enters, tap enchanted creature and put three pupa counters on this Aura.\nEnchanted creature doesn't untap during your untap step if this Aura has a pupa counter on it.\nAt the beginning of your upkeep, remove a pupa counter from this Aura. If you can't, sacrifice it, put a +1/+1 counter on enchanted creature, and that creature gains flying."
@@ -20,6 +19,7 @@ type = "aura"
 
 # When this Aura enters, tap enchanted creature and put three pupa counters on this Aura.
 [[abilities]]
+oracle = "When this Aura enters, tap enchanted creature and put three pupa counters on this Aura."
 timing = "etb"
 
 # tap enchanted creature
@@ -38,6 +38,7 @@ kind = "pupa"
 
 # Enchanted creature doesn't untap during your untap step if this Aura has a pupa counter on it.
 [[abilities]]
+oracle = "Enchanted creature doesn't untap during your untap step if this Aura has a pupa counter on it."
 timing = "static"
 condition = { type = "compare", left = { per_counter_of_kind = "pupa" }, op = "at_least", right = 1 }
 
@@ -49,6 +50,7 @@ doesnt_untap = true
 
 # At the beginning of your upkeep, remove a pupa counter from this Aura.
 [[abilities]]
+oracle = "At the beginning of your upkeep, remove a pupa counter from this Aura."
 timing = "upkeep"
 condition = { type = "compare", left = { per_counter_of_kind = "pupa" }, op = "at_least", right = 1 }
 

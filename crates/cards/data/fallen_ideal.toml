@@ -2,7 +2,6 @@
 # Enchanted creature has flying and "Sacrifice a creature: This creature gets +2/+1 until end of turn."
 # When this Aura is put into a graveyard from the battlefield, return it to its owner's hand.
 name = "Fallen Ideal"
-sets = ["c15", "plst", "soc", "tsp"]
 id = "4b8183e6-4ff2-4254-9ee0-0ebbf8cef4a3"
 default_print = "f54acc9f-d128-49d4-b1a9-47a7ece13833"
 otags = ["cycle-tsp-perpetual-aura", "death-trigger-self", "free-sacrifice-outlet", "gives-flying", "regrowth-self", "sacrifice-outlet-creature", "shade-pump"]
@@ -18,6 +17,7 @@ type = "aura"
 
 # Enchanted creature has flying and "Sacrifice a creature: This creature gets +2/+1 until end of turn."
 [[abilities]]
+oracle = "Enchanted creature has flying and \"Sacrifice a creature: This creature gets +2/+1 until end of turn.\""
 timing = "static"
 
 # has flying and "Sacrifice a creature: This creature gets +2/+1 until end of turn."
@@ -31,6 +31,7 @@ granted_ability = { cost = { sacrifice = { creature = {} } }, effects = [{ type 
 
 # When this Aura is put into a graveyard from the battlefield, return it to its owner's hand.
 [[abilities]]
+oracle = "When this Aura is put into a graveyard from the battlefield, return it to its owner's hand."
 timing = "this_put_into_graveyard"
 
 # return it to its owner's hand

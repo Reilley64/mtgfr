@@ -3,7 +3,6 @@
 # their graveyard.
 name = "Petra Sphinx"
 otags = ["activated-ability", "library-manipulation", "named-choice", "self-mill"]
-sets = ["leg"]
 id = "f1ae89ff-b23b-44b2-a30c-6f2ae3216189"
 default_print = "5ef99f07-c987-451a-b18a-2719eea654cd"
 oracle = "{T}: Target player chooses a card name, then reveals the top card of their library. If that card has the chosen name, that player puts it into their hand. If it doesn't, the player puts it into their graveyard."
@@ -22,6 +21,7 @@ toughness = 4
 # has the chosen name, that player puts it into their hand. If it doesn't, the player puts it into
 # their graveyard.
 [[abilities]]
+oracle = "{T}: Target player chooses a card name, then reveals the top card of their library. If that card has the chosen name, that player puts it into their hand. If it doesn't, the player puts it into their graveyard."
 timing = "activated"
 taps_self = true
 

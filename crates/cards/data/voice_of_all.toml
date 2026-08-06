@@ -3,7 +3,6 @@
 # This creature has protection from the chosen color.
 name = "Voice of All"
 otags = ["cycle-voice-angel", "gains-protection", "hate-color-choose"]
-sets = ["10e", "cma", "cmd", "dmr", "pls", "ps11"]
 id = "b1631e9c-a993-4d44-b009-b2624d79560c"
 default_print = "d84b1c31-fb33-4f5c-b766-6ca8ad6e0976"
 oracle = "Flying\nAs this creature enters, choose a color.\nThis creature has protection from the chosen color."
@@ -21,6 +20,7 @@ toughness = 2
 
 # As this creature enters, choose a color.
 [[abilities]]
+oracle = "As this creature enters, choose a color."
 timing = "as_enters"
 
 # As this creature enters, choose a color.
@@ -30,6 +30,7 @@ mode = "choose_color"
 
 # This creature has protection from the chosen color.
 [[abilities]]
+oracle = "This creature has protection from the chosen color."
 timing = "static"
 
 # This creature has protection from the chosen color.

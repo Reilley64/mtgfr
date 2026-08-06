@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::dto::{MessageParam, MessageRef, WireCost, WireKind};
+use crate::dto::{CardTextView, MessageParam, MessageRef, WireCost, WireKind};
 use engine::EffectMessage;
 
 /// One pool card, for the deck builder to browse. Stats/keywords/summary are engine truth.
@@ -312,15 +312,26 @@ fn land_colors(def: &engine::CardDef) -> Vec<u8> {
         .collect()
 }
 
-/// Wire form of a mana cost.
+/// Wire form of a mana cost. Hybrid and Phyrexian pips are counted per pair / per color rather
+/// than kept in printed order — the client draws a pip per symbol, not a cost string.
 /// ponytail: colorless `{C}` cost pips aren't surfaced on the wire yet (no pool card has one);
 /// add a field to `WireCost` when a `{C}`-costed card enters the pool.
 pub(crate) fn wire_cost(cost: engine::Cost) -> WireCost {
+    let mut hybrid = [0u8; engine::COLOR_PAIRS.len()];
+    for &(a, b) in cost.hybrid {
+        hybrid[engine::color_pair_index(a, b)] += 1;
+    }
+    let mut phyrexian = [0u8; 5];
+    for color in cost.phyrexian {
+        phyrexian[color.index()] += 1;
+    }
     WireCost {
         generic: cost.generic,
         colored: cost.colored,
         has_x: cost.x > 0,
         x_symbols: cost.x,
+        hybrid,
+        phyrexian,
     }
 }
 
@@ -422,6 +433,72 @@ fn all_subtypes(def: &engine::CardDef) -> Vec<String> {
         }
     }
     out
+}
+
+/// The card's printed type line, as close as the pool records it.
+///
+/// ponytail: supertypes are Legendary / Basic / Snow — the three the pool tracks; World and the
+/// rest are lost until a card needs one.
+fn type_line(def: &engine::CardDef) -> String {
+    use engine::{CardKind, SpellSpeed, TypeSet};
+
+    let mut words: Vec<&str> = Vec::new();
+    if def.legendary {
+        words.push("Legendary");
+    }
+    if matches!(def.kind, CardKind::Land { basic: true, .. }) {
+        words.push("Basic");
+    }
+    if def.snow {
+        words.push("Snow");
+    }
+    match def.kind {
+        // A creature's other card types print first: "Artifact Creature", "Enchantment Creature".
+        CardKind::Creature { also, .. } => {
+            for (bit, word) in [
+                (TypeSet::ARTIFACT, "Artifact"),
+                (TypeSet::ENCHANTMENT, "Enchantment"),
+                (TypeSet::LAND, "Land"),
+            ] {
+                if also.intersects(bit) {
+                    words.push(word);
+                }
+            }
+            words.push("Creature");
+        }
+        CardKind::Spell {
+            speed: SpellSpeed::Instant,
+        } => words.push("Instant"),
+        CardKind::Spell {
+            speed: SpellSpeed::Sorcery,
+        } => words.push("Sorcery"),
+        // An Aura is an enchantment; "Aura" itself is a subtype, and the card carries it.
+        CardKind::Enchantment | CardKind::Aura => words.push("Enchantment"),
+        CardKind::Artifact => words.push("Artifact"),
+        CardKind::Planeswalker { .. } => words.push("Planeswalker"),
+        CardKind::Battle { .. } => words.push("Battle"),
+        CardKind::Land { .. } => words.push("Land"),
+    }
+
+    let types = words.join(" ");
+    let subtypes = all_subtypes(def);
+    if subtypes.is_empty() {
+        return types;
+    }
+    format!("{types} — {}", subtypes.join(" "))
+}
+
+/// The printed words of one card as the deck plays it — what a rendered face draws and the game
+/// state never carries. `flavor` is the flavor of THAT printing ([`cards::print_flavor`]), not of
+/// the card's `default_print`: flavor is per printing, and a reprint prints other words.
+pub fn card_text(def: &engine::CardDef, print: &str, flavor: Option<&str>) -> CardTextView {
+    CardTextView {
+        card_id: def.id.to_string(),
+        print: print.to_string(),
+        type_line: type_line(def),
+        oracle: def.oracle.unwrap_or_default().to_string(),
+        flavor: flavor.unwrap_or_default().to_string(),
+    }
 }
 
 /// A pool card in browse form for the deck builder.
@@ -561,6 +638,25 @@ mod tests {
         let s = wire_cost(shock.cost);
         assert_eq!(s.x_symbols, 0);
         assert!(!s.has_x);
+    }
+
+    #[test]
+    fn wire_cost_carries_hybrid_and_phyrexian_pips() {
+        // Boros Guildmage is {R/W}{R/W} — nothing generic, nothing mono. Dropping the hybrids left
+        // the client with an empty cost, which it drew as a `{0}` pip.
+        let guildmage = wire_cost(def("Boros Guildmage").cost);
+        assert_eq!(guildmage.generic, 0);
+        assert_eq!(guildmage.colored, [0; 5]);
+        assert_eq!(
+            guildmage.hybrid[engine::color_pair_index(engine::Color::Red, engine::Color::White)],
+            2
+        );
+
+        // Vraska, Betrayal's Sting is {4}{B}{B}{B/P}.
+        let vraska = wire_cost(def("Vraska, Betrayal's Sting").cost);
+        assert_eq!(vraska.generic, 4);
+        assert_eq!(vraska.phyrexian[engine::Color::Black.index()], 1);
+        assert_eq!(vraska.hybrid, [0; engine::COLOR_PAIRS.len()]);
     }
 
     #[test]

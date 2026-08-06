@@ -10,17 +10,10 @@
 // The hand is a DOM overlay (components/molecules/hand.tsx); the mana tray is a world-anchored DOM overlay (ManaTray.tsx).
 
 import type { ObjectView, VisibleState, WireKind } from "~/wire/types";
+import { BLANK_FACE, type FaceData, faceDataFrom } from "../../domain/card-render/frame";
+import { ZONE } from "../../domain/zones";
 
-/** Zone discriminants — must match `engine::Zone`'s declaration order. */
-export const ZONE = {
-  Library: 0,
-  Hand: 1,
-  Battlefield: 2,
-  Graveyard: 3,
-  Exile: 4,
-  Command: 5,
-  Stack: 6,
-} as const;
+export { ZONE };
 
 /** Step discriminants — must match `engine::Step`'s declaration order. */
 export const STEP = {
@@ -108,6 +101,8 @@ export interface RenderCard {
   keywords: string[];
   /** Goaded (CR 701.38) — Arena status chip. */
   goaded: boolean;
+  /** Everything the card-face renderer draws. Built once here so paint stays a pure blit. */
+  face: FaceData;
   isCommander: boolean;
   /** Prepare-DFC status — drives card-inspect play-face default. */
   prepared: boolean;
@@ -124,8 +119,19 @@ export interface RenderCard {
   tapFrac?: number;
 }
 
+/**
+ * A resting permanent is an Arena-style square tile: name slot and art, no oracle text. Square so
+ * three rows of seven fit four seats without the camera zooming out past readability.
+ */
 export const CARD_W = 96;
-export const CARD_H = 134;
+export const CARD_H = 96;
+
+/**
+ * A card in motion keeps the printed card's proportions — a flight paints the full face and the
+ * square tile appears only when the card comes to rest, with no mid-air morph.
+ */
+export const FLIGHT_CARD_W = 96;
+export const FLIGHT_CARD_H = 134;
 
 /** Radius of a player's life-orb avatar, in world units (so it pans/zooms with the board). */
 export const AVATAR_R = 40;
@@ -159,8 +165,10 @@ const BAND_STRIDE = BATTLE_H + BAND_GAP; // vertical distance between the two ta
 
 // The left column's cards are rendered at half size so four stack alongside the three-row
 // battlefield (4 × COL_STRIDE ≈ BATTLE_H). Top → bottom: commander, exile, deck, graveyard.
-const COL_W = CARD_W * 0.5;
-const COL_H = CARD_H * 0.5;
+// A pile is a stack of cards, not a permanent, so it keeps the printed card's proportions — the
+// Arena square is the battlefield's treatment alone.
+const COL_W = FLIGHT_CARD_W * 0.5;
+const COL_H = Math.round(FLIGHT_CARD_H * 0.5);
 const COL_STRIDE = BATTLE_H / 4;
 const COL_X = -(COL_W + 2 * GAP); // just left of the battlefield's first card (x = 0)
 
@@ -351,6 +359,7 @@ function toCard(o: ObjectView): RenderCard {
     hasHaste: o.has_haste,
     keywords: o.keywords ?? [],
     goaded: o.goaded ?? false,
+    face: faceDataFrom(o),
     isCommander: o.is_commander,
     prepared: o.prepared ?? false,
     pile: 0,
@@ -405,6 +414,7 @@ function deckCard(owner: number, count: number, revealedTop?: ObjectView): Rende
     hasHaste: false,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: count,

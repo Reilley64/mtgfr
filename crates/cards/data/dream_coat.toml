@@ -2,7 +2,6 @@
 # {0}: Enchanted creature becomes the color or colors of your choice. Activate only once each turn.
 name = "Dream Coat"
 otags = ["activated-ability", "color-change", "untracked-indefinite-effect"]
-sets = ["leg", "me3"]
 id = "988aaf54-2e46-4afc-ae37-b0a01191a1f1"
 default_print = "07edbbf4-c3d6-4ec1-ae9b-4ae202fb6998"
 oracle = "Enchant creature\n{0}: Enchanted creature becomes the color or colors of your choice. Activate only once each turn."
@@ -21,6 +20,7 @@ type = "aura"
 
 # {0}: Enchanted creature becomes the color or colors of your choice. Activate only once each turn.
 [[abilities]]
+oracle = "{0}: Enchanted creature becomes the color or colors of your choice. Activate only once each turn."
 timing = "activated"
 once_each_turn = true
 

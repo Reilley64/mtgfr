@@ -3,7 +3,6 @@
 # Creatures with forestwalk can be blocked as though they didn't have forestwalk.
 name = "Lord Magnus"
 otags = ["deprecated-legend-type", "hate-landwalk"]
-sets = ["leg"]
 id = "59258149-1c18-421b-b940-d0aa29da572a"
 default_print = "2a02aabb-c464-4672-b37b-d5d713ef8939"
 oracle = "First strike\nCreatures with plainswalk can be blocked as though they didn't have plainswalk.\nCreatures with forestwalk can be blocked as though they didn't have forestwalk."
@@ -23,6 +22,7 @@ toughness = 3
 
 # Creatures with plainswalk can be blocked as though they didn't have plainswalk.
 [[abilities]]
+oracle = "Creatures with plainswalk can be blocked as though they didn't have plainswalk."
 timing = "static"
 
 # Creatures with plainswalk can be blocked as though they didn't have plainswalk.
@@ -33,6 +33,7 @@ land = "plains"
 
 # Creatures with forestwalk can be blocked as though they didn't have forestwalk.
 [[abilities]]
+oracle = "Creatures with forestwalk can be blocked as though they didn't have forestwalk."
 timing = "static"
 
 # Creatures with forestwalk can be blocked as though they didn't have forestwalk.

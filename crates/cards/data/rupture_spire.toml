@@ -2,7 +2,6 @@
 # When this land enters, sacrifice it unless you pay {1}.
 # {T}: Add one mana of any color.
 name = "Rupture Spire"
-sets = ["c13", "c16", "c20", "cm2", "cma", "cmd", "cmr", "con", "ddh", "h09", "jmp", "m19", "pc2", "pca", "td0"]
 otags = ["activated-ability", "rainbow-land", "triggered-ability", "rupture-spire"]
 id = "7eadffcb-1e15-44c1-b1db-78c71b8ec1ce"
 default_print = "c7ef4b15-efab-4255-ac2d-7794f253aa52"
@@ -14,6 +13,7 @@ type = "land"
 
 # When this land enters, sacrifice it unless you pay {1}.
 [[abilities]]
+oracle = "When this land enters, sacrifice it unless you pay {1}."
 timing = "etb"
 
 # sacrifice it unless you pay {1}.
@@ -25,6 +25,7 @@ otherwise = [{ type = "sacrifice", mode = "source" }]
 
 # {T}: Add one mana of any color.
 [[abilities]]
+oracle = "{T}: Add one mana of any color."
 timing = "activated"
 taps_self = true
 

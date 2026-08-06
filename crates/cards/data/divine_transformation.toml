@@ -2,7 +2,6 @@
 # Enchanted creature gets +3/+3.
 name = "Divine Transformation"
 otags = ["vanilla-aura"]
-sets = ["4bb", "4ed", "5ed", "6ed", "leg", "me1", "ren"]
 id = "292e7135-8804-43f2-a486-51ef97b83f77"
 default_print = "7b733fb5-3ece-452c-a360-330fd202bb0f"
 oracle = "Enchant creature\nEnchanted creature gets +3/+3."
@@ -17,6 +16,7 @@ type = "aura"
 
 # Enchanted creature gets +3/+3.
 [[abilities]]
+oracle = "Enchanted creature gets +3/+3."
 timing = "static"
 
 # Enchanted creature gets +3/+3.

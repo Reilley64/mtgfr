@@ -2,7 +2,6 @@
 # Sacrifice this creature: Exile target player's graveyard.
 # Secrets of Strixhaven Commander. {1}{W}, Creature — Spirit Cleric, 2/1.
 name = "Remorseful Cleric"
-sets = ["m19", "pm19", "scd", "soc", "voc"]
 id = "c40bc9f6-2b72-4ae1-b912-50075af59628"
 default_print = "665a1bd1-db82-4db9-af7d-af161d31a696"
 otags = ["activated-ability", "evasion", "martyr", "sweeper-graveyard"]
@@ -21,6 +20,7 @@ toughness = 1
 
 # Sacrifice this creature: Exile target player's graveyard.
 [[abilities]]
+oracle = "Sacrifice this creature: Exile target player's graveyard."
 timing = "activated"
 sacrifice = "this"
 

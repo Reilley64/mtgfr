@@ -3,7 +3,6 @@
 # Axelrod Gunnarson deals 1 damage to target player or planeswalker.
 name = "Axelrod Gunnarson"
 otags = ["burn-planeswalker", "burn-player", "deprecated-legend-type", "hunger-trigger", "pinger", "repeatable-crime", "repeatable-lifegain", "repeatable-removal", "spot-removal", "unique-mana-cost"]
-sets = ["bchr", "chr", "leg", "me3"]
 id = "c640350b-16a5-4227-87fa-8b24fdb367c7"
 default_print = "97f2b387-661e-435f-96c9-d3d5a601caa9"
 oracle = "Trample\nWhenever a creature dealt damage by Axelrod Gunnarson this turn dies, you gain 1 life and Axelrod Gunnarson deals 1 damage to target player or planeswalker."
@@ -24,6 +23,7 @@ toughness = 5
 # Whenever a creature dealt damage by Axelrod Gunnarson this turn dies, you gain 1 life and
 # Axelrod Gunnarson deals 1 damage to target player or planeswalker.
 [[abilities]]
+oracle = "Whenever a creature dealt damage by Axelrod Gunnarson this turn dies, you gain 1 life and Axelrod Gunnarson deals 1 damage to target player or planeswalker."
 timing = "creature_dealt_damage_by_this_dies"
 
 # you gain 1 life

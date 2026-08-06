@@ -1,7 +1,6 @@
 # Prevent all combat damage that would be dealt to this creature by enchanted creatures.
 name = "Enchanted Being"
 otags = ["damage-prevention", "damage-prevention-self", "hate-aura", "type-errata"]
-sets = ["leg"]
 id = "c98b725e-ca16-4576-bf53-653d4028d861"
 default_print = "94c2880d-b37a-43ea-9fee-cd5a8ed75a7e"
 oracle = "Prevent all combat damage that would be dealt to this creature by enchanted creatures."
@@ -18,6 +17,7 @@ toughness = 2
 
 # Prevent all combat damage that would be dealt to this creature by enchanted creatures.
 [[abilities]]
+oracle = "Prevent all combat damage that would be dealt to this creature by enchanted creatures."
 timing = "static"
 
 # Prevent all combat damage that would be dealt to this creature by enchanted creatures.

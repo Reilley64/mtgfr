@@ -2,7 +2,6 @@
 # Other Kobold creatures you control have first strike.
 name = "Kobold Overlord"
 otags = ["gives-first-strike", "keyword-anthem", "typal-kobold", "type-errata-lord"]
-sets = ["leg", "me3"]
 id = "5839bc83-868e-402a-9233-ad3d2871ac6d"
 default_print = "0861cb0a-277f-49fe-b263-b044f0117cdd"
 oracle = "First strike\nOther Kobold creatures you control have first strike."
@@ -20,6 +19,7 @@ toughness = 2
 
 # Other Kobold creatures you control have first strike.
 [[abilities]]
+oracle = "Other Kobold creatures you control have first strike."
 timing = "static"
 
 # Other Kobold creatures you control have first strike.

@@ -4,7 +4,6 @@
 # Temple of Epiphany: "This land enters tapped. When this land enters, scry 1.
 # {T}: Add {U} or {R}."
 name = "Temple of Epiphany"
-sets = ["40k", "blc", "brc", "c21", "clb", "cmm", "ddu", "drc", "eoc", "fdn", "jou", "m20", "m21", "m3c", "moc", "ncc", "otc", "pip", "plst", "pm20", "pm21", "prm", "soc", "tdc", "who"]
 id = "79f94050-d850-41ca-b1db-5ae0cf743f0a"
 default_print = "cc63cd97-de9e-4d31-babb-aaad1277169e"
 otags = ["activated-ability", "cycle-block-ths-scry-land", "scry", "triggered-ability", "utility-land"]
@@ -18,6 +17,7 @@ produces = ["blue", "red"]
 # When this land enters, scry 1. (Look at the top card of your library. You may put that card on
 # the bottom.)
 [[abilities]]
+oracle = "When this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
 timing = "etb"
 
 # scry 1.

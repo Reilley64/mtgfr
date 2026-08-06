@@ -1,6 +1,5 @@
 # When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle.
 name = "Wood Elves"
-sets = ["7ed", "8ed", "9ed", "c14", "c15", "cma", "dci", "dd1", "ddr", "evg", "exo", "hob", "khc", "ltc", "moc", "ncc", "p30a", "plst", "por", "prm", "pw26", "s99", "sld", "td0"]
 otags = ["land-ramp", "mini-refund", "triggered-ability", "tutor-land-forest", "tutor-land-to-battlefield", "type-errata-summon-creature", "virtual-vanilla"]
 subtypes = ["Elf", "Scout"]
 id = "8973bd99-20f8-4867-90ef-50392147ee1b"
@@ -19,6 +18,7 @@ toughness = 1
 # When this creature enters, search your library for a Forest card, put that card onto the
 # battlefield, then shuffle.
 [[abilities]]
+oracle = "When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle."
 timing = "etb"
 
 # search your library for a Forest card, put that card onto the battlefield, then shuffle.

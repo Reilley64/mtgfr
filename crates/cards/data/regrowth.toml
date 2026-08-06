@@ -1,7 +1,6 @@
 # Return target card from your graveyard to your hand.
 name = "Regrowth"
 otags = ["hand-neutral", "single-english-word-name", "single-target-instant-sorcery", "regrowth-any"]
-sets = ["2ed", "30a", "3ed", "a25", "ced", "cei", "ddl", "fbb", "g05", "gn3", "lea", "leb", "me4", "mh1", "plst", "prm", "sld", "sta", "sum", "vma"]
 id = "e6e4a8bd-5c40-4654-8de1-0da9afed90fd"
 default_print = "2d764cd4-0cec-425c-8cc4-68a81c1f296b"
 oracle = "Return target card from your graveyard to your hand."
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # Return target card from your graveyard to your hand.
 [[abilities]]
+oracle = "Return target card from your graveyard to your hand."
 timing = "spell"
 
 # Return target card from your graveyard to your hand.

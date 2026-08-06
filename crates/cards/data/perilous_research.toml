@@ -1,7 +1,6 @@
 # Draw two cards, then sacrifice a permanent.
 name = "Perilous Research"
 otags = ["hand-positive", "plunder", "sacrifice-outlet-permanent"]
-sets = ["cmd", "csp", "mma", "plst"]
 id = "9243b539-5f9e-4bb3-9973-3d48366aa7cc"
 default_print = "227193ff-1d76-42bc-ad4d-ecc17880a44e"
 oracle = "Draw two cards, then sacrifice a permanent."
@@ -15,6 +14,7 @@ type = "instant"
 
 # Draw two cards, then sacrifice a permanent.
 [[abilities]]
+oracle = "Draw two cards, then sacrifice a permanent."
 timing = "spell"
 
 # Draw two cards,

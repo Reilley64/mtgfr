@@ -5,6 +5,7 @@ import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { CardArtTick } from "../domain/ui/card-art";
+import type { CardFaceTick } from "../domain/ui/card-face";
 import type { GameFoldState } from "../game/fold";
 import {
   pendingDamageAssignOverlay,
@@ -33,7 +34,7 @@ import { dragGhostFromHandDrag } from "./motion/screen-motion";
 import type { BoardModel } from "./submodel";
 
 /** Board TEA messages plus shell ticks emitted by shared mounts (e.g. `cardArt`). */
-export type ViewMessage = Message | typeof CardArtTick.Type;
+export type ViewMessage = Message | typeof CardArtTick.Type | typeof CardFaceTick.Type;
 
 export type BoardViewModel = {
   board: BoardModel;

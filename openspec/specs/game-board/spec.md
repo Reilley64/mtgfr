@@ -3,12 +3,10 @@
 ## Purpose
 
 The in-game board is the Foldkit Canvas + Mount + HTML Commander table: lobby entry into a seated game, camera/layout, battlefield paint, hand/stack/prompts/priority chrome, local action sessions, flights, overlays, audio, and the event log — composed so four seats stay readable without a single DOM battlefield or a client rules engine.
-
 ## Requirements
-
 ### Requirement: Lobby Entry and Seated Pregame
 
-Play routes SHALL use path-param deck and table ids (`/play/:deckId`, `/play/:deckId/:table`, `/play/:table`). Entry SHALL be Layout C: selected deck card left; Host primary; soft-inline Join code + ghost Join; ghost Back — no deck `<select>`, Bringing strip, or choose→join mode switch. Seated lobby SHALL poll until `started`, show seat-color dots and Gravatar/monogram faces (public `gravatar_hash` only), Ready/Start, table-code copy with clipboard fallback, and watcher copy for unsigned seats. Ready SHALL unlock table audio. Pregame play-route entry with a deck SHALL fire-and-forget `WarmDeckArt` at `fetchPriority: "low"`. Host create→redirect SHALL NOT flash claim-seat chrome on the entry route. On start, seated pregame URLs SHALL replace with `/play/:table` preserving the table id.
+Play routes SHALL use path-param deck and table ids (`/play/:deckId`, `/play/:deckId/:table`, `/play/:table`). Entry SHALL be Layout C: selected deck card left; Host primary; soft-inline Join code + ghost Join; ghost Back — no deck `<select>`, Bringing strip, or choose→join mode switch. Seated lobby SHALL poll until `started`, show seat-color dots and Gravatar/monogram faces (public `gravatar_hash` only), Ready/Start, table-code copy with clipboard fallback, and watcher copy for unsigned seats. Ready SHALL unlock table audio. Pregame play-route entry with a deck SHALL fire-and-forget `WarmDeckArt` at `fetchPriority: "low"`, warming the commander print and every deck print at the `art` size the rendered card faces draw. Host create→redirect SHALL NOT flash claim-seat chrome on the entry route. On start, seated pregame URLs SHALL replace with `/play/:table` preserving the table id.
 
 #### Scenario: Entry without selected deck
 - **WHEN** the player has no selected deck on entry
@@ -36,7 +34,7 @@ The live board SHALL compose Foldkit Canvas (vector furniture/arrows), Mount bit
 
 ### Requirement: Camera, Layout, and Hit Testing
 
-Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. Wheel and two-finger pinch SHALL emit `BoardCameraZoomed` via the camera gesture mount and set `cameraUserMoved` so later sync does not re-fit. `fitCamera` SHALL reserve live hand-bar height and re-fit on cold load, player-count change, and resize until the user moves the camera. `layout` SHALL emit world-space `RenderCard[]` with seat bands from the viewer perspective, packing, and cluster collapse. Hits SHALL resolve against logical layout (topmost wins), not flight poses. DPR-aware canvas backing stores SHALL match the CSS viewport.
+Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. Wheel and two-finger pinch SHALL emit `BoardCameraZoomed` via the camera gesture mount and set `cameraUserMoved` so later sync does not re-fit. `fitCamera` SHALL reserve live hand-bar height and re-fit on cold load, player-count change, and resize until the user moves the camera. `layout` SHALL emit world-space `RenderCard[]` with seat bands from the viewer perspective, packing, and cluster collapse. A permanent at rest SHALL occupy a square footprint; a card in motion — drag ghost or flight — SHALL keep the taller card-shaped footprint, so a played card is card-shaped until it settles. Zone-column piles — library, graveyard, exile, commander — SHALL keep the printed card's proportions, because a pile is a stack of cards rather than a permanent. Hits SHALL resolve against logical layout (topmost wins), not flight poses. A card's hit footprint SHALL be its upright rect whether it is tapped or not, because every rotation the board draws — the opponent's half turn, the tapped tile's tilt — leaves the card centred on that rect. DPR-aware canvas backing stores SHALL match the CSS viewport.
 
 #### Scenario: User zoom persists across sync
 - **WHEN** the player has panned or zoomed and a game delta arrives
@@ -46,9 +44,25 @@ Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. 
 - **WHEN** a permanent is committed as attacker, blocker, blocked attacker, stack target, or staged/drafted target
 - **THEN** it takes its own layout slot and the cluster face becomes the next free copy
 
+#### Scenario: Square at rest, card-shaped in flight
+- **WHEN** a card is played and its flight settles onto the battlefield
+- **THEN** the flight paints at card proportions and the resting permanent paints square
+
+#### Scenario: Four seats stay readable
+- **WHEN** the camera fits a four-player board at 1440×900 with the live hand bar
+- **THEN** a resting permanent is at least 70 screen pixels on each side
+
+#### Scenario: Piles stay card-shaped
+- **WHEN** a seat's zone column lays out its library, graveyard, exile, and commander slots
+- **THEN** each pile is taller than it is wide, at the printed card's proportions
+
+#### Scenario: A tapped permanent is clicked where it is drawn
+- **WHEN** the player clicks inside the upright rect of a tapped permanent
+- **THEN** that permanent is hit
+
 ### Requirement: Battlefield Paint and Chrome
 
-Battlefield paint order SHALL be felt → seats → resting cards → avatars → arrows → flights. Playability SHALL use playable borders, not unplayable darkening. Mana-only actions and free-tap lands SHALL NOT receive playable borders but remain selectable. Avatars SHALL paint Gravatar or monogram faces with life, hand count, and clock chips (max commander damage, poison, rad). After every attacked defender has declared blockers, blocked attackers SHALL point at living blockers (attack-red); block-green arrows SHALL be suppressed; blocked attackers with no living blocker SHALL paint no combat arrow. Stack→target arrows SHALL paint on the Mount layer above resting art. Shift on a combat drop SHALL commit every copy in the dragged cluster.
+Battlefield paint order SHALL be felt → seats → resting cards → avatars → arrows → flights. A face-up resting permanent SHALL paint as a rendered card face — the card's art and its name drawn into a real card frame chosen from the card's colours and type — not as a crop of the printed card image. The rendered face's frame SHALL border the tile on all four edges. The rendered face SHALL omit the printed mana cost, because the hand bar's pip tray owns cost. A creature's square SHALL carry the printed power/toughness plate, and the board SHALL write the live power/toughness onto that plate rather than a second badge over it, so counters and damage still track without redrawing the face; a token or a tile still showing the printed card image SHALL keep the rounded P/T badge. A token SHALL draw its art edge to edge with no frame and no name, so it reads as a token at a glance; a legendary permanent SHALL draw the legend crown. A tapped permanent SHALL tilt a few degrees off square rather than turn a quarter turn, because a square tile turned 90° keeps its silhouette, and SHALL paint a black veil over its face; both the tilt and the veil SHALL follow the tap animation's progress. Counters, status badges, the live P/T badge, playable borders, and commander gold SHALL paint over the rendered face. A face-down permanent SHALL paint the card back. Until a face has been rendered the printed card image SHALL paint in its place, and the board SHALL repaint when the face lands. A zone-column pile SHALL paint the printed card image, not a rendered face. Playability SHALL use playable borders, not unplayable darkening. Mana-only actions and free-tap lands SHALL NOT receive playable borders but remain selectable. Avatars SHALL paint Gravatar or monogram faces with life, hand count, and clock chips (max commander damage, poison, rad). After every attacked defender has declared blockers, blocked attackers SHALL point at living blockers (attack-red); block-green arrows SHALL be suppressed; blocked attackers with no living blocker SHALL paint no combat arrow. Stack→target arrows SHALL paint on the Mount layer above resting art. Shift on a combat drop SHALL commit every copy in the dragged cluster.
 
 #### Scenario: Mana-only outline skip
 - **WHEN** a permanent’s only current action is flagged `mana_only`
@@ -58,9 +72,93 @@ Battlefield paint order SHALL be felt → seats → resting cards → avatars �
 - **WHEN** blockers are declared and an attacker still has living blockers
 - **THEN** the attack arrow points at those blockers, not the defending avatar
 
+#### Scenario: Rendered face replaces the printed image
+- **WHEN** a face-up permanent's rendered face is available
+- **THEN** the board paints that face and does not paint the card's printed image
+
+#### Scenario: Printed image covers the gap
+- **WHEN** a face-up permanent's face has not been rendered yet
+- **THEN** the board paints the printed image, and repaints the tile once the face is rendered
+
+#### Scenario: Face-down permanent is a card back
+- **WHEN** a permanent is face down
+- **THEN** no card face is rendered for it and the card back paints instead
+
+#### Scenario: Border closes around the tile
+- **WHEN** a face-up permanent's rendered face is painted
+- **THEN** the frame borders its top, both sides, and its bottom
+
+#### Scenario: A token is art alone
+- **WHEN** a token permanent's rendered face is painted
+- **THEN** its art fills the tile with no frame border and no name
+
+#### Scenario: Piles keep the printed card
+- **WHEN** a face-up graveyard, exile, or commander pile paints
+- **THEN** no rendered face is requested for it and the printed card image paints
+
+#### Scenario: A tapped permanent reads as tapped
+- **WHEN** a permanent becomes tapped
+- **THEN** its tile settles at a slight tilt off square and darkens under a black veil
+
+#### Scenario: Live power/toughness prints on the square's own plate
+- **WHEN** a rendered creature square has taken damage or counters
+- **THEN** the current power/toughness prints on the frame's power/toughness plate and no badge box paints over it
+
+### Requirement: Rendered Card Face
+
+A rendered card face SHALL be drawn from the M15 frame assets — art, name, type line, rules text, flavor text and the power/toughness plate composed onto a real frame — never a crop of the printed card image. Frame, legend crown, and power/toughness plate SHALL be chosen from the card's colours and type; no land SHALL take a plate. Typography SHALL follow the printed card: the name and type line set in the title face, rules and flavor in the body face at the size and leading a printed card sets them — type nearly as tall as the pitch it steps at, not small type in airy lines — mana symbols in rules text drawn as coloured disks bearing their mana-font glyph rather than braces, reminder text and flavor text set in italics at the narrower set width a printed italic runs at, so a flavor line wraps onto the line print gives it, and rules text shrunk to fit its box the way a crowded printed box sets smaller. Each printed ability SHALL open on its own line with about a third of an em more air above it than the lines within one ability take, the way print sets a multi-ability text box, and that air SHALL count against the fit — so a card with several abilities sets in smaller type than a card of the same length with one, exactly as print does, and can never overhang the box. The modes of a modal spell SHALL NOT take that air — they are one ability, set at the plain pitch — and a mode that wraps SHALL hang its later lines in under its own text, clear of the bullet. Quotes SHALL set as print sets them, typographic rather than as typewriter ticks, in the name, the type line, the rules text and the flavor. Flavor text SHALL set as one unbroken italic block — an attribution runs straight on under its quote at the plain pitch, and where the printing marks emphasis those words SHALL lean back to roman with the markup itself never inked. A card that prints both rules and flavor text SHALL separate them with a blank row and the printed flavor divider — a whisper of shadow across most of the text box, at the strength a printed card scans at, not a drawn line. The power/toughness plate SHALL be laid over the rules text, so a wordy card's box cannot run through it. A face SHALL NOT be drawn until every vendored frame piece it needs — frame, legend crown and power/toughness plate — has loaded or failed, since only the printing's art earns a redraw and a piece missed once would leave its hole for the session. The mana cost SHALL never be drawn: the hand bar's pip tray owns cost.
+
+The full card face SHALL be drawn for hand, stack and command-zone tiles; the square permanent face SHALL be drawn for the battlefield and draws neither type line nor rules text, having no room for them.
+
+Art and flavor SHALL both come from the printing the object plays — the printing the deck chose, not the card's default printing. The printed words a face draws — type line, rules text and that printing's flavor — SHALL arrive on the stream, keyed by card id and printing together: the viewer's whole deck with the opening snapshot, any other seat's card once a frame shows the board that card, each delta's words merged into the book rather than replacing it. Two visible copies of the same oracle card using different printings SHALL retain their distinct flavor. The board MUST NOT request card text per card, from the catalog or from any card API.
+
+#### Scenario: Rules text sets mana symbols as pips
+- **WHEN** a face's rules text contains a mana symbol such as `{T}` or `{G}`
+- **THEN** it draws as the coloured disk with its mana-font glyph, and no braces appear on the card
+
+#### Scenario: The power/toughness plate draws whole
+- **WHEN** a creature's frame asset loads before its power/toughness plate does
+- **THEN** the face waits for the plate rather than drawing a hollow one, and the plate lands over the rules text
+
+#### Scenario: Abilities are set apart
+- **WHEN** a card prints more than one ability
+- **THEN** each ability after the first opens with extra air above it, while lines that wrap inside one ability keep the plain pitch
+
+#### Scenario: A modal spell sets as one ability
+- **WHEN** a card prints `Choose one —` above bulleted modes and a mode wraps
+- **THEN** the modes follow at the plain pitch with no ability-sized air, and the wrapped line sets in under the mode's own text rather than under its bullet
+
+#### Scenario: Quotes set the way print sets them
+- **WHEN** a face draws a name, rules line or flavor line carrying an apostrophe or a quotation mark
+- **THEN** it inks the typographic mark, never the typewriter tick the card data stores
+
+#### Scenario: Flavor sits under the divider
+- **WHEN** a card prints both rules text and flavor text
+- **THEN** the flavor sets in italics below a divider ruled between the two blocks
+
+#### Scenario: Flavor sets as one block
+- **WHEN** a printing's flavor is a quote with an attribution under it, or leans on an emphasised phrase
+- **THEN** the attribution follows at the plain pitch with no ability-sized air above it, and the emphasised phrase sets roman with no emphasis markup drawn
+
+#### Scenario: Flavor follows the printing the deck plays
+- **WHEN** a card is played from a deck that chose a printing other than the card's default
+- **THEN** the face draws that printing's flavor under its art, from the words the snapshot already carried, without a further request
+
+#### Scenario: A card with no flavor rules no divider
+- **WHEN** a card's printing prints no flavor text
+- **THEN** its rules text sets alone with no divider
+
+#### Scenario: Hand tiles read as cards
+- **WHEN** a hand tile paints for an object with a known printing
+- **THEN** it paints the full rendered face, with its cost shown only by the pip tray beneath it
+
 ### Requirement: Hand and Zone Bar
 
-Active seated players SHALL see a bottom DOM bar in Arena order: command, hand, graveyard, exile. The bar SHALL scale with `handMetrics` / `handUiScale` (clamped). Playable hand/command tiles SHALL get playable borders; unplayable tiles SHALL stay full brightness. Drag-to-play above the play threshold SHALL commit; below SHALL snap back. Multi-legal-mode activation SHALL park in `playModePick` with docked coach and primary-bar mode buttons; single mode SHALL run immediately. Drag ghost SHALL paint on the Mount screen-motion layer (not HTML). Spectators and eliminated players SHALL NOT see the hand bar. Pick chrome SHALL use `data-selected` / `data-selectable` group variants.
+Active seated players SHALL see a bottom DOM bar in Arena order: command, hand, graveyard, exile. The bar SHALL scale with `handMetrics` / `handUiScale` (clamped). Playable hand/command tiles SHALL get playable borders; unplayable tiles SHALL stay full brightness. Drag-to-play above the play threshold SHALL commit; below SHALL snap back. Multi-legal-mode activation SHALL park in `playModePick` with docked coach and primary-bar mode buttons; single mode SHALL run immediately. Drag ghost SHALL paint on the Mount screen-motion layer (not HTML). Spectators and eliminated players SHALL NOT see the hand bar. Pick chrome SHALL use `data-selected` / `data-selectable` group variants. The pip tray SHALL draw one pip per cost symbol in printed order — `{X}`, generic, WUBRG, then hybrid and Phyrexian — and SHALL draw a `{0}` only for a cost with no symbols at all. A hybrid or Phyrexian pip SHALL take mana-font's own split disk rather than a flat colour plate, so both halves read. The pip row SHALL sit in the tile's top-right corner overlapping the card's top edge and held off its right border, rather than floating clear above the card.
+
+#### Scenario: A hybrid cost draws its split pips
+- **WHEN** a hand tile shows a card whose cost is hybrid symbols
+- **THEN** the pip tray draws a split disk per hybrid symbol, not a `{0}` generic pip
 
 #### Scenario: Multi-mode hand play
 - **WHEN** a hand tile has two or more legal modes
@@ -74,9 +172,38 @@ Active seated players SHALL see a bottom DOM bar in Arena order: command, hand, 
 
 The stack SHALL be a right-edge DOM overlay with pile / expanded strip / full-grid presentations. Labels SHALL format wire `MessageRef`s. Declared targets SHALL paint one Island Blue arrow per resolvable destination on the Mount layer. Legal aim faces SHALL set `data-legal-target` and submit on click/keyboard. Priority holders hovering a non-empty stack SHALL emit `SetStackDwell`. Resting stack faces SHALL hide only for `kind: "stack"` flights. Pending board-aim without a stack entry for the source SHALL show a source-art ghost; spell sources already on the stack SHALL NOT duplicate.
 
+Each stack face SHALL be the whole rendered card face — the same one the hand bar draws, sharing its cache entry — since the stack is where a player reads what is about to resolve. An entry whose source object has already left the snapshot SHALL draw its face from the printing, name and last-known renderer characteristics the entry carries, retaining the source's land/colour frame, legend crown and printed corner badge. An ability entry SHALL draw its own printed sentence in the text box, or its generated label when no sentence is recorded, in place of the source card's text and flavor, because an ability on the stack is not its whole source card.
+
+Resolved target captions SHALL list every destination below the stack card. Generated ability labels SHALL NOT be repeated below a rendered ability card; an untargeted resolved entry SHALL render no caption.
+
+#### Scenario: A spell on the stack shows its printed card
+
+- **WHEN** a spell sits on the stack, whoever cast it
+- **THEN** its stack face draws the full rendered card, rules text and flavor included, rather than a crop of the art
+
+#### Scenario: An ability on the stack shows only its own sentence
+
+- **WHEN** an ability sits on the stack and the entry carries the printed sentence for it
+- **THEN** its stack face draws that sentence alone in the text box, without the source card's other abilities or its flavor
+
+#### Scenario: An ability without a recorded sentence uses its label
+
+- **WHEN** an ability sits on the stack and its entry carries no printed sentence
+- **THEN** its stack face draws the generated label alone in the text box, without the source card's rules text or flavor
+
+#### Scenario: A departed source keeps its frame
+
+- **WHEN** a sacrificed land's ability remains on the stack after the source leaves the visible object list
+- **THEN** the stack face still draws with the land frame and the source's last-known renderer characteristics
+
 #### Scenario: Multi-target caption
 - **WHEN** a stack object has multiple resolved targets
 - **THEN** the caption lists all labels joined with `, ` after ` → `
+
+#### Scenario: Ability card does not repeat its generated label
+
+- **WHEN** an ability card is rendered on the stack
+- **THEN** its generated label is absent beneath the card, while any resolved target caption remains
 
 #### Scenario: Ability face during source flight
 - **WHEN** a battlefield flight owns an ability’s source permanent
@@ -84,7 +211,11 @@ The stack SHALL be a right-edge DOM overlay with pile / expanded strip / full-gr
 
 ### Requirement: Screen Motion
 
-Drag ghosts, `CardFlight`s, and battlefield `ExitFx` SHALL share one Mount flight-layer paint pass. Flights SHALL spawn from authorized local seeds or sync provenance, retarget to authoritative poses, hold local hand seeds until provenance, and settle without duplicate resting faces (`hideCardIds`, `handHidden`, owned ids). Battlefield→graveyard/exile SHALL use in-place ExitFx (destroy/exile), not a zone glide. Rejected intents and Cancel SHALL drop held seeds. Reduced motion SHALL snap flights and complete ExitFx immediately. Pose-only ticks SHALL repaint only the flight layer. Lift shadow on drag ghosts and flights SHALL match the shared lift-shadow tokens.
+Drag ghosts, `CardFlight`s, and battlefield `ExitFx` SHALL share one Mount flight-layer paint pass. Flights SHALL spawn from authorized local seeds or sync provenance, retarget to authoritative poses, hold local hand seeds until provenance, and settle without duplicate resting faces (`hideCardIds`, `handHidden`, owned ids). Battlefield→graveyard/exile SHALL use in-place ExitFx (destroy/exile), not a zone glide. Rejected intents and Cancel SHALL drop held seeds. Reduced motion SHALL snap flights and complete ExitFx immediately. Pose-only ticks SHALL repaint only the flight layer. Lift shadow on drag ghosts and flights SHALL match the shared lift-shadow tokens. A card in motion SHALL paint the same rendered card face its tile paints, falling back to the printed card image only until that face has been rendered.
+
+#### Scenario: A dragged card keeps its face
+- **WHEN** a hand tile painting a rendered face is dragged
+- **THEN** the ghost paints that same rendered face rather than the printed card image
 
 #### Scenario: Continuous drag-to-flight
 - **WHEN** a hand drag releases into a seeded flight

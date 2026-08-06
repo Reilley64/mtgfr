@@ -4,7 +4,6 @@
 # end of turn.
 name = "Wall of Caltrops"
 otags = ["block-trigger", "conditional-keyword-grant", "synergy-blocker-self", "typal-wall"]
-sets = ["leg"]
 id = "20fa17d4-9c3e-470b-9993-a4a2799e33d1"
 default_print = "664ad588-3002-4f63-93bd-38663171018f"
 oracle = "Defender (This creature can't attack.)\nWhenever this creature blocks a creature, if at least one other Wall creature is blocking that creature and no non-Wall creatures are blocking that creature, this creature gains banding until end of turn."
@@ -24,6 +23,7 @@ toughness = 1
 # creature and no non-Wall creatures are blocking that creature, this creature gains banding until
 # end of turn.
 [[abilities]]
+oracle = "Whenever this creature blocks a creature, if at least one other Wall creature is blocking that creature and no non-Wall creatures are blocking that creature, this creature gains banding until end of turn."
 timing = "blocks_creature"
 filter = { types = "creature" }
 # The intervening-if (CR 603.4), both halves counted over the blockers of the creature this Wall

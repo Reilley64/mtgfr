@@ -1,6 +1,5 @@
 # {1}, {T}: Add {R}{G}.
 name = "Gruul Signet"
-sets = ["aa1", "afc", "arc", "blc", "c16", "clu", "cmd", "gk2", "gpt", "mm3", "moc", "plst", "prm", "rvr", "sld", "td0"]
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
 oracle = "{1}, {T}: Add {R}{G}."
 id = "d36e0c9f-c025-4dfe-9644-9cad2461ce38"
@@ -14,6 +13,7 @@ type = "artifact"
 
 # {1}, {T}: Add {R}{G}.
 [[abilities]]
+oracle = "{1}, {T}: Add {R}{G}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

@@ -1,7 +1,6 @@
 # Destroy target artifact.
 # Flashback {G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)
 name = "Ancient Grudge"
-sets = ["f12", "ha5", "isd", "mb2", "mm3", "plst", "prm", "sld", "td0", "tsp", "tsr"]
 otags = ["castable-from-graveyard", "cheaper-than-mv", "cycle-isd-allied-flashback", "cycle-tsp-forward-flashback", "exile-self", "meme", "removal-artifact", "removal-destroy", "repeatable-crime", "repeatable-removal", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Destroy target artifact.\nFlashback {G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
 id = "306593b0-6ea8-476f-a3f2-e17876c1bab4"
@@ -21,6 +20,7 @@ type = "instant"
 
 # Destroy target artifact.
 [[abilities]]
+oracle = "Destroy target artifact."
 timing = "spell"
 
 # Destroy target artifact.

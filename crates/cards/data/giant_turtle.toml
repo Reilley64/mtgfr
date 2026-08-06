@@ -1,7 +1,6 @@
 # This creature can't attack if it attacked during your last turn.
 name = "Giant Turtle"
 otags = ["prevent-attack", "typal-turtle"]
-sets = ["leg"]
 id = "9297c0a6-1a8e-4e6e-99d6-f0877b2ec46c"
 default_print = "87e5fc19-3b10-476f-9a73-e8bf4b5fbec0"
 oracle = "This creature can't attack if it attacked during your last turn."
@@ -18,6 +17,7 @@ toughness = 4
 
 # This creature can't attack if it attacked during your last turn.
 [[abilities]]
+oracle = "This creature can't attack if it attacked during your last turn."
 timing = "static"
 
 # This creature can't attack if it attacked during your last turn.

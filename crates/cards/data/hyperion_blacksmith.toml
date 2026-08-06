@@ -1,7 +1,6 @@
 # {T}: You may tap or untap target artifact an opponent controls.
 name = "Hyperion Blacksmith"
 otags = ["activated-ability", "hate-artifact", "repeatable-crime", "tapper-artifact", "twiddle", "type-errata", "untapper-artifact"]
-sets = ["leg"]
 id = "bafad165-c2aa-45d1-8f99-05e752450dfd"
 default_print = "44d499a9-fe7c-4a1a-9eb3-a7fd9f85ae08"
 oracle = "{T}: You may tap or untap target artifact an opponent controls."
@@ -18,6 +17,7 @@ toughness = 2
 
 # {T}: You may tap or untap target artifact an opponent controls.
 [[abilities]]
+oracle = "{T}: You may tap or untap target artifact an opponent controls."
 timing = "activated"
 taps_self = true
 

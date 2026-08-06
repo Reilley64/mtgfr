@@ -107,6 +107,11 @@ client-mana-oracle-check:
     cd client && bun scripts/gen-mana-oracle.mjs --check
 
 [group('client')]
+[doc("Score the rendered card face against a printing (needs `just dev` + agent-browser)")]
+client-card-diff print *flags:
+    cd client && bun scripts/card-render-diff.mjs {{ print }} {{ flags }}
+
+[group('client')]
 [doc("Fail if tokens.generated.* are stale vs design.tokens.json")]
 client-tokens-check:
     cd client && bun run gen:tokens:check
@@ -182,6 +187,10 @@ cards-dsl-ref:
 [doc("Fail if generated card DSL Markdown reference is stale")]
 cards-dsl-ref-check:
     cargo run -p cards --bin gen_dsl_reference -- --check
+
+[doc("Regenerate crates/cards/data/prints/ from Scryfall bulk data")]
+cards-printings:
+    node tooling/gen-printings.mjs
 
 [doc("Validate card TOML files against the generated JSON Schema")]
 cards-toml-validate *args:

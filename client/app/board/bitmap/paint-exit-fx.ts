@@ -1,7 +1,7 @@
 import { colors } from "~/design-tokens.generated";
 import { imageUrlByPrint } from "../../domain/deck-builder/scryfall";
 import type { ImageCache } from "../../domain/image-cache";
-import { CARD_H, CARD_W } from "../geometry/layout";
+import { FLIGHT_CARD_H, FLIGHT_CARD_W } from "../geometry/layout";
 import type { ExitFx, ExitParticle } from "../motion/exit-fx";
 import { type BitmapImageCache, CARD_OUTLINE, roundRect } from "./paint-cards";
 import { FLIGHT_SHADOW_BLUR, FLIGHT_SHADOW_COLOR, FLIGHT_SHADOW_OFFSET_Y } from "./paint-flights";
@@ -43,8 +43,8 @@ export function paintExitFx(
 }
 
 function exitFxCardRect(fx: ExitFx, zoom: number): ExitFxCardRect {
-  const w = CARD_W * zoom * fx.scale;
-  const h = CARD_H * zoom * fx.scale;
+  const w = FLIGHT_CARD_W * zoom * fx.scale;
+  const h = FLIGHT_CARD_H * zoom * fx.scale;
   return {
     x: fx.x - w / 2,
     y: fx.y - h / 2,

@@ -1,4 +1,4 @@
-// Stack overlay: right-edge card-art pile with staged ghost, dwell, hold timer, and expand.
+// Stack overlay: right-edge card pile with staged ghost, dwell, hold timer, and expand.
 //
 // Legal stack targets are clickable while arrow-aiming (Counterspell-style). Hovering the overlay
 // emits `StackDwellChanged` when the player has priority (dwell-suppresses helpless auto-resolve).
@@ -7,9 +7,11 @@
 
 import { Option } from "effect";
 import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
+import { BLANK_FACE, type FaceData, faceDataFrom, faceDataFromStackSource } from "~/card-render/frame";
+import { cardTextFor } from "~/cardText";
 import { button } from "~/ui/button";
-import { cardArt } from "~/ui/card-art";
-import type { VisibleState } from "~/wire/types";
+import { cardFace } from "~/ui/card-face";
+import type { ObjectView, VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { aimingObjectIds, pendingStackGhost, stagedPickTargets } from "../action/targeting";
 import {
@@ -43,6 +45,8 @@ type StackItem = {
   cardId?: string;
   label: string;
   staged: boolean;
+  /** The rendered face, or null for a tombstone the snapshot no longer carries an object for. */
+  face: FaceData | null;
 };
 
 /** Hide a resting stack face only while a *stack* flight owns that object id.
@@ -57,20 +61,36 @@ function hideStackRestingFace(board: BoardModel, source: number): boolean {
   return true;
 }
 
-function objectMeta(state: VisibleState, source: number): { print: string; name: string | null; cardId?: string } {
-  const obj = state.objects.find((o) => o.id === source);
-  return { print: obj?.print ?? "", name: obj?.name ?? null, cardId: obj?.card_id };
-}
-
 function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean): StackItem[] {
+  /** The catalog's words folded into a face once its lookup lands — as the hand bar does. */
+  const withText = (face: FaceData, cardId: string | undefined, print: string): FaceData => {
+    const text = cardTextFor(board.cardText, cardId, print);
+    if (text == null) return face;
+    return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };
+  };
+  const faceOf = (view: ObjectView): FaceData => withText(faceDataFrom(view), view.card_id, view.print ?? "");
+
   const items: StackItem[] = state.stack.map((entry, row) => {
-    const meta = objectMeta(state, entry.source);
+    const object = state.objects.find((o) => o.id === entry.source);
     const label = formatMessage(entry.label);
-    // Prefer live object art; fall back to entry-carried identity when `source` is a Moved
+    // Prefer the live object; fall back to entry-carried identity when `source` is a Moved
     // tombstone (sacrifice-as-cost) omitted from `objects`.
-    const print = meta.print || entry.print || "";
-    const name = meta.name || entry.name || null;
-    const cardId = meta.cardId || entry.card_id || undefined;
+    const print = object?.print || entry.print || "";
+    const name = object?.name || entry.name || null;
+    const cardId = object?.card_id || entry.card_id || undefined;
+    // A tombstone is gone from `objects`, so its own identity is all there is to draw a face from.
+    const face =
+      object != null
+        ? faceOf(object)
+        : print
+          ? withText(
+              entry.source_face != null
+                ? faceDataFromStackSource(entry.source_face, print, name ?? "")
+                : { ...BLANK_FACE, print, name: name ?? "" },
+              cardId,
+              print,
+            )
+          : null;
     return {
       row,
       source: entry.source,
@@ -79,6 +99,12 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       cardId,
       label,
       staged: false,
+      // An ability on the stack is the one sentence that prints it, not its source card's whole
+      // text box; the flavor belongs to the card, so it goes with the rest of the card's words.
+      face:
+        face != null && entry.kind === "ability"
+          ? { ...face, oracle: entry.ability_oracle || label, flavor: "" }
+          : face,
     };
   });
   if (!showGhost) return items;
@@ -94,6 +120,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       cardId: card.card_id,
       label: card.name,
       staged: true,
+      face: faceOf(card),
     });
     return items;
   }
@@ -108,6 +135,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       cardId: pending.card_id,
       label: pending.name,
       staged: true,
+      face: faceOf(pending),
     });
   }
   return items;
@@ -121,6 +149,7 @@ function stackFace(
     print: string;
     cardId?: string;
     label: string;
+    face: FaceData | null;
     isTop: boolean;
     staged?: boolean;
     legalTarget?: boolean;
@@ -142,12 +171,14 @@ function stackFace(
     .filter((v) => v !== "")
     .join(" ");
 
-  const art: Html =
-    opts.imageName && opts.print
-      ? cardArt(h, {
-          print: opts.print,
-          size: "display",
-          alt: opts.imageName,
+  // The whole printed card, not a crop of its art — the stack is where a player reads what is
+  // about to resolve, so it shows the same rendered face the hand bar does.
+  const cardBody: Html =
+    opts.face && opts.print
+      ? cardFace(h, {
+          face: opts.face,
+          width: STACK_CARD_W,
+          height: opts.cardH,
           className: "block h-(--card-h) w-(--stack-w) rounded-game",
         })
       : h.div(
@@ -199,7 +230,7 @@ function stackFace(
     faceAttrs.push(h.OnMouseLeave(InspectAuxHovered({ source: "stack", card: null })));
   }
 
-  return h.div(faceAttrs, [art]);
+  return h.div(faceAttrs, [cardBody]);
 }
 
 function holdBar(holdMs: number, holdPeak: number, show: boolean, h: HtmlBuilder<Message>): Html | null {
@@ -237,14 +268,10 @@ function pileCaption(state: VisibleState, showStaged: boolean, h: HtmlBuilder<Me
   const top = state.stack[state.stack.length - 1];
   if (top == null) return null;
   const target = formatStackTargetSuffix(stackEntryTargets(top), state);
-  const ability = top.kind === "ability" ? formatMessage(top.label) : "";
-  if (ability === "" && target === "") return null;
+  if (target === "") return null;
   return h.div(
     [h.DataAttribute("testid", "stack-top-caption"), h.Class("max-w-(--stack-w) text-center text-chip text-seafoam")],
-    [
-      ability !== "" ? h.div([h.Class("font-semibold")], [ability]) : null,
-      target !== "" ? h.div([], [target]) : null,
-    ].filter((v): v is Html => v !== null),
+    [h.div([], [target])],
   );
 }
 
@@ -276,6 +303,7 @@ function pileView(
           print: item.print,
           cardId: item.cardId,
           label: item.label,
+          face: item.face,
           isTop,
           staged: item.staged,
           legalTarget: !item.staged && legalTargets.has(item.source),
@@ -370,6 +398,7 @@ function stripView(
           print: item.print,
           cardId: item.cardId,
           label: item.label,
+          face: item.face,
           isTop,
           staged: item.staged,
           legalTarget: !item.staged && legalTargets.has(item.source),

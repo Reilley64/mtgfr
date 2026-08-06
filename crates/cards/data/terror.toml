@@ -1,7 +1,6 @@
 # Destroy target nonartifact, nonblack creature. It can't be regenerated.
 name = "Terror"
 otags = ["doom-blade", "hate-regenerate", "single-english-word-name", "single-target-instant-sorcery"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ath", "brb", "btd", "ced", "cei", "dmr", "dpa", "fbb", "fnm", "itp", "lea", "leb", "me4", "mrd", "p05", "plst", "prm", "ps11", "rqs", "sum", "td0"]
 id = "b81f041d-98db-4408-9472-c483e4a502bc"
 default_print = "a3870eba-4e8f-414d-817c-14ec97f6a93c"
 oracle = "Destroy target nonartifact, nonblack creature. It can't be regenerated."
@@ -15,6 +14,7 @@ type = "instant"
 
 # Destroy target nonartifact, nonblack creature. It can't be regenerated.
 [[abilities]]
+oracle = "Destroy target nonartifact, nonblack creature. It can't be regenerated."
 timing = "spell"
 
 # Destroy target nonartifact, nonblack creature. It can't be regenerated.

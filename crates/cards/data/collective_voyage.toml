@@ -3,7 +3,6 @@
 # shuffles.
 name = "Collective Voyage"
 otags = ["cycle-cmd-join-forces", "donate-rampant-growth", "group-hug", "multi-land-ramp", "multiplayer", "ramp-with-set-s-mechanic", "symmetrical", "tutor-land-basic", "tutor-land-to-battlefield"]
-sets = ["c16", "cmd", "plst", "sld"]
 id = "00f82f84-81a5-45e5-9c35-9d627a180950"
 default_print = "3f2d44f0-c71e-4061-bb7c-1f91fbce8f51"
 oracle = "Join forces — Starting with you, each player may pay any amount of mana. Each player searches their library for up to X basic land cards, where X is the total amount of mana paid this way, puts them onto the battlefield tapped, then shuffles."
@@ -18,6 +17,7 @@ type = "sorcery"
 # their library for up to X basic land cards, where X is the total amount of mana paid this way,
 # puts them onto the battlefield tapped, then shuffles.
 [[abilities]]
+oracle = "Join forces — Starting with you, each player may pay any amount of mana. Each player searches their library for up to X basic land cards, where X is the total amount of mana paid this way, puts them onto the battlefield tapped, then shuffles."
 timing = "spell"
 
 # Join forces — Starting with you, each player may pay any amount of mana.

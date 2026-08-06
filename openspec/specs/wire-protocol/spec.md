@@ -3,9 +3,7 @@
 ## Purpose
 
 Define the sole client–server game and account wire contract, per-viewer visibility redaction, live stream framing, and expand-only compatibility rules so concurrent binaries remain parseable during rolling deploys.
-
 ## Requirements
-
 ### Requirement: Protocol buffers are the sole wire contract
 All messages exchanged between API and clients for auth, decks, ratings, catalog, game stream/intents, and table seed SHALL be native protocol-buffer messages under a versioned package path. The protocol MUST NOT use JSON-in-string escape hatches for game trees, intents, decks, cards, or seed payloads. Generated bindings on API and client sides SHALL be regenerated from the same `.proto` sources after contract changes.
 
@@ -84,6 +82,33 @@ A connecting client SHALL receive an initial snapshot frame at the current seque
 - **WHEN** a client receives a delta envelope
 - **THEN** the enclosed visible state is sufficient to render the board without fetching another snapshot
 
+### Requirement: The stream carries the printed words of every card a viewer can see
+Frames SHALL carry a book of printed words — card id, printing id, type line, oracle text, and flavor text — for the cards the viewer may read, so a client never requests card text per card. Each record and connection-level deduplication SHALL be keyed by card id and printing id together. Flavor SHALL be that of the printing being played, joined on the printing id, not the card's default printing.
+
+The opening snapshot SHALL carry every card in the connecting viewer's own deck, plus any card the same snapshot's visible state already identifies — an opponent's permanent on the battlefield, a spell on the stack. Each delta SHALL carry the same for the cards its own visible state identifies and the snapshot did not already send; a client SHALL merge a delta's book into the one it holds rather than replacing it.
+
+The public part of the book SHALL be derived from the already-redacted visible state, so a card contributes words only when that state still carries its card id: a face-down permanent, a hidden pile card, and every card in another seat's library or hand contribute none. A viewer SHALL NOT receive another seat's decklist, which is that seat's private information.
+
+#### Scenario: Spectator reads the board they are watching
+- **WHEN** a spectator opens a stream on a game with permanents on the battlefield
+- **THEN** the snapshot carries the printed words of those permanents and no seat's decklist
+
+#### Scenario: An opponent's spell arrives with its words
+- **WHEN** an opponent casts a card the viewer has never seen and the resulting delta shows its card id on the stack
+- **THEN** that delta carries the card's type line, oracle text, and printing flavor, and the viewer's own deck's words remain in their book
+
+#### Scenario: A redacted object contributes no words
+- **WHEN** a frame's visible state has blanked an object's card id, as redaction does for a face-down permanent
+- **THEN** no printed words for that card are sent
+
+#### Scenario: The book is joined on the printing being played
+- **WHEN** a seated viewer opens a stream and their deck plays a reprint
+- **THEN** the snapshot carries that card's type line, oracle text, and that printing's flavor
+
+#### Scenario: Two seats play different printings of one card
+- **WHEN** two visible objects share an oracle card id but use different printing ids
+- **THEN** the stream carries one text record per printing and the client retains both records
+
 ### Requirement: Mulligan progress is snapshot-sourced on the wire
 Until explicit mulligan visible-event arms exist on the stream contract, the API MUST NOT emit empty or placeholder mulligan event oneofs. Clients SHALL treat visible-state mulliganing and per-player mulligan status fields as the source of truth for mulligan UI. Keep and mulligan intents SHALL exist as dedicated intent arms; the authenticated seat SHALL be stamped at the projection boundary so a client cannot keep or mulligan for another player by altering the payload.
 
@@ -118,6 +143,19 @@ Server-authored player-facing game text (rejects, stack and action labels, pendi
 #### Scenario: Stack label is a message reference
 - **WHEN** a spell is on the stack
 - **THEN** its stack label is a message reference rendered through the client catalog
+
+### Requirement: A stack ability carries the sentence that prints it
+Each stack entry for an ability SHALL carry the one printed sentence that ability prints, when its source card records one, so the client can draw the ability rather than its source card's whole text box. The sentence SHALL be resolved server-side by matching the effect the stack entry carries back to the source card's printed abilities. It SHALL be empty for a spell entry, for an ability granted by another permanent, and whenever the match is ambiguous or the card records no sentence — in which case the client draws the entry's label instead.
+
+Each stack entry SHALL also carry the source's last-known renderer characteristics — kind, colours, token status and legendary status — so a spell or ability retains its authoritative frame after a sacrifice-as-cost or other departure removes the source from the visible object list. These facts SHALL identify only the already-public stack source and MUST NOT widen hidden card identity.
+
+#### Scenario: A granted ability carries no sentence
+- **WHEN** an ability on the stack was granted by another permanent rather than printed on its source card
+- **THEN** the stack entry's ability sentence is empty and the client renders the entry's label
+
+#### Scenario: A sacrificed source keeps renderer facts
+- **WHEN** an activated ability remains on the stack after its source has been sacrificed as a cost
+- **THEN** the stack entry carries the source's last-known kind, colours, token status and legendary status without reintroducing the source into visible objects
 
 ### Requirement: Pending choices project to a stable generic wire shape
 The pending-choice view oneof SHALL cover every engine pause the board renders (targets, payments, combat damage, digs, search, edicts, modes, copy target, legend-rule keep, mana color, piles, partition, dredge, and related prompts). Spell-target and ability-target pauses SHALL project as a shared choose-target shape. Repeatable yes/no and draw-up-to loops SHALL use shared generic arms. Choice items SHALL carry display labels so the prompt UI need not join against the object list for visible identity. The choose-copy-target arm SHALL carry a discriminator per non-copy pause that reuses its "one chosen object" answer shape — optional put-counter-on-creature, re-aim of a chosen creature, and choose-a-damage-source — so clients swap prompt wording without a new answer shape or a new arm.
@@ -161,3 +199,23 @@ Where the client keeps hand-maintained unions or registries for pending-choice a
 #### Scenario: New visible-event arm without registry update fails check
 - **WHEN** a new VisibleEvent oneof arm is generated but the client presence registry omits it
 - **THEN** the client wire case-coverage check fails
+
+### Requirement: Object views carry the facts a rendered card face needs
+
+An object view SHALL carry, alongside its identity, whether the object is a token, whether it is legendary, and the card's colours, so a client can render a card face without a second lookup. The legendary flag and the colours SHALL follow the same redaction as every other card identity: a face-down permanent SHALL report neither. The token flag SHALL be reported regardless of face-down state, because a face-down permanent's back looks the same whether or not it is a token.
+
+#### Scenario: Face-up permanent carries its face facts
+- **WHEN** a viewer sees a face-up legendary permanent
+- **THEN** its object view reports it as legendary, reports whether it is a token, and lists its colours
+
+#### Scenario: Face-down permanent hides its identity
+- **WHEN** a viewer sees a face-down permanent
+- **THEN** its object view carries no legendary flag and no colours
+
+### Requirement: A wire mana cost counts every kind of pip
+
+A wire mana cost SHALL carry, alongside its generic amount, `{X}` count and per-colour WUBRG pips, its hybrid pips (CR 107.4e) counted per unordered colour pair and its Phyrexian pips (CR 107.4f) counted per colour, so that a cost made only of hybrid or Phyrexian symbols does not read as free. Printed order within a cost is not preserved for any pip kind; a client draws one glyph per counted symbol.
+
+#### Scenario: A hybrid-only cost is not empty
+- **WHEN** a viewer sees a card whose entire cost is hybrid symbols
+- **THEN** its wire cost reports a pip per hybrid symbol rather than an empty cost

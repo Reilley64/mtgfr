@@ -48,4 +48,24 @@ describe("costText", () => {
   it("shows {0} for an empty cost", () => {
     expect(costText({ generic: 0, colored: [0, 0, 0, 0, 0] })).toBe("{0}");
   });
+
+  it("prints hybrid and Phyrexian symbols instead of reading as {0}", () => {
+    // Boros Guildmage {R/W}{R/W} — the pay prompt showed "{0}" while the hybrids were dropped.
+    const guildmage = { generic: 0, colored: [0, 0, 0, 0, 0], hybrid: [0, 0, 2, 0, 0, 0, 0, 0, 0, 0] };
+    expect(costText(guildmage)).toBe("{W/R}{W/R}");
+
+    const vraska = { generic: 4, colored: [0, 0, 2, 0, 0], phyrexian: [0, 0, 1, 0, 0] };
+    expect(costText(vraska)).toBe("{4}{B}{B}{B/P}");
+  });
+
+  it("carries hybrid pips through an X choice", () => {
+    const cost = {
+      generic: 0,
+      colored: [0, 0, 0, 0, 0],
+      has_x: true,
+      x_symbols: 1,
+      hybrid: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    };
+    expect(costText(costWithChosenX(cost, 2))).toBe("{2}{W/U}");
+  });
 });

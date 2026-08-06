@@ -2,7 +2,6 @@
 # When this creature enters, you gain 7 life.
 # When this creature dies, draw a card.
 name = "Pelakka Wurm"
-sets = ["cns", "fdn", "m19", "mm2", "plst", "pm19", "roe"]
 id = "d36075c2-de66-4202-9217-b1102a2bc14b"
 default_print = "304c635c-de4d-46ee-8ab0-e5c4d55b61b3"
 otags = ["death-trigger-self", "lifegain", "pure-draw"]
@@ -21,6 +20,7 @@ toughness = 7
 
 # When this creature enters, you gain 7 life.
 [[abilities]]
+oracle = "When this creature enters, you gain 7 life."
 timing = "etb"
 
 # you gain 7 life.
@@ -31,6 +31,7 @@ amount = 7
 
 # When this creature dies, draw a card.
 [[abilities]]
+oracle = "When this creature dies, draw a card."
 timing = "dies"
 
 # draw a card.

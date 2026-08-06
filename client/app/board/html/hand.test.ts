@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cardTextKey } from "~/cardText";
 import { testHtml } from "~/test-html";
 import type { Message } from "../messages";
 
@@ -7,7 +8,7 @@ const h = testHtml<Message>();
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
-import { HAND_DESIGN_VIEWPORT, handView } from "./hand";
+import { HAND_DESIGN_VIEWPORT, handMetrics, handView } from "./hand";
 
 function cost(overrides: Partial<WireCost> = {}): WireCost {
   return {
@@ -23,6 +24,8 @@ function object(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: cost(),
     marked_damage: 0,
@@ -171,6 +174,8 @@ describe("handView unplayable brightness", () => {
       name: "Atraxa",
       zone: ZONE.Command,
       is_commander: true,
+      is_token: false,
+      legendary: false,
       kind: { kind: "creature", power: 4, toughness: 4 },
     });
     const tree = renderHand(state({ objects: [commander], actions: [] }));
@@ -227,6 +232,123 @@ describe("handView discard pick accessibility", () => {
     const hit = findTestId(tree, "hand-card-42");
     expect(hit).not.toBeNull();
     expect(attr(hit, "aria-label")).toBe("Lightning Bolt (discard)");
+  });
+});
+
+describe("handView rendered face", () => {
+  function findWithAttr(node: unknown, name: string): unknown | null {
+    if (attr(node, name) != null) return node;
+    if (node == null || typeof node !== "object") return null;
+    const n = node as { children?: unknown[] };
+    for (const child of n.children ?? []) {
+      const found = findWithAttr(child, name);
+      if (found != null) return found;
+    }
+    return null;
+  }
+
+  it("draws the rendered card face, not the printed image", () => {
+    const bolt = object(42, { name: "Lightning Bolt", print: "lea-161" });
+    const tree = renderHand(state({ objects: [bolt], actions: [] }));
+
+    const host = findWithAttr(findTestId(tree, "hand-card-face-42"), "data-face");
+    expect(host).not.toBeNull();
+    expect(JSON.parse(attr(host, "data-face") ?? "{}")).toMatchObject({ name: "Lightning Bolt", print: "lea-161" });
+    expect(attr(host, "data-face-variant")).toBe("full");
+  });
+
+  it("draws the snapshot's printed words — including the deck printing's flavor", () => {
+    const bolt = object(42, { name: "Lightning Bolt", print: "lea-161", card_id: "bolt" });
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [bolt], actions: [] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: null,
+        cardText: new Map([
+          [
+            cardTextKey("bolt", "lea-161"),
+            {
+              card_id: "bolt",
+              print: "lea-161",
+              type_line: "Instant",
+              oracle: "Deals 3 damage to any target.",
+              flavor: "The sparkmage shrieked.",
+            },
+          ],
+        ]),
+      },
+      h,
+    );
+
+    const host = findWithAttr(findTestId(tree, "hand-card-face-42"), "data-face");
+    expect(JSON.parse(attr(host, "data-face") ?? "{}")).toMatchObject({
+      typeLine: "Instant",
+      oracle: "Deals 3 damage to any target.",
+      flavor: "The sparkmage shrieked.",
+    });
+  });
+
+  it("reads an empty-print text record from an older server during a rolling deploy", () => {
+    const bolt = object(42, { name: "Lightning Bolt", print: "lea-161", card_id: "bolt" });
+    const tree = handView(
+      {
+        viewport: HAND_DESIGN_VIEWPORT,
+        state: state({ objects: [bolt], actions: [] }),
+        hiddenId: null,
+        flyingIds: new Set(),
+        hiddenIds: new Set(),
+        handDrag: null,
+        cardText: new Map([
+          [
+            cardTextKey("bolt", ""),
+            {
+              card_id: "bolt",
+              print: "",
+              type_line: "Instant",
+              oracle: "Deals 3 damage to any target.",
+              flavor: "",
+            },
+          ],
+        ]),
+      },
+      h,
+    );
+
+    const host = findWithAttr(findTestId(tree, "hand-card-face-42"), "data-face");
+    expect(JSON.parse(attr(host, "data-face") ?? "{}")).toMatchObject({
+      typeLine: "Instant",
+      oracle: "Deals 3 damage to any target.",
+    });
+  });
+
+  it("tucks the cost pips over the card's top-right corner", () => {
+    const bolt = object(42, { name: "Lightning Bolt", print: "lea-161" });
+    const tree = renderHand(state({ objects: [bolt], actions: [] }));
+    const pips = findTestId(tree, "hand-cost-pips");
+    const metrics = handMetrics(HAND_DESIGN_VIEWPORT);
+
+    // The row no longer clears the frame: its bottom edge sits below the card's top edge, and it
+    // holds off the right border so the disks land inside it.
+    const top = Number.parseFloat(styleValue(pips, "top") ?? "0");
+    expect(top).toBeGreaterThan(-metrics.pipRowH);
+    expect(top + metrics.pipRowH).toBeGreaterThan(0);
+    expect(Number.parseFloat(styleValue(pips, "paddingRight") ?? "0")).toBeGreaterThan(0);
+  });
+
+  it("draws a graveyard bar tile's card face, not its action label", () => {
+    const pest = object(62, { zone: ZONE.Graveyard, name: "Teacher's Pest", print: "snc-99" });
+    const tree = renderHand(
+      state({
+        objects: [pest],
+        actions: [action(62, { object: 62, section: "graveyard", label: testMessageRef("Cast Teacher's Pest") })],
+      }),
+    );
+
+    const host = findWithAttr(findTestId(tree, "hand-card-face-62"), "data-face");
+    expect(JSON.parse(attr(host, "data-face") ?? "{}")).toMatchObject({ name: "Teacher's Pest" });
   });
 });
 
@@ -291,6 +413,8 @@ describe("handView playable outlines", () => {
     const commander = object(9, {
       zone: ZONE.Command,
       is_commander: true,
+      is_token: false,
+      legendary: false,
       name: "Zimone, Quandrix Prodigy",
     });
     const tree = renderHand(state({ objects: [commander], actions: [] }));
@@ -312,6 +436,8 @@ describe("handView playable outlines", () => {
     const commander = object(9, {
       zone: ZONE.Command,
       is_commander: true,
+      is_token: false,
+      legendary: false,
       name: "Zimone, Quandrix Prodigy",
     });
     const tree = renderHand(
@@ -384,6 +510,8 @@ describe("handView drag chrome", () => {
     const commander = object(9, {
       zone: ZONE.Command,
       is_commander: true,
+      is_token: false,
+      legendary: false,
       name: "Zimone, Quandrix Prodigy",
     });
     const cast = action(9, { object: 9, section: "command", kind: "cast" });

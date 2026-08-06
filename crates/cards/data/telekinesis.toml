@@ -2,7 +2,6 @@
 # It doesn't untap during its controller's next two untap steps.
 name = "Telekinesis"
 otags = ["combat-trick", "damage-prevention", "single-english-word-name", "single-target-instant-sorcery", "tapper"]
-sets = ["leg"]
 id = "1b9dd2b6-d14d-4c1e-9885-00ab2c0bf8da"
 default_print = "d5aa920e-b93f-41c2-b505-a9350353be8b"
 oracle = "Tap target creature. Prevent all combat damage that would be dealt by that creature this turn. It doesn't untap during its controller's next two untap steps."
@@ -16,6 +15,7 @@ type = "instant"
 # Tap target creature. Prevent all combat damage that would be dealt by that creature this turn.
 # It doesn't untap during its controller's next two untap steps.
 [[abilities]]
+oracle = "Tap target creature. Prevent all combat damage that would be dealt by that creature this turn. It doesn't untap during its controller's next two untap steps."
 timing = "spell"
 
 # Tap target creature.

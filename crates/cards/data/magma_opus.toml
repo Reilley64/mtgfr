@@ -2,7 +2,6 @@
 # blue and red Elemental creature token. Draw two cards.
 # {U/R}{U/R}, Discard this card: Create a Treasure token.
 name = "Magma Opus"
-sets = ["prm", "pstx", "soc", "stx", "tdc"]
 id = "985f9dd7-e693-48ff-9dd6-a1a3cbaa236b"
 default_print = "0fd4a0f7-ba03-4158-95cd-4effe798aec0"
 otags = ["activate-from-hand", "burn-any", "cheaper-than-mv", "cycle-stx-m-college-spell", "cycle-stx-treasure-spell", "fun-ruling", "hand-positive", "multi-removal", "multiple-targets", "punny-name", "pure-draw", "ramp"]
@@ -18,6 +17,7 @@ type = "instant"
 
 # Magma Opus deals 4 damage divided as you choose among any number of targets.
 [[abilities]]
+oracle = "Magma Opus deals 4 damage divided as you choose among any number of targets."
 timing = "spell"
 
 # Magma Opus deals 4 damage divided as you choose among any number of targets.
@@ -31,6 +31,7 @@ divided = true
 
 # Tap two target permanents.
 [[abilities]]
+oracle = "Tap two target permanents."
 timing = "spell"
 
 # Tap two target permanents.
@@ -42,6 +43,7 @@ count = { min = 2, max = 2 }
 
 # Create a 4/4 blue and red Elemental creature token.
 [[abilities]]
+oracle = "Create a 4/4 blue and red Elemental creature token."
 timing = "spell"
 
 # Create a 4/4 blue and red Elemental creature token.
@@ -53,6 +55,7 @@ count = 1
 
 # Draw two cards.
 [[abilities]]
+oracle = "Draw two cards."
 timing = "spell"
 
 # Draw two cards.

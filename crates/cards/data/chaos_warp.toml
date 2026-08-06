@@ -1,7 +1,6 @@
 # The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a
 # permanent card, they put it onto the battlefield.
 name = "Chaos Warp"
-sets = ["2x2", "40k", "afc", "blc", "brc", "c14", "c16", "c17", "c18", "c19", "c20", "clb", "cm1", "cm2", "cmd", "drc", "dsc", "eoc", "fic", "lcc", "mar", "mkc", "moc", "msc", "ncc", "nec", "otc", "pip", "plst", "prm", "pw24", "pz1", "scd", "sld", "soc", "sta", "tdc", "vma", "who"]
 id = "07a0cba9-8768-4fd9-a3d5-b0f83b4bf8e8"
 default_print = "57f61970-382e-415c-868b-6bbb6c78825d"
 otags = ["color-break", "cost-ignorer", "drawback", "polymorph", "removal-permanent", "removal-tuck", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
@@ -17,6 +16,7 @@ type = "instant"
 # The owner of target permanent shuffles it into their library, then reveals the top card of
 # their library. If it's a permanent card, they put it onto the battlefield.
 [[abilities]]
+oracle = "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield."
 timing = "spell"
 
 # The owner of target permanent shuffles it into their library, then reveals the top card of

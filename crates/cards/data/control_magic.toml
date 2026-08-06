@@ -2,7 +2,6 @@
 # You control enchanted creature.
 name = "Control Magic"
 otags = ["theft-creature"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "aa2", "brb", "c13", "ced", "cei", "cma", "ddm", "ema", "fbb", "lea", "leb", "me4", "prm", "ptc", "sld", "sum", "vma"]
 id = "cd0d7141-46d2-4aa3-bc77-6b3b4513803e"
 default_print = "076d132a-fa3d-464b-b5f9-a12e46c9f2df"
 oracle = "Enchant creature\nYou control enchanted creature."
@@ -17,6 +16,7 @@ type = "aura"
 
 # You control enchanted creature.
 [[abilities]]
+oracle = "You control enchanted creature."
 timing = "static"
 
 # You control enchanted creature.

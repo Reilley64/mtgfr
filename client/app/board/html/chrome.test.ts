@@ -68,6 +68,8 @@ function card(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "land", colors: [] },
     mana_cost: { generic: 0, colored: [0, 0, 0, 0, 0] },
     marked_damage: 0,

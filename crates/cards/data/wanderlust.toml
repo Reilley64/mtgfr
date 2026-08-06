@@ -3,7 +3,6 @@
 # that player.
 name = "Wanderlust"
 otags = ["burn-player", "color-break", "parasitic-aura", "pinger", "single-english-word-name", "triggered-ability"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me1", "sum"]
 id = "73bddfdb-d1fb-4038-b676-201f6b82beb0"
 default_print = "3ee3c4fc-342f-48b3-a799-0db4b005195a"
 oracle = "Enchant creature\nAt the beginning of the upkeep of enchanted creature's controller, this Aura deals 1 damage to that player."
@@ -20,6 +19,7 @@ type = "aura"
 # At the beginning of the upkeep of enchanted creature's controller, this Aura deals 1 damage to
 # that player.
 [[abilities]]
+oracle = "At the beginning of the upkeep of enchanted creature's controller, this Aura deals 1 damage to that player."
 timing = "each_upkeep"
 condition = { type = "enchanted_permanents_controllers_upkeep" }
 

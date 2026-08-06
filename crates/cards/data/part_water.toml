@@ -1,7 +1,6 @@
 # X target creatures gain islandwalk until end of turn. (They can't be blocked as long as
 # defending player controls an Island.)
 name = "Part Water"
-sets = ["leg", "me3"]
 id = "8d51d448-14a6-4125-aa80-159ed6afbd03"
 default_print = "4b659475-c8b7-493d-af63-04f34d8cc3b1"
 otags = ["evasion", "gives-evasion", "gives-islandwalk", "landwalk-granter", "multiple-targets", "pump-spell"]
@@ -16,6 +15,7 @@ type = "sorcery"
 
 # X target creatures gain islandwalk until end of turn.
 [[abilities]]
+oracle = "X target creatures gain islandwalk until end of turn."
 timing = "spell"
 
 # X target creatures gain islandwalk until end of turn.

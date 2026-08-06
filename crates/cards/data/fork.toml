@@ -2,7 +2,6 @@
 # for the copy.
 name = "Fork"
 otags = ["copy-instant", "copy-sorcery", "copy-spell", "interrupt", "single-english-word-name", "single-target-instant-sorcery"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "prm", "sum"]
 id = "50c53ae0-51ba-4046-ac74-87c65e688032"
 default_print = "a877d692-018b-4a08-ab6f-9707b267f6fd"
 oracle = "Copy target instant or sorcery spell, except that the copy is red. You may choose new targets for the copy."
@@ -16,6 +15,7 @@ type = "instant"
 # Copy target instant or sorcery spell, except that the copy is red. You may choose new targets
 # for the copy.
 [[abilities]]
+oracle = "Copy target instant or sorcery spell, except that the copy is red. You may choose new targets for the copy."
 timing = "spell"
 
 # Copy target instant or sorcery spell, except that the copy is red. You may choose new targets

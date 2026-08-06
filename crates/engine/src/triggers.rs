@@ -615,6 +615,7 @@ impl Game {
                             controller: self.owner_of(from),
                             source: card,
                             abilities: vec![Ability {
+                                oracle: None,
                                 timing: Timing::Triggered(Trigger::ThisAuraLeaves),
                                 effect: Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife {
                                     object: Some(card),
@@ -908,6 +909,7 @@ impl Game {
                             // placeholders — `place_pending_triggers` only reads `effect`, exactly
                             // as `fire_delayed_triggers` fabricates its groups.
                             abilities: vec![Ability {
+                                oracle: None,
                                 timing: Timing::Triggered(Trigger::YouCastThis),
                                 effect: Effect::Dig(DigEffect::Cascade {
                                     mana_value: def.mana_value(),
@@ -929,6 +931,7 @@ impl Game {
                             controller,
                             source: spell,
                             abilities: vec![Ability {
+                                oracle: None,
                                 timing: Timing::Triggered(Trigger::YouCastThis),
                                 effect: Effect::Copy(CopyEffect::Demonstrate { spell }),
                                 optional: false,
@@ -1499,6 +1502,7 @@ impl Game {
             controller,
             source: token,
             abilities: vec![Ability {
+                oracle: None,
                 timing: Timing::Triggered(Trigger::ThisPermanentLeavesBattlefield),
                 effect: Effect::Zone(ZoneEffect::ReturnExiledCardToOwnersGraveyard { exiled }),
                 optional: false,
@@ -1539,6 +1543,7 @@ impl Game {
             controller: self.owner_of(permanent),
             source: permanent,
             abilities: vec![Ability {
+                oracle: None,
                 timing: Timing::Triggered(Trigger::Etb),
                 effect: Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(permanent),
@@ -2271,6 +2276,7 @@ impl Game {
                 controller,
                 source,
                 abilities: vec![Ability {
+                    oracle: None,
                     timing: Timing::Triggered(trigger),
                     effect,
                     optional: false,
@@ -2307,6 +2313,7 @@ impl Game {
                 controller,
                 source,
                 abilities: vec![Ability {
+                    oracle: None,
                     timing: Timing::Triggered(Trigger::Upkeep),
                     effect: effect.clone().with_reflexive_token(token),
                     optional: false,
@@ -2339,6 +2346,7 @@ impl Game {
                 controller,
                 source,
                 abilities: vec![Ability {
+                    oracle: None,
                     timing: Timing::Triggered(Trigger::Upkeep),
                     effect: effect.clone().with_reflexive_count(count),
                     optional: false,
@@ -2580,6 +2588,7 @@ impl Game {
             let abilities: Vec<Ability> = self
                 .rampage_amounts(attacker)
                 .map(|n| Ability {
+                    oracle: None,
                     timing: Timing::Triggered(Trigger::BlocksOrBecomesBlocked),
                     effect: Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
                         power: Amount::BlockersBeyondFirst { per: i32::from(n) },
@@ -3894,6 +3903,7 @@ impl Game {
                     controller,
                     source,
                     abilities: vec![Ability {
+                        oracle: None,
                         timing: Timing::Triggered(Trigger::CastSpell {
                             filter,
                             caster: WatchedPlayer::You,
@@ -3962,6 +3972,7 @@ impl Game {
                     controller,
                     source,
                     abilities: vec![Ability {
+                        oracle: None,
                         timing: Timing::Triggered(Trigger::CreatureDies),
                         effect: contextualize_effect(effect, ctx),
                         optional: false,
@@ -4017,6 +4028,7 @@ impl Game {
                     controller,
                     source,
                     abilities: vec![Ability {
+                        oracle: None,
                         timing: Timing::Triggered(Trigger::DealsCombatDamageToPlayer {
                             who: CombatDamageScope::This,
                         }),
@@ -4072,6 +4084,7 @@ impl Game {
                     controller,
                     source,
                     abilities: vec![Ability {
+                        oracle: None,
                         timing: Timing::Triggered(Trigger::DealsCombatDamageToPlayer {
                             who: CombatDamageScope::YourCreatures,
                         }),
@@ -4131,6 +4144,7 @@ impl Game {
                 controller,
                 source,
                 abilities: vec![Ability {
+                    oracle: None,
                     timing: Timing::Triggered(Trigger::ThisIsDealtDamage),
                     effect: Effect::Life(LifeEffect::Gain {
                         who: PlayerSet::You,
@@ -4356,6 +4370,7 @@ impl Game {
                 controller: spell_controller,
                 source: id,
                 abilities: vec![Ability {
+                    oracle: None,
                     timing: Timing::Triggered(Trigger::Magecraft),
                     effect: Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
                         power: Amount::Fixed(1),
@@ -4387,6 +4402,7 @@ impl Game {
             controller: self.controller_of(object),
             source: object,
             abilities: vec![Ability {
+                oracle: None,
                 timing: Timing::Triggered(Trigger::Attacks),
                 effect: Effect::Token(TokenEffect::MyriadTokenCopies {
                     attacking_context: Some((self.controller_of(object), defender)),
@@ -6169,6 +6185,7 @@ mod tests {
 
     fn test_trigger_ability(trigger: Trigger) -> Ability {
         Ability {
+            oracle: None,
             timing: Timing::Triggered(trigger),
             effect: Effect::Draw(DrawEffect::Cards {
                 who: PlayerSet::You,

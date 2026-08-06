@@ -1,7 +1,6 @@
 # Tap X target creatures. Winter Blast deals 2 damage to each of those creatures with flying.
 name = "Winter Blast"
 otags = ["burn-creature", "mass-tap", "multiple-targets", "removal-tap"]
-sets = ["4bb", "4ed", "5ed", "itp", "leg", "me1", "ren", "rqs"]
 id = "594827de-e85f-4aac-b0e6-d92878f0f26c"
 default_print = "fb846366-2105-4999-8af1-a11687f42e17"
 oracle = "Tap X target creatures. Winter Blast deals 2 damage to each of those creatures with flying."
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # Tap X target creatures. Winter Blast deals 2 damage to each of those creatures with flying.
 [[abilities]]
+oracle = "Tap X target creatures. Winter Blast deals 2 damage to each of those creatures with flying."
 timing = "spell"
 
 # Tap X target creatures.

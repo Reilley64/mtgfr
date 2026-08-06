@@ -4,7 +4,6 @@
 # beyond the first.)
 name = "Rapid Fire"
 otags = ["block-trigger", "gives-first-strike", "gives-rampage", "single-target-instant-sorcery"]
-sets = ["leg"]
 id = "63c7248e-a7a2-4e32-b4d2-55dbc63e51e5"
 default_print = "e26e7c9c-e6de-47f4-8394-7e853408f84c"
 oracle = "Cast this spell only before blockers are declared.\nTarget creature gains first strike until end of turn. If it doesn't have rampage, that creature gains rampage 2 until end of turn. (Whenever the creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it beyond the first.)"
@@ -20,6 +19,7 @@ type = "instant"
 # Target creature gains first strike until end of turn. If it doesn't have rampage, that creature gains rampage 2 until
 # end of turn.
 [[abilities]]
+oracle = "Target creature gains first strike until end of turn. If it doesn't have rampage, that creature gains rampage 2 until end of turn."
 timing = "spell"
 
 # Target creature gains first strike until end of turn.

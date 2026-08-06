@@ -5,7 +5,6 @@ otags = ["hate-target", "heroic", "poisonous", "repeatable-crime", "triggered-ab
 id = "eafd7ba5-691d-4f8d-94bb-70a5612245a1"
 default_print = "d1b032e3-14e3-48ba-ab8a-d2b4f8d31a7d"
 oracle = "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhenever a creature you control becomes the target of a spell, target opponent gets a poison counter."
-sets = ["one"]
 subtypes = ["Phyrexian", "Druid"]
 keywords = [{ toxic = 1 }]
 
@@ -19,6 +18,7 @@ toughness = 2
 
 # Whenever a creature you control becomes the target of a spell, target opponent gets a poison counter.
 [[abilities]]
+oracle = "Whenever a creature you control becomes the target of a spell, target opponent gets a poison counter."
 timing = "becomes_targeted"
 targeted = "creature_you_control"
 

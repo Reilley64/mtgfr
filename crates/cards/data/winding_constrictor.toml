@@ -6,7 +6,6 @@ otags = ["counter-increaser", "counters-matter", "cycle-aer-draft-signpost", "en
 id = "c9404d7d-a026-4082-9fcb-1ab571a136b5"
 default_print = "107c8aa8-c8f8-4cbf-821b-bd2cb33354f0"
 oracle = "If one or more counters would be put on an artifact or creature you control, that many plus one of each of those kinds of counters are put on that permanent instead.\nIf you would get one or more counters, you get that many plus one of each of those kinds of counters instead."
-sets = ["aer"]
 subtypes = ["Snake"]
 
 [cost]
@@ -21,6 +20,7 @@ toughness = 3
 # If one or more counters would be put on an artifact or creature you control, that many plus one
 # of each of those kinds of counters are put on that permanent instead.
 [[abilities]]
+oracle = "If one or more counters would be put on an artifact or creature you control, that many plus one of each of those kinds of counters are put on that permanent instead."
 timing = "static"
 
 # that many plus one of each of those kinds of counters are put on that permanent instead
@@ -34,6 +34,7 @@ filter = { types = "artifact_or_creature", controller = "you" }
 # If you would get one or more counters, you get that many plus one of each of those kinds of
 # counters instead.
 [[abilities]]
+oracle = "If you would get one or more counters, you get that many plus one of each of those kinds of counters instead."
 timing = "static"
 
 # you get that many plus one of each of those kinds of counters instead

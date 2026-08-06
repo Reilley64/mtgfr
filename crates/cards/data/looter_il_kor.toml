@@ -1,7 +1,6 @@
 # Shadow (This creature can block or be blocked by only creatures with shadow.)
 # Whenever this creature deals damage to an opponent, draw a card, then discard a card.
 name = "Looter il-Kor"
-sets = ["cmm", "ncc", "plst", "td0", "tsp", "tsr"]
 otags = ["combat-neutral-damage-trigger", "evasion", "repeatable-loot", "restricted-blocker", "saboteur"]
 subtypes = ["Kor", "Rogue"]
 id = "c87e3b1d-2d24-4f1c-84e8-1c21a347cdc2"
@@ -20,6 +19,7 @@ toughness = 1
 
 # Whenever this creature deals damage to an opponent, draw a card, then discard a card.
 [[abilities]]
+oracle = "Whenever this creature deals damage to an opponent, draw a card, then discard a card."
 timing = "deals_damage_to_opponent"
 
 # draw a card

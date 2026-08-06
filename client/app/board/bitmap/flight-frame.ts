@@ -1,4 +1,5 @@
 import type { ActionView, PlayerView, StackObjectView, WireAttack, WireBlock } from "~/wire/types";
+import { faceKey } from "../../domain/card-render/cache";
 import type { RenderCard } from "../geometry/layout";
 import type { StackPresentation } from "../geometry/stackLayout";
 import type { ExitFx } from "../motion/exit-fx";
@@ -37,6 +38,7 @@ function cardPaintKey(card: RenderCard): Record<string, unknown> {
     owner: card.owner ?? 0,
     controller: card.controller ?? 0,
     name: card.name ?? "",
+    face: card.face == null ? null : faceKey(card.face, "permanent"),
   };
 }
 

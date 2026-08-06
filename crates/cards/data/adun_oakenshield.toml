@@ -1,7 +1,6 @@
 # {B}{R}{G}, {T}: Return target creature card from your graveyard to your hand.
 name = "Adun Oakenshield"
 otags = ["activated-ability", "deprecated-legend-type", "hand-positive", "regrowth-creature", "repeatable-card-advantage"]
-sets = ["leg", "me1"]
 id = "aefd49a4-ecec-42cb-b882-e5db7f81eff8"
 default_print = "184da30e-0db4-450c-8856-5c23088c35be"
 oracle = "{B}{R}{G}, {T}: Return target creature card from your graveyard to your hand."
@@ -20,6 +19,7 @@ toughness = 2
 
 # {B}{R}{G}, {T}: Return target creature card from your graveyard to your hand.
 [[abilities]]
+oracle = "{B}{R}{G}, {T}: Return target creature card from your graveyard to your hand."
 timing = "activated"
 taps_self = true
 activation_cost = { black = 1, red = 1, green = 1 }

@@ -1,7 +1,6 @@
 # First strike
 name = "Ramirez DePietro"
 otags = ["deprecated-legend-type", "french-vanilla"]
-sets = ["leg", "me3"]
 id = "48b9c510-03ed-41cb-8c17-16110d447490"
 default_print = "c9890742-f1cb-41fd-bf14-297b3ca88b93"
 oracle = "First strike"

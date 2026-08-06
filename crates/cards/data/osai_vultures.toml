@@ -4,7 +4,6 @@
 # Remove two carrion counters from this creature: This creature gets +1/+1 until end of turn.
 name = "Osai Vultures"
 otags = ["activated-ability", "aesthetic-counter", "counter-fuel-aesthetic", "evasion", "intervening-if-clause", "morbid", "shade-pump", "type-errata-vulture", "unique-counter"]
-sets = ["4bb", "4ed", "leg", "me4", "ren"]
 id = "65b7a7ca-0e39-4612-9bcd-743bf903544a"
 default_print = "2c665c02-4010-4bc6-85f0-bc03bef38ce9"
 oracle = "Flying\nAt the beginning of each end step, if a creature died this turn, put a carrion counter on this creature.\nRemove two carrion counters from this creature: This creature gets +1/+1 until end of turn."
@@ -23,6 +22,7 @@ toughness = 1
 # At the beginning of each end step, if a creature died this turn, put a carrion counter on
 # this creature.
 [[abilities]]
+oracle = "At the beginning of each end step, if a creature died this turn, put a carrion counter on this creature."
 timing = "each_end_step"
 condition = { type = "compare", left = "creatures_died_this_turn_any_controller", op = "at_least", right = 1 }
 
@@ -36,6 +36,7 @@ target = "this"
 
 # Remove two carrion counters from this creature: This creature gets +1/+1 until end of turn.
 [[abilities]]
+oracle = "Remove two carrion counters from this creature: This creature gets +1/+1 until end of turn."
 timing = "activated"
 remove_counters = 2
 remove_counters_kind = "carrion"

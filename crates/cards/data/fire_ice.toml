@@ -5,7 +5,6 @@
 # Draw a card.
 name = "Fire // Ice"
 otags = ["burn-any", "burn-with-set-s-mechanic", "cantrip", "cheaper-than-mv", "cycle-apc-split-card", "hand-neutral", "multiple-targets", "punny-name", "single-target-instant-sorcery", "spot-removal", "tapper-permanent", "three-letter-name"]
-sets = ["apc", "cmd", "ddj", "dmr", "f06", "mh2", "plst", "prm", "uma", "wc01", "wc02"]
 id = "ae92942b-919c-4ea9-b693-85fcef765d5a"
 default_print = "230e65b2-a908-4418-8ef9-ecc475ff0b27"
 oracle = "Fire deals 2 damage divided as you choose among one or two targets. // Tap target permanent.\nDraw a card."
@@ -34,6 +33,7 @@ type = "instant"
 
 # Fire deals 2 damage divided as you choose among one or two targets.
 [[half.abilities]]
+oracle = "Fire deals 2 damage divided as you choose among one or two targets."
 timing = "spell"
 
 # Fire deals 2 damage divided as you choose among one or two targets.
@@ -59,6 +59,7 @@ type = "instant"
 
 # Tap target permanent.
 [[half.abilities]]
+oracle = "Tap target permanent."
 timing = "spell"
 
 # Tap target permanent.
@@ -69,6 +70,7 @@ target = { permanent = {} }
 
 # Draw a card.
 [[half.abilities]]
+oracle = "Draw a card."
 timing = "spell"
 
 # Draw a card.

@@ -1,7 +1,6 @@
 # One or more target creatures become white until end of turn.
 name = "Heaven's Gate"
 otags = ["color-change", "cycle-leg-color-wash-instant", "multiple-targets", "single-target-instant-sorcery"]
-sets = ["leg"]
 id = "fafdba94-51cd-413c-82f3-eb294825c6ca"
 default_print = "461d7c11-3a7d-42c2-bb6b-0a43779e6842"
 oracle = "One or more target creatures become white until end of turn."
@@ -14,6 +13,7 @@ type = "instant"
 
 # One or more target creatures become white until end of turn.
 [[abilities]]
+oracle = "One or more target creatures become white until end of turn."
 timing = "spell"
 
 # One or more target creatures become white until end of turn.

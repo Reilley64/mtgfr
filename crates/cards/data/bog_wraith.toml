@@ -1,7 +1,6 @@
 # Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.)
 name = "Bog Wraith"
 otags = ["french-vanilla-walker", "type-errata-summon-creature"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "itp", "lea", "leb", "m10", "plst", "por", "rqs", "s99", "sum"]
 id = "508248d1-09a4-4e41-a4c9-286618e5061e"
 default_print = "94345aab-b9f2-463e-91ab-acd8b99a7ec0"
 oracle = "Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.)"

@@ -1,7 +1,6 @@
 # Other Goblins get +1/+1 and have mountainwalk.
 name = "Goblin King"
 otags = ["anthem", "gives-mountainwalk", "keyword-anthem", "power-boost-to-all", "symmetrical", "toughness-boost-to-all", "typal-goblin", "type-errata-lord", "type-errata-name-self"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ath", "ced", "cei", "fbb", "lea", "leb", "mb2", "pw24", "sld", "sum"]
 id = "d236b3fc-0d3f-4d99-875d-e32a33fe5767"
 default_print = "1954e618-b4ac-48d8-9218-b29878bae710"
 oracle = "Other Goblins get +1/+1 and have mountainwalk."
@@ -18,6 +17,7 @@ toughness = 2
 
 # Other Goblins get +1/+1 and have mountainwalk.
 [[abilities]]
+oracle = "Other Goblins get +1/+1 and have mountainwalk."
 timing = "static"
 
 # Other Goblins get +1/+1 and have mountainwalk.

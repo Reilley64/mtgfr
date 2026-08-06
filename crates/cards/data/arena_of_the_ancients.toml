@@ -2,7 +2,6 @@
 # When this artifact enters, tap all legendary creatures.
 name = "Arena of the Ancients"
 otags = ["alliteration", "hate-legendary", "hate-set-mechanic", "lockdown-creature", "removal-creature", "stasis", "tapper-creature", "triggered-ability"]
-sets = ["bchr", "chr", "leg", "me3"]
 id = "12584f75-77c1-4b6b-ae9d-1882792b6b94"
 default_print = "68ebdcc2-4449-4b10-82fb-51f5e14eab37"
 oracle = "Legendary creatures don't untap during their controllers' untap steps.\nWhen this artifact enters, tap all legendary creatures."
@@ -15,6 +14,7 @@ type = "artifact"
 
 # Legendary creatures don't untap during their controllers' untap steps.
 [[abilities]]
+oracle = "Legendary creatures don't untap during their controllers' untap steps."
 timing = "static"
 
 # Legendary creatures don't untap during their controllers' untap steps.
@@ -25,6 +25,7 @@ filter = { types = "creature", legendary = true }
 
 # When this artifact enters, tap all legendary creatures.
 [[abilities]]
+oracle = "When this artifact enters, tap all legendary creatures."
 timing = "etb"
 
 # tap all legendary creatures.

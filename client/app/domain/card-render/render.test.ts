@@ -1,0 +1,309 @@
+import { describe, expect, it, vi } from "vitest";
+import { MANA_GLYPH } from "../mana-glyphs.generated";
+import { ASSET_W, BODY_FONT, SYMBOL_FONT, TITLE_FONT } from "./assets";
+import { CANONICAL, type FaceData, slotRects } from "./frame";
+import { drawFace, faceAssetUrls } from "./render";
+
+/** Records the ops a draw makes, so the test asserts what was drawn without pixels. */
+function fakeCtx() {
+  const ops: Array<{ op: string; args: unknown[] }> = [];
+  const record =
+    (op: string) =>
+    (...args: unknown[]) => {
+      ops.push({ op, args });
+    };
+  return {
+    ops,
+    drawn: (): unknown[][] => ops.filter((o) => o.op === "drawImage").map((o) => o.args),
+    texts: (): string[] => ops.filter((o) => o.op === "fillText").map((o) => String(o.args[0])),
+    ctx: {
+      canvas: { width: 745, height: 745 },
+      save: record("save"),
+      restore: record("restore"),
+      beginPath: record("beginPath"),
+      arc: record("arc"),
+      createLinearGradient: vi.fn(() => ({ addColorStop: () => {} })),
+      translate: record("translate"),
+      scale: record("scale"),
+      rotate: record("rotate"),
+      roundRect: record("roundRect"),
+      rect: record("rect"),
+      clip: record("clip"),
+      fill: record("fill"),
+      fillRect: record("fillRect"),
+      stroke: record("stroke"),
+      drawImage: record("drawImage"),
+      fillText: record("fillText"),
+      measureText: vi.fn((text: string) => ({ width: text.length * 8 })),
+      set font(value: string) {
+        ops.push({ op: "font", args: [value] });
+      },
+      set fillStyle(value: string) {
+        ops.push({ op: "fillStyle", args: [value] });
+      },
+      set textAlign(value: string) {
+        ops.push({ op: "textAlign", args: [value] });
+      },
+      set textBaseline(value: string) {
+        ops.push({ op: "textBaseline", args: [value] });
+      },
+    } as unknown as CanvasRenderingContext2D,
+  };
+}
+
+function face(overrides: Partial<FaceData> = {}): FaceData {
+  return {
+    print: "p",
+    name: "Llanowar Elves",
+    colors: [4], // G — see `engine::Color::index`
+    isLand: false,
+    isToken: false,
+    legendary: false,
+    power: "1",
+    toughness: "1",
+    loyalty: "",
+    // The permanent variant draws neither; the full-variant tests below set them the way the
+    // catalog lookup does.
+    typeLine: "",
+    oracle: "",
+    flavor: "",
+    ...overrides,
+  };
+}
+
+/** Scryfall's `art_crop` is a wide rectangle — the shape the square variant has to crop. */
+const artImage = { width: 626, height: 457 } as CanvasImageSource;
+const assetImage = { width: 750, height: 1050 } as CanvasImageSource;
+
+function inputs(overrides: Record<string, unknown> = {}) {
+  return {
+    face: face(),
+    variant: "permanent" as const,
+    art: artImage,
+    frameImage: assetImage,
+    ptImage: assetImage,
+    crownImage: null,
+    ...overrides,
+  };
+}
+
+describe("drawFace", () => {
+  it("draws the art, then the frame over it, then the name", () => {
+    const { ctx, ops, texts } = fakeCtx();
+    drawFace(ctx, inputs());
+
+    const order = ops.filter((o) => o.op === "drawImage" || o.op === "fillText").map((o) => o.op);
+    expect(order[0]).toBe("drawImage"); // art first, frame over its transparent window
+    expect(order).toContain("fillText");
+    expect(texts()).toContain("Llanowar Elves");
+  });
+
+  it("never draws a mana cost — the pip tray owns the cost", () => {
+    const { ctx, texts } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ typeLine: "Creature — Elf Druid" }) }));
+
+    expect(texts().some((t) => t.includes("{"))).toBe(false);
+    expect(texts()).toContain("Creature — Elf Druid");
+  });
+
+  it("draws no name on a token", () => {
+    const { ctx, texts } = fakeCtx();
+    drawFace(ctx, inputs({ face: face({ isToken: true }) }));
+
+    expect(texts()).not.toContain("Llanowar Elves");
+  });
+
+  it("draws no frame at all on a token — the art is the whole tile", () => {
+    const { ctx, drawn } = fakeCtx();
+    drawFace(ctx, inputs({ face: face({ isToken: true }) }));
+
+    expect(drawn()).toHaveLength(1);
+  });
+
+  it("draws power and toughness for a creature", () => {
+    // The `permanent` variant returns `pt: null` on purpose — `paint-cards.ts` already paints a
+    // live P/T badge that tracks counters and damage without a face redraw.
+    const { ctx, texts } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full" }));
+
+    expect(texts()).toContain("1/1");
+  });
+
+  // Measured off Scryfall's png for an M15 printing at the face's own 745x1040: a printed name is
+  // set in about 40px, a type line in 34px and rules text in 37px — the body all but as tall as the
+  // 37px pitch it steps at, which is what Guard Gomazoa's `Defender, flying` scans at.
+  it("sets each slot at the size a printed card uses", () => {
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ typeLine: "Creature — Elf Druid", oracle: "Haste." }) }));
+
+    const sizesIn = (font: string) =>
+      ops
+        .filter((o) => o.op === "font" && String(o.args[0]).includes(font))
+        .map((o) => Number.parseFloat(String(o.args[0])));
+    const [name, typeLine] = sizesIn(TITLE_FONT);
+
+    expect(name).toBeGreaterThan(38);
+    expect(name).toBeLessThan(42);
+    expect(typeLine).toBeGreaterThan(32);
+    expect(typeLine).toBeLessThan(36);
+    expect(Math.max(...sizesIn(BODY_FONT))).toBeGreaterThan(35);
+    expect(Math.max(...sizesIn(BODY_FONT))).toBeLessThan(39);
+  });
+
+  it("draws a rules-text mana symbol as a disk with its mana-font glyph, not braces", () => {
+    const { ctx, ops, texts } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "{T}: Add {G}." }) }));
+
+    expect(texts().some((t) => t.includes("{"))).toBe(false);
+    expect(ops.filter((o) => o.op === "arc")).toHaveLength(2);
+    expect(texts()).toContain(MANA_GLYPH.tap);
+    expect(texts()).toContain(MANA_GLYPH.g);
+    expect(ops.some((o) => o.op === "font" && String(o.args[0]).includes(SYMBOL_FONT))).toBe(true);
+  });
+
+  it("prints reminder text in italics, the way a card sets it", () => {
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Flying (It can't be blocked.)" }) }));
+
+    const fonts = ops.filter((o) => o.op === "font").map((o) => String(o.args[0]));
+    expect(fonts.some((f) => f.startsWith("italic") && f.includes(BODY_FONT))).toBe(true);
+    expect(fonts.some((f) => !f.startsWith("italic") && f.includes(BODY_FONT))).toBe(true);
+  });
+
+  it("sets flavor text under a rule, in italics", () => {
+    const { ctx, ops, texts } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Flying", flavor: "It watches." }) }));
+
+    expect(texts().join(" ")).toContain("watches.");
+    // The rule itself: a filled band no text draws, between the two blocks.
+    expect(ops.some((o) => o.op === "fillRect")).toBe(true);
+    const fonts = ops.filter((o) => o.op === "font").map((o) => String(o.args[0]));
+    expect(fonts.some((f) => f.startsWith("italic") && f.includes(BODY_FONT))).toBe(true);
+  });
+
+  it("sets flavor at a true italic's width, so it wraps where print wraps it", () => {
+    // Print sets Phyrexian Arena's whole flavor on one line; slanted roman is wide enough to spill
+    // onto a second. The fake measure charges 8px a character, so these 79 fit the 613px box only
+    // once condensed.
+    const flavor = "A drop of humanity for a sea of power, and a drop of power for a sea of humanity";
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Flying", flavor, power: "", toughness: "" }) }));
+
+    // One row for the rules line, one for the flavor — everything below the type bar.
+    const box = slotRects("full", face()).text;
+    const rows = ops.filter((o) => o.op === "fillText").map((o) => Number(o.args[2]));
+    expect(new Set(rows.filter((y) => y > (box?.y ?? 0))).size).toBe(2);
+  });
+
+  it("rules no divider when the card prints no flavor", () => {
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Flying" }) }));
+
+    expect(ops.some((o) => o.op === "fillRect")).toBe(false);
+  });
+
+  it("draws a planeswalker's loyalty instead of a power/toughness", () => {
+    const { ctx, texts } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ power: "", toughness: "", loyalty: "3" }) }));
+
+    expect(texts()).toContain("3");
+    expect(texts().some((t) => t.includes("/"))).toBe(false);
+  });
+
+  it("draws nothing but the frame when the art has not loaded", () => {
+    const { ctx, drawn } = fakeCtx();
+    drawFace(ctx, inputs({ art: null }));
+
+    // The frame's edges plus the printed P/T plate — everything but the art.
+    expect(drawn()).toHaveLength(slotRects("permanent", face()).frame.length + 1);
+    expect(drawn().every((blit) => blit[0] === assetImage)).toBe(true);
+  });
+
+  it("lays only the frame's top strip over the square, not the squashed whole card", () => {
+    const { ctx, drawn } = fakeCtx();
+    drawFace(ctx, inputs());
+
+    const [, frame] = drawn();
+    const strip = slotRects("permanent", face()).frame[0];
+    // src: the strip inside the printed border, not the 1050-tall card. dst: scaled by width in
+    // both axes, so it keeps shape.
+    expect(frame.slice(1, 5)).toEqual([strip?.src.x, strip?.src.y, strip?.src.w, strip?.src.h]);
+    expect(frame[7]).toBe(CANONICAL.permanent.w);
+    expect(frame[8]).toBeCloseTo((strip?.src.h ?? 0) * (CANONICAL.permanent.w / (ASSET_W - 60)), 3);
+  });
+
+  // M15 has no coloured band along the card's bottom, so the square's bottom edge is the side rail
+  // turned on its side — drawn under a quarter turn, into a box with its own w and h swapped.
+  it("lays the square's bottom edge on its side", () => {
+    const { ctx, ops, drawn } = fakeCtx();
+    drawFace(ctx, inputs());
+
+    const frame = slotRects("permanent", face()).frame;
+    const band = frame.at(-1)?.dst;
+    // The art draws first, so the frame's last edge is the last blit of the frame run.
+    const bottom = drawn()[frame.length];
+    expect(ops.some((o) => o.op === "rotate" && o.args[0] === -Math.PI / 2)).toBe(true);
+    expect(bottom?.slice(5)).toEqual([-(band?.h ?? 0) / 2, -(band?.w ?? 0) / 2, band?.h, band?.w]);
+  });
+
+  it("crops the art to fill the square instead of squashing it", () => {
+    const { ctx, drawn } = fakeCtx();
+    drawFace(ctx, inputs());
+
+    const [art] = drawn();
+    // A 626x457 crop into a 1:1 window keeps the full height and takes a centred 457-wide slice.
+    expect(art.slice(1, 5)).toEqual([(626 - 457) / 2, 0, 457, 457]);
+    expect(art.slice(5)).toEqual([0, 0, CANONICAL.permanent.w, CANONICAL.permanent.h]);
+  });
+
+  it("crowns a legendary permanent over the same strip as the frame", () => {
+    const { ctx, drawn } = fakeCtx();
+    drawFace(ctx, inputs({ face: face({ legendary: true }), crownImage: assetImage }));
+
+    // Art, then the frame's four edges, then the crown — over the top strip it replaces.
+    const [, topStrip] = drawn();
+    const crown = drawn()[1 + slotRects("permanent", face({ legendary: true })).frame.length];
+    expect(crown?.slice(1)).toEqual(topStrip?.slice(1));
+  });
+
+  it("lays the P/T plate over the rules text, so a wordy card cannot run through it", () => {
+    const { ctx, ops } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full", face: face({ oracle: "Trample" }) }));
+
+    const last = (match: (op: string, args: unknown[]) => boolean) =>
+      ops.reduce((found, o, index) => (match(o.op, o.args) ? index : found), -1);
+    expect(last((op) => op === "drawImage")).toBeGreaterThan(
+      last((op, args) => op === "fillText" && args[0] === "Trample"),
+    );
+  });
+
+  it("blits the P/T plate from its corner of the asset on a full face", () => {
+    const { ctx, drawn } = fakeCtx();
+    drawFace(ctx, inputs({ variant: "full" }));
+
+    const plate = drawn().at(-1);
+    expect(plate?.slice(1, 5)).toEqual([579, 932, 130, 64]);
+  });
+});
+
+describe("faceAssetUrls", () => {
+  it("asks for the crown only for a legendary permanent", () => {
+    expect(faceAssetUrls(face({ legendary: true })).crown).not.toBeNull();
+    expect(faceAssetUrls(face()).crown).toBeNull();
+  });
+
+  it("asks for no P/T plate on a noncreature", () => {
+    expect(faceAssetUrls(face({ power: "", toughness: "" })).pt).toBeNull();
+  });
+
+  it("crowns a legendary land but asks for no P/T plate — no land prints one", () => {
+    const cradle = faceAssetUrls(face({ isLand: true, legendary: true, power: "", toughness: "" }));
+    expect(cradle.crown).toContain("land");
+    expect(cradle.pt).toBeNull();
+  });
+
+  it("names the frame matching the card's colour", () => {
+    expect(faceAssetUrls(face()).frame).toContain("/g.");
+    expect(faceAssetUrls(face({ colors: [0, 3] })).frame).toContain("/m.");
+  });
+});

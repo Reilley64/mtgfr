@@ -1,7 +1,6 @@
 # Choose target Wall creature. Whenever that creature is dealt damage by an attacking creature this
 # turn, you gain that much life.
 name = "Glyph of Life"
-sets = ["leg"]
 id = "ec450179-35e0-4d72-b42f-b507cbce03ad"
 default_print = "ba1384e5-d140-4074-9548-250af09cb413"
 oracle = "Choose target Wall creature. Whenever that creature is dealt damage by an attacking creature this turn, you gain that much life."
@@ -15,6 +14,7 @@ type = "instant"
 # Choose target Wall creature. Whenever that creature is dealt damage by an attacking creature this
 # turn, you gain that much life.
 [[abilities]]
+oracle = "Choose target Wall creature. Whenever that creature is dealt damage by an attacking creature this turn, you gain that much life."
 timing = "spell"
 
 # Choose target Wall creature. Whenever that creature is dealt damage by an attacking creature this

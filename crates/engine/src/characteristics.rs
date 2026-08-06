@@ -2906,6 +2906,7 @@ impl Game {
         let mana_grants = self.granted_mana_abilities(object);
         if let Some(&(cost, mana, single_color)) = mana_grants.get(granted_index) {
             return Some(Ability {
+                oracle: None,
                 timing: Timing::Activated(cost),
                 effect: Effect::Mana(ManaEffect::Add {
                     // `mana` is already spend-restricted where applicable — `granted_mana_abilities`
@@ -2941,6 +2942,7 @@ impl Game {
             },
         };
         Some(Ability {
+            oracle: None,
             timing: Timing::Activated(cost),
             effect,
             optional: false,
@@ -3583,6 +3585,9 @@ fn granted_triggered_ability(g: &GrantedAbility) -> Option<Ability> {
         },
     };
     Some(Ability {
+        // A granted ability is on no card's oracle — the label the effect generates is all the
+        // stack can show for it.
+        oracle: None,
         timing: Timing::Triggered(trigger),
         effect,
         optional: g.optional,
@@ -3724,6 +3729,7 @@ mod cache_tests {
 
     fn anthem() -> CardDef {
         static ABILITIES: &[Ability] = &[Ability {
+            oracle: None,
             timing: Timing::Static,
             effect: Effect::Static(StaticEffect::Anthem {
                 power: Amount::Fixed(1),

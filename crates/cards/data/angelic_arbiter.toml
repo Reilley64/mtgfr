@@ -2,7 +2,6 @@
 # Each opponent who cast a spell this turn can't attack with creatures.
 # Each opponent who attacked with a creature this turn can't cast spells.
 name = "Angelic Arbiter"
-sets = ["cma", "cmd", "jmp", "m11"]
 id = "34dd789c-4d80-4ccc-a4f7-2e5388a9689d"
 default_print = "602a5e00-7e7f-4aec-bf8a-550b00f0864c"
 otags = ["flying", "static"]
@@ -21,6 +20,7 @@ toughness = 6
 
 # Each opponent who cast a spell this turn can't attack with creatures.
 [[abilities]]
+oracle = "Each opponent who cast a spell this turn can't attack with creatures."
 timing = "static"
 
 [[abilities.effects]]
@@ -29,6 +29,7 @@ mode = "cant_attack_if_cast_this_turn"
 
 # Each opponent who attacked with a creature this turn can't cast spells.
 [[abilities]]
+oracle = "Each opponent who attacked with a creature this turn can't cast spells."
 timing = "static"
 
 [[abilities.effects]]

@@ -2,7 +2,6 @@
 # cost.)
 # When this creature is turned face up, change the target of target spell or ability with a single target.
 name = "Willbender"
-sets = ["a25", "c14", "c19", "dd2", "ddn", "f04", "jvc", "lgn", "plst", "prm", "td0", "tsb"]
 otags = ["change-target", "more-expensive-than-mv", "turn-face-up-trigger-self", "type-addition-human"]
 subtypes = ["Human", "Wizard"]
 id = "0aae277e-e58e-4115-b5fd-0459451e17ec"
@@ -25,6 +24,7 @@ blue = 1
 
 # When this creature is turned face up, change the target of target spell or ability with a single target.
 [[abilities]]
+oracle = "When this creature is turned face up, change the target of target spell or ability with a single target."
 timing = "turned_face_up"
 
 # change the target of target spell or ability with a single target

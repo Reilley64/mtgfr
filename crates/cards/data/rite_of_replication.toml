@@ -1,5 +1,4 @@
 name = "Rite of Replication"
-sets = ["c14", "c15", "c21", "fdn", "fic", "mar", "omb", "plst", "soc", "tdc", "zen"]
 id = "fb60739e-1dc3-481d-a056-ad72e665c680"
 default_print = "5032d71d-d9f8-498c-97d1-271c2e9c1c47"
 otags = ["alliteration", "copy-creature", "cycle-zen-strong-kicker", "more-expensive-than-mv", "multiple-bodies", "self-replacement-effect", "single-target-instant-sorcery"]
@@ -18,6 +17,7 @@ type = "sorcery"
 # Create a token that's a copy of target creature. If this spell was kicked, create five of those
 # tokens instead.
 [[abilities]]
+oracle = "Create a token that's a copy of target creature. If this spell was kicked, create five of those tokens instead."
 timing = "spell"
 
 # Create a token that's a copy of target creature. If this spell was kicked, create five of those

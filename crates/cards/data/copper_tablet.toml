@@ -1,7 +1,6 @@
 # At the beginning of each player's upkeep, this artifact deals 1 damage to that player.
 name = "Copper Tablet"
 otags = ["burn-player-each", "pinger", "symmetrical", "triggered-ability"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me1"]
 id = "16d1023b-2162-4010-8bf4-218dbe7c99a0"
 default_print = "c17cb591-916e-4176-aeb9-e2275d68d472"
 oracle = "At the beginning of each player's upkeep, this artifact deals 1 damage to that player."
@@ -14,6 +13,7 @@ type = "artifact"
 
 # At the beginning of each player's upkeep, this artifact deals 1 damage to that player.
 [[abilities]]
+oracle = "At the beginning of each player's upkeep, this artifact deals 1 damage to that player."
 timing = "each_upkeep"
 
 # this artifact deals 1 damage to that player.

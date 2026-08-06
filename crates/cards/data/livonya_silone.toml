@@ -2,7 +2,6 @@
 # controls a legendary land.)
 name = "Livonya Silone"
 otags = ["deprecated-legend-type", "evasion", "french-vanilla", "hate-legendary", "hate-set-mechanic"]
-sets = ["leg", "me3"]
 id = "57f2aa02-f5f3-42a5-939d-5cc94200951e"
 default_print = "b9211949-66a5-4039-ac6d-3e42b008b58e"
 oracle = "First strike; legendary landwalk (This creature can't be blocked as long as defending player controls a legendary land.)"

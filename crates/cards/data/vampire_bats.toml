@@ -1,6 +1,5 @@
 name = "Vampire Bats"
 otags = ["activated-ability", "evasion", "firebreathing"]
-sets = ["chr", "leg", "me3"]
 id = "da66f1db-0fde-4112-ae8e-0e63fc686835"
 default_print = "6a6a6f50-7b86-461e-80a7-e35d0e7cf52f"
 oracle = "Flying\n{B}: This creature gets +1/+0 until end of turn. Activate no more than twice each turn."
@@ -17,6 +16,7 @@ toughness = 1
 
 # {B}: This creature gets +1/+0 until end of turn. Activate no more than twice each turn.
 [[abilities]]
+oracle = "{B}: This creature gets +1/+0 until end of turn. Activate no more than twice each turn."
 timing = "activated"
 activation_cost = { black = 1 }
 max_activations_per_turn = 2

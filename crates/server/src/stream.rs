@@ -7,8 +7,8 @@
 use axum::http::StatusCode;
 use engine::{Event, Game, PlayerId};
 use schema::{
-    DeltaCompose, MessageRef, StreamFrame, ViewExtras, VisibleState, complete_visible,
-    compose_delta,
+    CardTextView, DeltaCompose, MessageRef, StreamFrame, ViewExtras, VisibleState, card_text,
+    complete_visible, compose_delta,
 };
 use tokio::sync::broadcast;
 
@@ -55,6 +55,8 @@ pub struct TableSubscription {
     pub viewer: Option<PlayerId>,
     pub seats: [Seat; 4],
     pub prints: [std::collections::HashMap<String, String>; 4],
+    /// Printed words for the viewer's own deck, sent once with the snapshot.
+    pub card_text: Vec<CardTextView>,
     /// The table's `broadcast_seq` at snapshot time — later messages at or below this are
     /// already reflected in the snapshot (see [`should_deliver`]).
     pub snapshot_broadcast_seq: u64,
@@ -86,15 +88,98 @@ pub fn subscribe(
         viewer,
         &extras,
     );
+    // The viewer's own deck, plus whatever of anyone else's the snapshot already shows them — a
+    // reconnect lands mid-game with opponents' permanents already on the battlefield, and those
+    // faces have to draw their words without waiting for the next delta to mention them.
+    let own = match viewer {
+        Some(PlayerId(seat)) => table.prints[seat as usize].clone(),
+        None => Default::default(),
+    };
+    let mut card_text = card_text_book(&own);
+    card_text.extend(public_card_text(&snapshot, &own));
     Ok(TableSubscription {
         rx: table.tx.subscribe(),
         snapshot_seq: table.seq,
         snapshot,
         viewer,
+        card_text,
         seats: table.seats.clone(),
         prints: table.prints.clone(),
         snapshot_broadcast_seq: table.broadcast_seq,
     })
+}
+
+/// The printed words of one seat's whole deck, joined by the printing that deck plays.
+///
+/// `prints` is that seat's Card id → Printing UUID map — the deck list itself, so the book covers
+/// every card whose face that player can ever be shown, and no other seat's. Flavor is per
+/// printing ([`cards::print_flavor`]), so the join is on the print id, not the card id. Sorted by
+/// card id: the wire frame is compared byte-for-byte in tests, and a HashMap has no order.
+pub fn card_text_book(prints: &std::collections::HashMap<String, String>) -> Vec<CardTextView> {
+    let mut book: Vec<CardTextView> = prints
+        .iter()
+        .filter_map(|(card_id, print)| {
+            let def = cards::get(card_id)?;
+            Some(card_text(&def, print, cards::print_flavor(print)))
+        })
+        .collect();
+    book.sort_by(|a, b| (&a.card_id, &a.print).cmp(&(&b.card_id, &b.print)));
+    book
+}
+
+/// The printed words of every card `state` shows that isn't in `own` — an opponent's spell on the
+/// stack, their permanent on the battlefield, a card exiled from another library you may cast.
+///
+/// This widens no visibility, and the reason is the whole safety argument: `state` has already
+/// been through per-viewer redaction, so a `card_id` only survives on it when this viewer is
+/// allowed to know which card that object is. A face-down permanent and a hidden pile card have
+/// theirs blanked, so they are skipped here for free. Telling someone the printed rules of a card
+/// whose *name* they are already being shown reveals nothing further — where the full decklist
+/// book ([`card_text_book`]) genuinely would, which is why that one stays own-deck only.
+///
+/// `own` is the viewer's decklist (empty for a spectator); those cards already rode the snapshot,
+/// so they are skipped rather than re-sent. Each object carries the printing its owner's deck
+/// plays, so flavor joins on that print rather than the card's default.
+pub fn public_card_text(
+    state: &VisibleState,
+    own: &std::collections::HashMap<String, String>,
+) -> Vec<CardTextView> {
+    let objects = state.objects.iter().map(|o| (&o.card_id, &o.print));
+    let stack = state.stack.iter().map(|e| (&e.card_id, &e.print));
+    let mut seen: std::collections::HashSet<(&str, &str)> = std::collections::HashSet::new();
+    let mut book: Vec<CardTextView> = objects
+        .chain(stack)
+        .filter(|(card_id, print)| {
+            !card_id.is_empty()
+                && own
+                    .get(card_id.as_str())
+                    .is_none_or(|own_print| own_print != *print)
+        })
+        .filter(|(card_id, print)| seen.insert((card_id.as_str(), print.as_str())))
+        .filter_map(|(card_id, print)| {
+            let def = cards::get(card_id)?;
+            Some(card_text(&def, print, cards::print_flavor(print)))
+        })
+        .collect();
+    book.sort_by(|a, b| (&a.card_id, &a.print).cmp(&(&b.card_id, &b.print)));
+    book
+}
+
+/// Keep only card words this connection has not already received.
+///
+/// [`frame_for`] is deliberately connection-agnostic and derives the complete public book from
+/// each redacted state. The transport owns this small per-stream set so ordinary priority frames
+/// do not resend every visible permanent's rules text.
+pub fn retain_new_card_text(
+    frame: &mut StreamFrame,
+    known: &mut std::collections::HashSet<(String, String)>,
+) {
+    let StreamFrame::Delta(envelope) = frame else {
+        return;
+    };
+    envelope
+        .card_text
+        .retain(|text| known.insert((text.card_id.clone(), text.print.clone())));
 }
 
 /// Table → [`ViewExtras`] for the opening snapshot (and for tests that build frames from a live
@@ -134,14 +219,24 @@ pub fn frame_for(
     auto_actions: Vec<MessageRef>,
     extras: &ViewExtras,
 ) -> StreamFrame {
-    compose_delta(DeltaCompose {
+    let mut frame = compose_delta(DeltaCompose {
         game,
         viewer,
         seq,
         events,
         auto_actions,
         extras,
-    })
+    });
+    // `schema` composes the frame but cannot join printed words (no card registry there), so the
+    // book is filled here from the state it just built.
+    if let StreamFrame::Delta(env) = &mut frame {
+        let own = match viewer {
+            Some(PlayerId(seat)) => extras.prints[seat as usize].clone(),
+            None => Default::default(),
+        };
+        env.card_text = public_card_text(&env.state, &own);
+    }
+    frame
 }
 
 #[cfg(test)]
@@ -271,6 +366,213 @@ mod tests {
         assert!(
             should_deliver(11, 10),
             "broadcast_seq == snapshot + 1: the first genuinely new message",
+        );
+    }
+
+    #[test]
+    fn the_card_text_book_joins_the_printing_the_deck_plays() {
+        let bolt = def("Lightning Bolt");
+        let prints = std::collections::HashMap::from([(
+            bolt.id.to_string(),
+            // The M10 printing, whose flavor the Alpha printing does not print.
+            "435589bb-27c6-4a6d-9d63-394d5092b9d8".to_string(),
+        )]);
+
+        let book = card_text_book(&prints);
+
+        assert_eq!(book.len(), 1);
+        assert_eq!(book[0].card_id, bolt.id);
+        assert_eq!(book[0].type_line, "Instant");
+        assert!(book[0].oracle.contains("3 damage"));
+        assert!(
+            book[0].flavor.starts_with("The sparkmage shrieked"),
+            "the deck's printing prints its own flavor: {:?}",
+            book[0].flavor,
+        );
+    }
+
+    #[test]
+    fn two_seats_can_receive_different_flavor_for_the_same_oracle_card() {
+        let bolt = def("Lightning Bolt");
+        let alpha = "7673784e-db4b-43a1-8d55-1bb9fc1e284f";
+        let m10 = "435589bb-27c6-4a6d-9d63-394d5092b9d8";
+        let mut game = Game::new();
+        game.spawn_on_battlefield(PlayerId(0), bolt.clone());
+        game.spawn_on_battlefield(PlayerId(1), bolt.clone());
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(bolt.id.to_string(), alpha.into());
+        prints[1].insert(bolt.id.to_string(), m10.into());
+        let extras = view_extras(
+            &[false; 4],
+            &[false; 4],
+            &std::array::from_fn(|_| Seat::default()),
+            0,
+            &prints,
+        );
+        let state = complete_visible(&game, Some(PlayerId(0)), &extras);
+        let mut book = card_text_book(&prints[0]);
+        book.extend(public_card_text(&state, &prints[0]));
+
+        assert_eq!(
+            book.len(),
+            2,
+            "each visible printing keeps its own text record"
+        );
+        let serialized: Vec<serde_json::Value> = book
+            .iter()
+            .map(|text| serde_json::to_value(text).expect("card text serializes"))
+            .collect();
+        assert!(serialized.iter().any(|text| text["print"] == alpha));
+        assert!(serialized.iter().any(|text| {
+            text["print"] == m10
+                && text["flavor"]
+                    .as_str()
+                    .is_some_and(|flavor| flavor.starts_with("The sparkmage shrieked"))
+        }));
+    }
+
+    #[test]
+    fn the_card_text_book_is_only_that_seats_deck() {
+        // The book is built from one seat's print map, so it never carries another seat's list —
+        // and a spectator, who has no seat, gets nothing.
+        let alice = std::collections::HashMap::from([(
+            def("Lightning Bolt").id.to_string(),
+            "435589bb-27c6-4a6d-9d63-394d5092b9d8".to_string(),
+        )]);
+        let shock = def("Shock").id.to_string();
+
+        let book = card_text_book(&alice);
+
+        assert!(book.iter().all(|text| text.card_id != shock));
+        assert!(card_text_book(&Default::default()).is_empty());
+    }
+
+    /// A board with one of each seat's creatures on it, and the extras that name their printings.
+    fn two_seats_on_the_battlefield() -> (Game, ViewExtras) {
+        let mut game = Game::new();
+        game.spawn_on_battlefield(PlayerId(0), def("Lightning Bolt"));
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bears"));
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(
+            def("Lightning Bolt").id.to_string(),
+            "435589bb-27c6-4a6d-9d63-394d5092b9d8".to_string(),
+        );
+        let extras = view_extras(
+            &[false; 4],
+            &[false; 4],
+            &std::array::from_fn(|_| Seat::default()),
+            0,
+            &prints,
+        );
+        (game, extras)
+    }
+
+    #[test]
+    fn a_delta_carries_the_printed_words_of_an_opponents_card() {
+        // The stack is where a player reads what is about to resolve, and three quarters of what
+        // lands there is someone else's card. Their words are not in this viewer's own-deck book,
+        // so the frame that shows them the object has to carry them.
+        let (game, extras) = two_seats_on_the_battlefield();
+
+        let StreamFrame::Delta(DeltaEnvelope { card_text, .. }) =
+            frame_for(Some(PlayerId(0)), 1, &[], &game, vec![], &extras)
+        else {
+            panic!("expected a delta frame");
+        };
+
+        let bears = card_text
+            .iter()
+            .find(|text| text.card_id == def("Grizzly Bears").id)
+            .expect("P1's creature is on P0's board, so its words ride the frame");
+        assert_eq!(bears.type_line, "Creature — Bear");
+    }
+
+    #[test]
+    fn a_delta_leaves_out_the_cards_the_snapshot_already_sent() {
+        // The viewer's own deck rode the opening snapshot whole. Re-sending those words on every
+        // delta would put the player's entire decklist on the wire once per priority pass.
+        let (game, extras) = two_seats_on_the_battlefield();
+
+        let StreamFrame::Delta(DeltaEnvelope { card_text, .. }) =
+            frame_for(Some(PlayerId(0)), 1, &[], &game, vec![], &extras)
+        else {
+            panic!("expected a delta frame");
+        };
+
+        let bolt = def("Lightning Bolt").id.to_string();
+        assert!(
+            card_text.iter().all(|text| text.card_id != bolt),
+            "P0's own card is already in their book",
+        );
+    }
+
+    #[test]
+    fn a_connection_sends_each_public_cards_words_only_once() {
+        let (game, extras) = two_seats_on_the_battlefield();
+        let mut known = std::collections::HashSet::new();
+        let mut first = frame_for(Some(PlayerId(0)), 1, &[], &game, vec![], &extras);
+
+        retain_new_card_text(&mut first, &mut known);
+        let StreamFrame::Delta(DeltaEnvelope { card_text, .. }) = first else {
+            panic!("expected a delta frame");
+        };
+        assert_eq!(
+            card_text.len(),
+            1,
+            "the opponent's visible card arrives once"
+        );
+
+        let mut next = frame_for(Some(PlayerId(0)), 2, &[], &game, vec![], &extras);
+        retain_new_card_text(&mut next, &mut known);
+        let StreamFrame::Delta(DeltaEnvelope { card_text, .. }) = next else {
+            panic!("expected a delta frame");
+        };
+        assert!(
+            card_text.is_empty(),
+            "a later priority frame does not resend it"
+        );
+    }
+
+    #[test]
+    fn a_spectator_reads_the_board_they_are_watching() {
+        // A spectator has no deck, so their own-deck book is empty — everything they are shown has
+        // to arrive this way or their whole view draws blank cards.
+        let (game, extras) = two_seats_on_the_battlefield();
+
+        let StreamFrame::Delta(DeltaEnvelope { card_text, .. }) =
+            frame_for(None, 1, &[], &game, vec![], &extras)
+        else {
+            panic!("expected a delta frame");
+        };
+
+        let ids: Vec<&str> = card_text.iter().map(|text| text.card_id.as_str()).collect();
+        assert!(ids.contains(&def("Lightning Bolt").id));
+        assert!(ids.contains(&def("Grizzly Bears").id));
+    }
+
+    #[test]
+    fn an_object_whose_card_id_was_redacted_away_contributes_no_words() {
+        // The safety argument for this book is that it reads an already-redacted state: a
+        // face-down permanent and a hidden pile card have their `card_id` blanked by the
+        // projection, so they never reach the join. This pins that mechanically — blank the id the
+        // way redaction does, and the words go with it.
+        let (game, extras) = two_seats_on_the_battlefield();
+        let mut state = complete_visible(&game, Some(PlayerId(0)), &extras);
+        let bears = def("Grizzly Bears").id.to_string();
+        assert!(
+            !public_card_text(&state, &Default::default())
+                .iter()
+                .all(|text| text.card_id != bears),
+            "sanity: the words are there while the card id is",
+        );
+
+        for obj in &mut state.objects {
+            obj.card_id.clear();
+        }
+
+        assert!(
+            public_card_text(&state, &Default::default()).is_empty(),
+            "no card id, no words — a face-down permanent reveals nothing",
         );
     }
 }

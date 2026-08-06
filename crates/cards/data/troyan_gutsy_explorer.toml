@@ -6,7 +6,6 @@
 #    with {X} in their mana costs.
 #    {U}, {T}: Draw a card, then discard a card."
 name = "Troyan, Gutsy Explorer"
-sets = ["soc", "woe"]
 id = "1135ebc3-9537-4341-956b-6e22d8be5f20"
 default_print = "72968bfe-0fa4-432f-9599-4c32cb143716"
 otags = ["activated-ability", "adds-multiple-mana", "cycle-woe-draft-signpost", "mana-dork", "mana-value-matters", "repeatable-loot", "restricted-mana", "unique-type-line", "x-cost-matters"]
@@ -27,6 +26,7 @@ toughness = 3
 # {T}: Add {G}{U}. Spend this mana only to cast spells with mana value 5 or greater or spells with
 # {X} in their mana costs.
 [[abilities]]
+oracle = "{T}: Add {G}{U}. Spend this mana only to cast spells with mana value 5 or greater or spells with {X} in their mana costs."
 timing = "activated"
 taps_self = true
 
@@ -40,6 +40,7 @@ restriction = { mana_value_at_least_or_has_x = 5 }
 
 # {U}, {T}: Draw a card, then discard a card.
 [[abilities]]
+oracle = "{U}, {T}: Draw a card, then discard a card."
 timing = "activated"
 taps_self = true
 activation_cost = { blue = 1 }

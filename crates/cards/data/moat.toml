@@ -1,7 +1,6 @@
 # Creatures without flying can't attack.
 name = "Moat"
 otags = ["prevent-attack", "single-english-word-name", "symmetrical", "synergy-flying"]
-sets = ["leg", "me1", "prm"]
 id = "42208fea-8c24-451f-861d-6d70c0a7a502"
 default_print = "952ba126-0915-47f0-9b6a-a0a6dcd22c6f"
 oracle = "Creatures without flying can't attack."
@@ -15,6 +14,7 @@ type = "enchantment"
 
 # Creatures without flying can't attack.
 [[abilities]]
+oracle = "Creatures without flying can't attack."
 timing = "static"
 
 # Creatures without flying can't attack. (Board-wide: the filter leaves `controller` at its default

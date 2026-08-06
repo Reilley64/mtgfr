@@ -2,7 +2,6 @@
 # target player or planeswalker. Any player may activate this ability.
 name = "Land's Edge"
 otags = ["activated-ability", "any-player-ability", "burn-planeswalker", "burn-player", "discarded-type-matters", "free-discard-outlet", "hellbending", "pinger", "repeatable-crime", "repeatable-removal", "symmetrical"]
-sets = ["leg", "chr"]
 id = "82d58f2d-66a4-4154-9826-01ca8e8d32d0"
 default_print = "fb3d9b29-948c-4768-b5ea-db2512817c30"
 oracle = "Discard a card: If the discarded card was a land card, this enchantment deals 2 damage to target player or planeswalker. Any player may activate this ability."
@@ -18,6 +17,7 @@ type = "enchantment"
 # Discard a card: If the discarded card was a land card, this enchantment deals 2 damage to
 # target player or planeswalker. Any player may activate this ability.
 [[abilities]]
+oracle = "Discard a card: If the discarded card was a land card, this enchantment deals 2 damage to target player or planeswalker. Any player may activate this ability."
 timing = "activated"
 discard_cost = 1
 activator = "any_player"

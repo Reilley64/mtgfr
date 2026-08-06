@@ -4,7 +4,6 @@
 # {T}: Add {C}{C}{C}.
 name = "Mana Vault"
 otags = ["activated-ability", "adds-multiple-mana", "burn-you", "doesn-t-untap", "drawback", "full-refund", "intervening-if-clause", "mana-rock", "untaps-self"]
-sets = ["2ed", "2x2", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "mps", "prm", "puma", "sld", "sum", "uma", "vma"]
 id = "736892cb-a34b-4bb9-b56c-e26e3db207a2"
 default_print = "778d10e6-251b-4ef3-b9b8-bc23a0d74aed"
 oracle = "This artifact doesn't untap during your untap step.\nAt the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.\nAt the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.\n{T}: Add {C}{C}{C}."
@@ -17,6 +16,7 @@ type = "artifact"
 
 # This artifact doesn't untap during your untap step.
 [[abilities]]
+oracle = "This artifact doesn't untap during your untap step."
 timing = "static"
 
 # This artifact doesn't untap during your untap step.
@@ -27,6 +27,7 @@ self_only = true
 
 # At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact."
 timing = "upkeep"
 optional = true
 
@@ -41,6 +42,7 @@ target = "this"
 
 # At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.
 [[abilities]]
+oracle = "At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you."
 timing = "draw_step"
 condition = { type = "source_tapped" }
 
@@ -52,6 +54,7 @@ then = [{ type = "damage", mode = "to_players", amount = 1 }]
 
 # {T}: Add {C}{C}{C}.
 [[abilities]]
+oracle = "{T}: Add {C}{C}{C}."
 timing = "activated"
 taps_self = true
 

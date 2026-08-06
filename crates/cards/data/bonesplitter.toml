@@ -3,7 +3,6 @@
 # Equipment. The Silverquill Influence precon has no Equipment (its artifacts are all mana
 # rocks), so this iconic +2/+0 Equipment stands in to exercise the equip subsystem.
 name = "Bonesplitter"
-sets = ["cmr", "ha4", "mma", "mrd", "pal03", "plst", "prm", "psal", "td0", "td2"]
 id = "452e3f5f-ce17-4682-966b-5cc100210aee"
 default_print = "690972a8-72df-4050-a353-16e45589167c"
 otags = ["activated-ability", "vanilla-equipment"]
@@ -18,6 +17,7 @@ type = "artifact"
 
 # Equipped creature gets +2/+0.
 [[abilities]]
+oracle = "Equipped creature gets +2/+0."
 timing = "static"
 
 # Equipped creature gets +2/+0.
@@ -29,6 +29,7 @@ toughness = 0
 
 # Equip {1}
 [[abilities]]
+oracle = "Equip {1}"
 timing = "activated"
 
 [abilities.activation_cost]

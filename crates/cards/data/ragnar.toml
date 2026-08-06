@@ -1,7 +1,6 @@
 # {G}{W}{U}, {T}: Regenerate target creature.
 name = "Ragnar"
 otags = ["activated-ability", "deprecated-legend-type", "protects-creature", "regenerates-other", "repeatable-crime"]
-sets = ["leg", "me3"]
 id = "6d474413-e72f-414e-872f-aa00d38b7da4"
 default_print = "0a96bd0c-7b04-45ea-9b6f-e827a64a1bad"
 oracle = "{G}{W}{U}, {T}: Regenerate target creature."
@@ -20,6 +19,7 @@ toughness = 2
 
 # {G}{W}{U}, {T}: Regenerate target creature.
 [[abilities]]
+oracle = "{G}{W}{U}, {T}: Regenerate target creature."
 timing = "activated"
 taps_self = true
 activation_cost = { white = 1, blue = 1, green = 1 }

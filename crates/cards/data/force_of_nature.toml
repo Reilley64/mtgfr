@@ -4,7 +4,6 @@
 # {G}{G}{G}{G}.
 name = "Force of Nature"
 otags = ["burn-you", "drawback", "triggered-ability", "type-errata-specific-elemental", "upkeep-cost"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "9ed", "btd", "ced", "cei", "fbb", "lea", "leb", "me4", "olep", "p9ed", "prm", "sum"]
 id = "e3c4c27d-f263-4c69-a4fe-2928136ff68b"
 default_print = "247a2ba4-aa5d-4970-b886-90196f684f80"
 oracle = "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nAt the beginning of your upkeep, this creature deals 8 damage to you unless you pay {G}{G}{G}{G}."
@@ -22,6 +21,7 @@ toughness = 8
 
 # At the beginning of your upkeep, this creature deals 8 damage to you unless you pay {G}{G}{G}{G}.
 [[abilities]]
+oracle = "At the beginning of your upkeep, this creature deals 8 damage to you unless you pay {G}{G}{G}{G}."
 timing = "upkeep"
 
 # this creature deals 8 damage to you unless you pay {G}{G}{G}{G}.

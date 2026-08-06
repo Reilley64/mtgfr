@@ -1,4 +1,6 @@
 import { colors } from "~/design-tokens.generated";
+import { TITLE_FONT } from "../../domain/card-render/assets";
+import { type FaceData, type FaceVariant, squarePtPlate } from "../../domain/card-render/frame";
 import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
 import type { ImageCache } from "../../domain/image-cache";
 import { TARGET_COLOR } from "../action/targeting";
@@ -15,6 +17,13 @@ export const CARD_OUTLINE = CARD_RESTING_OUTLINE;
 /** World-space corner radius; screen px = this × camera.zoom (matches Foldkit card paths). */
 export const CARD_CORNER_RADIUS = 6;
 export const DIM_CARD_VEIL = 0.45;
+/**
+ * Arena's tap tell. A quarter turn is invisible on a square permanent — same silhouette, same
+ * footprint — so a tapped tile tilts off square and darkens instead. Both track `tapFrac`, so the
+ * tap animation still plays.
+ */
+export const TAP_TILT = Math.PI / 12;
+export const TAP_VEIL = 0.4;
 export const TAP_GLYPH = "\ue61a";
 export const TARGET_STROKE: Stroke = { color: TARGET_COLOR, dash: [2, 6] };
 export { TARGET_COLOR };
@@ -69,11 +78,22 @@ const BADGE_KEYWORDS = [
 
 const MAX_KEYWORD_BADGES = 4;
 
+/**
+ * Where a drawn card face comes from. `CardFaceCache` is the one implementation; the narrow shape
+ * keeps paint testable without an OffscreenCanvas.
+ */
+export type FaceSource = {
+  get(face: FaceData, variant: FaceVariant): CanvasImageSource | undefined;
+  request(face: FaceData, variant: FaceVariant): void;
+};
+
 export type CardPaintOptions = {
   outline?: Stroke | null;
   glow?: string | null;
   dim?: boolean;
   autoTapPreview?: boolean;
+  /** Rendered Arena-style faces. Absent, or not yet drawn, falls back to the printed image. */
+  faces?: FaceSource;
 };
 
 export type BitmapImageCache = Pick<ImageCache, "get">;
@@ -119,7 +139,7 @@ export function paintCard(
   if (card.faceDown) {
     paintFaceDown(ctx, cam, card, cache, tl.x, tl.y, w, h, r);
   } else {
-    paintFaceUp(ctx, cam, card, cache, tl.x, tl.y, w, h, r);
+    paintFaceUp(ctx, cam, card, cache, tl.x, tl.y, w, h, r, options.faces);
   }
 
   // Restroke after art so playable / commander chrome stays rounded on top of the face.
@@ -146,6 +166,13 @@ export function paintCard(
     ctx.stroke();
   }
 
+  const tapFrac = card.tapFrac ?? (card.tapped ? 1 : 0);
+  if (tapFrac > 0) {
+    roundRect(ctx, tl.x, tl.y, w, h, r);
+    ctx.fillStyle = `rgba(0,0,0,${(TAP_VEIL * tapFrac).toFixed(3)})`;
+    ctx.fill();
+  }
+
   if (options.dim) {
     roundRect(ctx, tl.x, tl.y, w, h, r);
     ctx.fillStyle = `rgba(0,0,0,${DIM_CARD_VEIL})`;
@@ -153,40 +180,6 @@ export function paintCard(
   }
 
   if (options.autoTapPreview) drawAutoTapGlyph(ctx, tl.x, tl.y, w, h, cam.zoom);
-  ctx.restore();
-}
-
-export function paintCardArt(
-  ctx: CanvasRenderingContext2D,
-  cam: Camera,
-  card: RenderCard,
-  cache: BitmapImageCache,
-  viewer: number,
-): void {
-  const tl = worldToScreen(cam, card.x, card.y);
-  const w = card.w * cam.zoom;
-  const h = card.h * cam.zoom;
-  const r = CARD_CORNER_RADIUS * cam.zoom;
-
-  ctx.save();
-  rotateCard(ctx, card, viewer, tl.x, tl.y, w, h);
-
-  const url = card.faceDown ? cardBackUrl() : imageUrlByPrint(card.print);
-  const image = cache.get(url);
-  if (image) {
-    roundRect(ctx, tl.x, tl.y, w, h, r);
-    ctx.clip();
-    ctx.drawImage(image, tl.x, tl.y, w, h);
-    ctx.restore();
-    return;
-  }
-
-  roundRect(ctx, tl.x, tl.y, w, h, r);
-  ctx.fillStyle = card.faceDown ? "rgba(42,55,66,0.78)" : "rgba(232,228,216,0.72)";
-  ctx.fill();
-  ctx.fillStyle = card.faceDown ? "#eff" : CARD_OUTLINE;
-  ctx.font = `${Math.round(9 * cam.zoom)}px system-ui, sans-serif`;
-  wrapText(ctx, card.name, tl.x + 6 * cam.zoom, tl.y + 16 * cam.zoom, w - 12 * cam.zoom, 11 * cam.zoom);
   ctx.restore();
 }
 
@@ -300,7 +293,7 @@ function rotateCard(
   h: number,
 ): void {
   const tapFrac = card.tapFrac ?? (card.tapped ? 1 : 0);
-  const angle = (card.controller !== viewer ? Math.PI : 0) + tapFrac * (Math.PI / 2);
+  const angle = (card.controller !== viewer ? Math.PI : 0) + tapFrac * TAP_TILT;
   if (angle === 0) return;
 
   ctx.translate(x + w / 2, y + h / 2);
@@ -352,8 +345,14 @@ function paintFaceUp(
   w: number,
   h: number,
   r: number,
+  faces?: FaceSource,
 ): void {
-  const img = cache.get(imageUrlByPrint(card.print));
+  // The rendered Arena face once it is drawn; the printed image until the frame asset lands. Only
+  // the battlefield gets the square — a zone-column pile is a stack of cards, so it stays printed.
+  const arena = card.zone === ZONE.Battlefield;
+  if (arena) faces?.request(card.face, "permanent");
+  const rendered = arena ? faces?.get(card.face, "permanent") : undefined;
+  const img = rendered ?? cache.get(imageUrlByPrint(card.print));
   if (img) {
     ctx.save();
     roundRect(ctx, x, y, w, h, r);
@@ -395,17 +394,24 @@ function paintFaceUp(
 
   drawStatusBadges(ctx, x, y, w, cam.zoom, card);
   if (card.pt) {
-    badge(
-      ctx,
-      x + w - 30 * cam.zoom,
-      y + h - 20 * cam.zoom,
-      26 * cam.zoom,
-      15 * cam.zoom,
-      card.pt,
-      cam.zoom,
-      "#f4efe2",
-      "#111",
-    );
+    // On a rendered square the face already carries the printed plate, so the live numbers go
+    // straight onto it. A token or a printed image has no plate, so those keep the badge.
+    const plate = rendered == null ? null : squarePtPlate(card.face);
+    if (plate == null) {
+      badge(
+        ctx,
+        x + w - 30 * cam.zoom,
+        y + h - 20 * cam.zoom,
+        26 * cam.zoom,
+        15 * cam.zoom,
+        card.pt,
+        cam.zoom,
+        "#f4efe2",
+        "#111",
+      );
+    } else {
+      printedPT(ctx, card.pt, x + plate.x * w, y + plate.y * h, plate.w * w, plate.h * h);
+    }
   }
   if (card.counters > 0) {
     badge(
@@ -480,6 +486,17 @@ function wrapText(
     line = test;
   }
   if (line) ctx.fillText(line, x, yy);
+}
+
+/** Live power/toughness set on the face's own printed plate — no box, the plate art is the box. */
+function printedPT(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, w: number, h: number): void {
+  ctx.fillStyle = "#17130d";
+  ctx.font = `${h * 0.62}px ${TITLE_FONT}, serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x + w / 2, y + h / 2);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
 }
 
 function badge(

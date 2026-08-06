@@ -2,7 +2,6 @@
 # the beginning of your next upkeep, where X is the number of lands you control at that time. When
 # Hazezon leaves the battlefield, exile all Sand Warriors.
 name = "Hazezon Tamar"
-sets = ["leg", "me3", "prm"]
 id = "d298df4e-7b60-4495-9773-cc81954b7dd9"
 default_print = "4cd43773-2a6f-4f03-bcee-de32049561e5"
 oracle = "When Hazezon enters, create X 1/1 Sand Warrior creature tokens that are red, green, and white at the beginning of your next upkeep, where X is the number of lands you control at that time.\nWhen Hazezon leaves the battlefield, exile all Sand Warriors."
@@ -24,6 +23,7 @@ toughness = 4
 # When Hazezon enters, create X 1/1 Sand Warrior creature tokens that are red, green, and white at
 # the beginning of your next upkeep, where X is the number of lands you control at that time.
 [[abilities]]
+oracle = "When Hazezon enters, create X 1/1 Sand Warrior creature tokens that are red, green, and white at the beginning of your next upkeep, where X is the number of lands you control at that time."
 timing = "etb"
 
 # … at the beginning of your next upkeep … where X is the number of lands you control at that time.
@@ -36,6 +36,7 @@ then = { type = "token", mode = "create", token = "7705873e-6fe6-4b25-965d-5f3df
 
 # When Hazezon leaves the battlefield, exile all Sand Warriors.
 [[abilities]]
+oracle = "When Hazezon leaves the battlefield, exile all Sand Warriors."
 timing = "this_leaves_battlefield"
 
 # exile all Sand Warriors.

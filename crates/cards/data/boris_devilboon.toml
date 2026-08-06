@@ -1,7 +1,6 @@
 # {2}{B}{R}, {T}: Create a 1/1 black and red Demon creature token named Minor Demon.
 name = "Boris Devilboon"
 otags = ["activated-ability", "deprecated-legend-type", "repeatable-creature-tokens", "unprinted-token"]
-sets = ["leg", "me3"]
 id = "913aed6d-60c3-4d08-baf8-359e2c41a797"
 default_print = "b61e5753-d11d-4ef5-ae0e-510c4d5809a9"
 oracle = "{2}{B}{R}, {T}: Create a 1/1 black and red Demon creature token named Minor Demon."
@@ -20,6 +19,7 @@ toughness = 2
 
 # {2}{B}{R}, {T}: Create a 1/1 black and red Demon creature token named Minor Demon.
 [[abilities]]
+oracle = "{2}{B}{R}, {T}: Create a 1/1 black and red Demon creature token named Minor Demon."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 2, black = 1, red = 1 }

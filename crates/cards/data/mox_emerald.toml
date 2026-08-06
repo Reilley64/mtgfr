@@ -1,7 +1,6 @@
 # {T}: Add {G}.
 name = "Mox Emerald"
 otags = ["activated-ability", "cycle-lea-moxen", "manaless-value", "power-nine"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "ovnt", "prm", "vma", "ydmu"]
 id = "376ee366-e082-402f-b4db-6592fcfcacd2"
 default_print = "a4db5af2-9caf-4493-b340-6d64021139e2"
 oracle = "{T}: Add {G}."
@@ -11,6 +10,7 @@ type = "artifact"
 
 # {T}: Add {G}.
 [[abilities]]
+oracle = "{T}: Add {G}."
 timing = "activated"
 taps_self = true
 

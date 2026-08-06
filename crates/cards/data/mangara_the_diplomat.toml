@@ -3,7 +3,6 @@
 # you control, draw a card.
 # Whenever an opponent casts their second spell each turn, draw a card.
 name = "Mangara, the Diplomat"
-sets = ["blc", "cmm", "fca", "m21", "plst", "pm21", "prm", "soc", "tdc"]
 id = "cbcb6d9a-6ae5-4bcd-8013-2b657553764a"
 default_print = "49d0d7ec-4bee-47d3-91a6-43510be65402"
 otags = ["attack-trigger", "cast-trigger-other", "cycle-m21-mono-teferi-legend", "draw-engine", "hate-attacker", "intervening-if-clause", "repeatable-lifegain", "repeatable-pure-draw", "synergy-planeswalker", "toll", "anagram"]
@@ -24,6 +23,7 @@ toughness = 4
 # Whenever an opponent attacks with creatures, if two or more of those creatures are attacking
 # you and/or planeswalkers you control, draw a card.
 [[abilities]]
+oracle = "Whenever an opponent attacks with creatures, if two or more of those creatures are attacking you and/or planeswalkers you control, draw a card."
 timing = "opponent_attacks_you_with_creatures"
 at_least = 2
 
@@ -35,6 +35,7 @@ count = 1
 
 # Whenever an opponent casts their second spell each turn, draw a card.
 [[abilities]]
+oracle = "Whenever an opponent casts their second spell each turn, draw a card."
 timing = "cast_spell"
 caster = "opponent"
 nth_each_turn = 2

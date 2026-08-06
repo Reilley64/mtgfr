@@ -2,7 +2,6 @@
 # When this creature enters, you may return target blue instant card from your graveyard to your hand.
 name = "Nucklavee"
 otags = ["hand-positive", "instant-sorcery-dichotomous", "multiple-targets", "regrowth-instant", "regrowth-sorcery", "synergy-blue", "synergy-red", "triggered-ability", "unique-mana-cost", "virtual-vanilla"]
-sets = ["cmd", "dds", "eve", "plst"]
 id = "09c2d504-f2e1-4799-b948-c7b9502d5088"
 default_print = "aaafbb32-f330-43aa-a7e2-b8f99eceac0b"
 oracle = "When this creature enters, you may return target red sorcery card from your graveyard to your hand.\nWhen this creature enters, you may return target blue instant card from your graveyard to your hand."
@@ -19,6 +18,7 @@ toughness = 4
 
 # When this creature enters, you may return target red sorcery card from your graveyard to your hand.
 [[abilities]]
+oracle = "When this creature enters, you may return target red sorcery card from your graveyard to your hand."
 timing = "etb"
 optional = true
 
@@ -30,6 +30,7 @@ target = { card_in_graveyard = { whose = "yours", filter = { sorcery_with_color 
 
 # When this creature enters, you may return target blue instant card from your graveyard to your hand.
 [[abilities]]
+oracle = "When this creature enters, you may return target blue instant card from your graveyard to your hand."
 timing = "etb"
 optional = true
 

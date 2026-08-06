@@ -2,7 +2,6 @@
 # Dredge 3 (If you would draw a card, you may mill three cards instead. If you do, return this
 # card from your graveyard to your hand.)
 name = "Life from the Loam"
-sets = ["ddj", "mma", "pewk", "puma", "rav", "rvr", "sld", "td0", "tdc", "uma"]
 id = "ac8fba34-512c-4f24-999a-ab72f1ce4acb"
 default_print = "7ac16d09-8bc7-407c-a757-666f4707bc90"
 otags = ["regrowth-land", "multiple-targets"]
@@ -21,6 +20,7 @@ type = "sorcery"
 
 # Return up to three target land cards from your graveyard to your hand.
 [[abilities]]
+oracle = "Return up to three target land cards from your graveyard to your hand."
 timing = "spell"
 
 # Return up to three target land cards from your graveyard to your hand.

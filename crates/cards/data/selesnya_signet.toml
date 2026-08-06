@@ -1,6 +1,5 @@
 # {1}, {T}: Add {G}{W}.
 name = "Selesnya Signet"
-sets = ["aa1", "c13", "clu", "cma", "cmd", "gk1", "mm3", "prm", "psal", "rav", "rvr", "sld", "td0", "tdc"]
 otags = ["activated-ability", "alliteration", "cycle-rav-signet", "mana-rock", "refund"]
 id = "1436dd81-496e-42a5-b210-fb5b9cdf073f"
 default_print = "4e21a028-0f06-4124-bd0f-04989a1f9481"
@@ -14,6 +13,7 @@ type = "artifact"
 
 # {1}, {T}: Add {G}{W}.
 [[abilities]]
+oracle = "{1}, {T}: Add {G}{W}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

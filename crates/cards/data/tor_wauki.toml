@@ -1,7 +1,6 @@
 # {T}: Tor Wauki deals 2 damage to target attacking or blocking creature.
 name = "Tor Wauki"
 otags = ["activated-ability", "burn-creature", "deprecated-legend-type", "hate-attacker", "hate-blocker", "pinger", "repeatable-crime", "repeatable-removal", "spot-removal"]
-sets = ["bchr", "chr", "leg", "me3"]
 id = "9439dfa0-daf8-4dac-af32-755fc2984126"
 default_print = "b37c8bc5-5b9e-431f-afee-09f961e4a7d0"
 oracle = "{T}: Tor Wauki deals 2 damage to target attacking or blocking creature."
@@ -20,6 +19,7 @@ toughness = 3
 
 # {T}: Tor Wauki deals 2 damage to target attacking or blocking creature.
 [[abilities]]
+oracle = "{T}: Tor Wauki deals 2 damage to target attacking or blocking creature."
 timing = "activated"
 taps_self = true
 

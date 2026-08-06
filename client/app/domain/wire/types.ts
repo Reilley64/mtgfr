@@ -137,7 +137,16 @@ export type SeatView = {
 };
 export type SeedResponse = { pod_dns: string; table_id: string; version: string };
 export type SeedSeat = { deck_id: number; gravatar_hash?: string; user_id: number; username: string };
-export type WireCost = { colored: Array<number>; generic: number; has_x?: boolean; x_symbols?: number };
+export type WireCost = {
+  colored: Array<number>;
+  generic: number;
+  has_x?: boolean;
+  x_symbols?: number;
+  /** Hybrid pips per unordered colour pair, in `engine::COLOR_PAIRS` order (WU WB WR WG UB UR UG BR BG RG). */
+  hybrid?: Array<number>;
+  /** Phyrexian pips per colour, WUBRG. */
+  phyrexian?: Array<number>;
+};
 export type WireEitherMana = { a: number; amount: number; b: number };
 export type WireKind =
   | { kind: "creature"; power: number; toughness: number }
@@ -197,14 +206,19 @@ export type PlayerView = {
 export type ObjectView = {
   attached_to?: null | number;
   card_id?: string;
+  // The object's colors (CR 105.2) as WUBRG indices — the frame the card renders in. Empty is
+  // colorless. Folds in devoid, hybrid pips, a token's stated color, and color-setting effects.
+  colors?: Array<number>;
   controller: number;
   face_down?: boolean;
   goaded?: boolean;
   has_haste: boolean;
   id: U32;
   is_commander: boolean;
+  is_token: boolean;
   keywords?: Array<string>;
   kind: WireKind;
+  legendary: boolean;
   loyalty?: number;
   mana_cost: WireCost;
   marked_damage: number;
@@ -224,15 +238,28 @@ export type ObjectView = {
   zone: number;
 };
 export type StackObjectView = {
+  /**
+   * The one printed sentence this ability prints, for the text box of its stack face — an ability
+   * on the stack is not its whole source card. Absent for a spell, which shows its card's own
+   * text, and for an ability whose sentence isn't recorded, which shows `label`.
+   */
+  ability_oracle?: string;
   card_id?: string;
   controller: number;
   kind: string;
   label: MessageRef;
   name?: string;
   print?: string;
+  source_face?: StackSourceFaceView;
   source: number;
   target?: null | WireTarget;
   targets?: Array<WireTarget>;
+};
+export type StackSourceFaceView = {
+  colors?: Array<number>;
+  is_token?: boolean;
+  kind: WireKind;
+  legendary?: boolean;
 };
 // `defender` is always the defending player's seat; `defender_planeswalker` names their
 // planeswalker being attacked, when the attack named one (CR 508.1a).
@@ -751,7 +778,18 @@ export type VisibleState = {
   yielded?: boolean;
 };
 export type IntentEnvelope = { client_seq: number; intent: WireIntent; table_id: string };
+/** The printed words of one card, for the faces the board draws. `flavor` is the flavor of the
+ * printing being played, not of the card's default print. The snapshot carries the viewer's whole
+ * deck; a delta adds any other seat's card the same frame already shows them. */
+export type CardTextView = { card_id: string; print: string; type_line: string; oracle: string; flavor: string };
 export type StreamFrame =
-  | { frame: "snapshot"; seq: number; state: VisibleState }
-  | { auto_actions?: Array<MessageRef>; events: Array<VisibleEvent>; seq: number; state: VisibleState; frame: "delta" }
+  | { frame: "snapshot"; seq: number; state: VisibleState; card_text?: Array<CardTextView> }
+  | {
+      auto_actions?: Array<MessageRef>;
+      card_text?: Array<CardTextView>;
+      events: Array<VisibleEvent>;
+      seq: number;
+      state: VisibleState;
+      frame: "delta";
+    }
   | { frame: "heartbeat" };

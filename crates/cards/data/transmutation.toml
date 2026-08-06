@@ -1,6 +1,5 @@
 # Switch target creature's power and toughness until end of turn.
 name = "Transmutation"
-sets = ["bchr", "chr", "leg"]
 id = "72a75113-4ddf-460d-8d9b-03931c2788da"
 default_print = "e2d90519-68f8-43ab-902a-0fed0f526488"
 oracle = "Switch target creature's power and toughness until end of turn."
@@ -14,6 +13,7 @@ type = "instant"
 
 # Switch target creature's power and toughness until end of turn.
 [[abilities]]
+oracle = "Switch target creature's power and toughness until end of turn."
 timing = "spell"
 
 # Switch target creature's power and toughness until end of turn.

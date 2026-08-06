@@ -1,7 +1,6 @@
 # Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to you.
 name = "Ashes to Ashes"
 otags = ["alliteration", "bible-reference", "burn-you", "drawback", "life-payment", "multi-removal", "multiple-targets", "removal-creature", "removal-exile", "spot-removal"]
-sets = ["4bb", "4ed", "5ed", "drk", "me3", "ptc", "ren", "td0"]
 id = "944a52d9-bb14-43c5-8d05-2afaf023dc9f"
 default_print = "9e61209b-0f56-4bab-9ada-700f91b18dec"
 oracle = "Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to you."
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # Exile two target nonartifact creatures.
 [[abilities]]
+oracle = "Exile two target nonartifact creatures."
 timing = "spell"
 
 # Exile two target nonartifact creatures.
@@ -26,6 +26,7 @@ count = { min = 2, max = 2 }
 
 # Ashes to Ashes deals 5 damage to you.
 [[abilities]]
+oracle = "Ashes to Ashes deals 5 damage to you."
 timing = "spell"
 
 # Ashes to Ashes deals 5 damage to you.

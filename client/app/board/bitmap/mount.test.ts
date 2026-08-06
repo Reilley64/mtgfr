@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, PlayerView } from "~/wire/types";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import { gravatarUrl } from "../../domain/gravatar";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
@@ -80,6 +81,7 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
     counters: 0,
     faceDown: false,
     goaded: false,
+    face: BLANK_FACE,
     h: 134,
     hasHaste: false,
     id: 1,
@@ -507,6 +509,34 @@ describe("paintBitmapLayer", () => {
     expect(calls).toContain("text:Cmd 9@-128");
   });
 
+  it("paints a resting permanent from the rendered face cache, not its printed image", () => {
+    const calls: string[] = [];
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const printed = { label: "printed" } as unknown as HTMLImageElement;
+    const face = { label: "face" } as unknown as CanvasImageSource;
+    const request = vi.fn();
+    const bear = { ...BLANK_FACE, name: "Grizzly Bears", print: "resting-print" };
+
+    paintBitmapLayer(
+      canvas,
+      frame({ cards: [card({ face: bear })] }),
+      { get: vi.fn(() => printed) },
+      {
+        get: () => face,
+        request,
+      },
+    );
+
+    expect(request).toHaveBeenCalledWith(bear, "permanent");
+    expect(calls).toContain("image:face");
+    expect(calls).not.toContain("image:printed");
+  });
+
   it("paints Gravatar face images with life below the circle", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });
@@ -554,7 +584,7 @@ describe("paintBitmapLayer", () => {
 
     expect(cache.get).toHaveBeenCalledWith(gravatarUrl(hash));
     expect(calls).toContain("image:gravatar");
-    expect(calls).toContain("text:40@956");
+    expect(calls).toContain("text:40@728");
   });
 
   // Poison is a lose condition (CR 704.5c) and rad drives a mill clock — both belong on the orb.

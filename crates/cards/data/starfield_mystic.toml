@@ -6,7 +6,6 @@
 #    Whenever an enchantment you control is put into a graveyard from the battlefield, put a
 #    +1/+1 counter on this creature."
 name = "Starfield Mystic"
-sets = ["cmm", "dsc", "j25", "m20", "pm20", "soc", "woc"]
 id = "2975590d-6a5b-41e5-8a3b-e9325e71226a"
 default_print = "e8f2fcb4-8d06-49ac-9c70-9c54d77c6d86"
 otags = ["cost-reducer-enchantment", "death-trigger", "gains-pp-counters", "repeatable-pp-counters"]
@@ -24,6 +23,7 @@ toughness = 2
 
 # Enchantment spells you cast cost {1} less to cast.
 [[abilities]]
+oracle = "Enchantment spells you cast cost {1} less to cast."
 timing = "static"
 
 # Enchantment spells you cast cost {1} less to cast.
@@ -36,6 +36,7 @@ filter = "enchantment"
 # Whenever an enchantment you control is put into a graveyard from the battlefield, put a
 # +1/+1 counter on this creature.
 [[abilities]]
+oracle = "Whenever an enchantment you control is put into a graveyard from the battlefield, put a +1/+1 counter on this creature."
 timing = "enchantment_you_control_dies"
 
 # put a +1/+1 counter on this creature.

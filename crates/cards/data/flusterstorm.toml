@@ -2,7 +2,6 @@
 # Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
 # the copies.)
 name = "Flusterstorm"
-sets = ["cmd", "ima", "j12", "mb2", "mh1", "mh3", "plst", "prm", "pz1", "soa", "vma"]
 id = "86bf58f2-7f25-4e10-b797-25e0e8e67769"
 default_print = "f900eeb7-7c45-44bc-ad3a-0bbe594ecf50"
 otags = ["cast-trigger-self", "copy-self", "counterspell-soft", "single-target-instant-sorcery", "storm-like"]
@@ -16,6 +15,7 @@ type = "instant"
 
 # Counter target instant or sorcery spell unless its controller pays {1}.
 [[abilities]]
+oracle = "Counter target instant or sorcery spell unless its controller pays {1}."
 timing = "spell"
 
 # Counter target instant or sorcery spell unless its controller pays {1}.
@@ -28,6 +28,7 @@ filter = "instant_or_sorcery"
 # Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
 # the copies.)
 [[abilities]]
+oracle = "Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)"
 timing = "when_you_cast_this"
 
 # copy it for each spell cast before it this turn. You may choose new targets for the copies.

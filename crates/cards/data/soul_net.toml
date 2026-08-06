@@ -1,7 +1,6 @@
 # Whenever a creature dies, you may pay {1}. If you do, you gain 1 life.
 name = "Soul Net"
 otags = ["death-trigger", "repeatable-lifegain"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "6021c2d6-d098-4de2-9c7e-4c571f9238f6"
 default_print = "0f586dd9-bb47-411d-9652-05de4651b146"
 oracle = "Whenever a creature dies, you may pay {1}. If you do, you gain 1 life."
@@ -14,6 +13,7 @@ type = "artifact"
 
 # Whenever a creature dies, you may pay {1}. If you do, you gain 1 life.
 [[abilities]]
+oracle = "Whenever a creature dies, you may pay {1}. If you do, you gain 1 life."
 timing = "creature_dies"
 optional = true
 

@@ -2,7 +2,6 @@
 # When Bladewing enters, you may return target Dragon permanent card from your graveyard to the battlefield.
 # {B}{R}: Dragon creatures get +1/+1 until end of turn.
 name = "Bladewing the Risen"
-sets = ["c17", "cma", "cmd", "drb", "ima", "pana", "plst", "scg"]
 id = "c22cc70a-9533-4bfc-b3ce-b2d43a73f0c1"
 default_print = "3dc7701c-cbaa-460d-824b-af494993e02e"
 otags = ["activated-ability", "dragon-tribal", "evasion", "reanimate-permanent"]
@@ -24,6 +23,7 @@ toughness = 4
 # When Bladewing enters, you may return target Dragon permanent card from your graveyard to the
 # battlefield.
 [[abilities]]
+oracle = "When Bladewing enters, you may return target Dragon permanent card from your graveyard to the battlefield."
 timing = "etb"
 optional = true
 
@@ -35,6 +35,7 @@ target = { card_in_graveyard = { whose = "yours", filter = { permanent_with_subt
 
 # {B}{R}: Dragon creatures get +1/+1 until end of turn.
 [[abilities]]
+oracle = "{B}{R}: Dragon creatures get +1/+1 until end of turn."
 timing = "activated"
 activation_cost = { black = 1, red = 1 }
 

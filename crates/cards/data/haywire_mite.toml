@@ -4,7 +4,6 @@
 #   "When this creature dies, you gain 2 life.
 #    {G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment."
 name = "Haywire Mite"
-sets = ["blc", "bro", "dsc", "plst", "soc"]
 id = "749d2994-44e7-40d3-8630-7bebed239e9e"
 default_print = "6f813bc3-6d81-4555-8e4b-6ecd9a6757b7"
 otags = ["activated-ability", "death-trigger-self", "disenchant-naturalize", "lifegain", "martyr", "misnomer", "removal-exile", "spot-removal"]
@@ -22,6 +21,7 @@ also = ["artifact"]
 
 # When this creature dies, you gain 2 life.
 [[abilities]]
+oracle = "When this creature dies, you gain 2 life."
 timing = "dies"
 
 # you gain 2 life
@@ -32,6 +32,7 @@ amount = 2
 
 # {G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment.
 [[abilities]]
+oracle = "{G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment."
 timing = "activated"
 sacrifice = "this"
 activation_cost = { green = 1 }

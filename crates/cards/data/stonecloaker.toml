@@ -3,7 +3,6 @@
 # When this creature enters, return a creature you control to its owner's hand.
 # When this creature enters, exile target card from a graveyard.
 name = "Stonecloaker"
-sets = ["c13", "cma", "ddn", "plc", "plst", "td0", "tsr"]
 otags = ["bounce-self", "cycle-plc-rescue-vertical", "evasion", "hate-graveyard", "mana-sink", "repeatable-crime", "rescue-creature", "triggered-ability", "virtual-french-vanilla"]
 subtypes = ["Gargoyle"]
 id = "b2d597f4-162f-4adc-9dc9-6d44815b7a68"
@@ -22,6 +21,7 @@ toughness = 2
 
 # When this creature enters, return a creature you control to its owner's hand.
 [[abilities]]
+oracle = "When this creature enters, return a creature you control to its owner's hand."
 timing = "etb"
 
 # return a creature you control to its owner's hand.
@@ -32,6 +32,7 @@ target = "creature_you_control"
 
 # When this creature enters, exile target card from a graveyard.
 [[abilities]]
+oracle = "When this creature enters, exile target card from a graveyard."
 timing = "etb"
 
 # exile target card from a graveyard.

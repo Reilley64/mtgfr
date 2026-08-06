@@ -1,7 +1,6 @@
 # Each player draws two cards.
 name = "Vision Skeins"
 otags = ["force-draw", "group-hug", "hand-positive", "pure-draw", "symmetrical"]
-sets = ["c13", "cmd", "dis", "e01"]
 id = "6d42dff5-97ec-4768-b112-84a3584d0b87"
 default_print = "92b8cffe-4466-48b0-836e-51ba5db36696"
 oracle = "Each player draws two cards."
@@ -15,6 +14,7 @@ type = "instant"
 
 # Each player draws two cards.
 [[abilities]]
+oracle = "Each player draws two cards."
 timing = "spell"
 
 # Each player draws two cards.

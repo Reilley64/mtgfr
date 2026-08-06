@@ -2,7 +2,6 @@
 # When this creature enters, each player sacrifices a creature of their choice.
 # Whenever a player sacrifices a permanent, put a +1/+1 counter on this creature.
 name = "Merchant of Venom"
-sets = ["soc"]
 id = "3918eaa7-5a34-4d6a-be93-a95e733d041b"
 default_print = "d60cf719-d5ce-46c3-bf92-24682b1c53bd"
 otags = ["evasion", "gains-pp-counters", "marauder", "multi-removal", "removal-creature", "repeatable-pp-counters", "spot-removal", "synergy-sacrifice", "triggered-ability", "unique-type-line"]
@@ -21,6 +20,7 @@ toughness = 1
 
 # When this creature enters, each player sacrifices a creature of their choice.
 [[abilities]]
+oracle = "When this creature enters, each player sacrifices a creature of their choice."
 timing = "etb"
 
 # each player sacrifices a creature of their choice.
@@ -32,6 +32,7 @@ filter = "creature"
 
 # Whenever a player sacrifices a permanent, put a +1/+1 counter on this creature.
 [[abilities]]
+oracle = "Whenever a player sacrifices a permanent, put a +1/+1 counter on this creature."
 timing = "any_player_sacrifices"
 filter = {}
 

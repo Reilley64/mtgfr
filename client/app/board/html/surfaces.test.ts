@@ -25,6 +25,7 @@ import { handMetrics } from "./hand";
 import { boardOverlays } from "./overlays";
 import {
   resolveBoardCardArtMounts,
+  resolveBoardCardFaceMounts,
   resolveBoardOverlayMounts,
   resolveCardNameComboboxMounts,
   resolveLiveBoardMounts,
@@ -171,6 +172,8 @@ function card(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: cost({ generic: 1 }),
     marked_damage: 0,
@@ -335,7 +338,7 @@ test("smoke scene keeps existing chrome visible", () => {
 
   overlayScene(
     model,
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("hand-bar")).toExist(),
     Scene.expect(Scene.testId("board-primary")).toExist(),
     Scene.expect(Scene.testId("board-concede")).toExist(),
@@ -389,14 +392,14 @@ test("turn chrome drives phase and label chrome from data attributes", () => {
   );
 });
 
-test("stack context renders resolve stack affordance and top caption", () => {
+test("stack context renders resolve stack affordance without an untargeted caption", () => {
   const state = gameState({
     stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
   });
   overlayScene(
     overlayModel(initialBoardModel(), state),
     Scene.expect(Scene.testId("board-stack-yield")).toExist(),
-    Scene.expect(Scene.testId("stack-top-caption")).toExist(),
+    Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
 });
 
@@ -611,7 +614,7 @@ test("hand surfaces render cost pips and fade the drag source without an HTML gh
       },
       gameState({ actions: [castAction], objects: [handCard] }),
     ),
-    resolveBoardCardArtMounts(1),
+    resolveBoardCardFaceMounts(1),
     Scene.expect(Scene.testId("hand-cost-pips")).toExist(),
     Scene.expect(Scene.testId("hand-drag-ghost")).not.toExist(),
   );
@@ -698,6 +701,8 @@ test("inspect overlay shows per-commander damage breakdown for a player pin", ()
     owner: 1,
     controller: 1,
     is_commander: true,
+    is_token: false,
+    legendary: false,
     name: "Atraxa, Praetors' Voice",
     zone: ZONE.Battlefield,
     kind: { kind: "creature", power: 4, toughness: 4 },

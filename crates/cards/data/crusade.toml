@@ -1,7 +1,6 @@
 # White creatures get +1/+1.
 name = "Crusade"
 otags = ["anthem", "power-boost-to-all", "single-english-word-name", "symmetrical", "synergy-white", "toughness-boost-to-all"]
-sets = ["2ed", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "ddf", "fbb", "lea", "leb", "me1", "prm", "psus", "sum"]
 id = "4692740f-be90-459f-8d90-c4ae71771595"
 default_print = "4b9933e3-2267-4534-a1c6-c463e767480a"
 oracle = "White creatures get +1/+1."
@@ -14,6 +13,7 @@ type = "enchantment"
 
 # White creatures get +1/+1.
 [[abilities]]
+oracle = "White creatures get +1/+1."
 timing = "static"
 
 # White creatures get +1/+1.

@@ -2,7 +2,6 @@
 # Creatures with swampwalk can be blocked as though they didn't have swampwalk.
 name = "Ur-Drago"
 otags = ["deprecated-legend-type", "hate-landwalk"]
-sets = ["leg"]
 id = "537162d5-a2c2-4ad4-9fae-d2ec7a269dcc"
 default_print = "81a40f34-fc26-4d05-9c52-6ffbf1766a3b"
 oracle = "First strike\nCreatures with swampwalk can be blocked as though they didn't have swampwalk."
@@ -22,6 +21,7 @@ toughness = 4
 
 # Creatures with swampwalk can be blocked as though they didn't have swampwalk.
 [[abilities]]
+oracle = "Creatures with swampwalk can be blocked as though they didn't have swampwalk."
 timing = "static"
 
 # Creatures with swampwalk can be blocked as though they didn't have swampwalk.

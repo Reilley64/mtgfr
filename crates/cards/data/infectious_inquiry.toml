@@ -1,6 +1,5 @@
 # You draw two cards and you lose 2 life. Each opponent gets a poison counter.
 name = "Infectious Inquiry"
-sets = ["one"]
 id = "66051196-53ea-4461-b241-205df9395b3b"
 default_print = "0a10f284-b043-4307-bdc7-6dad47cc9221"
 otags = ["alliteration", "hand-positive", "life-for-cards", "poison-opponents", "pure-draw"]
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # You draw two cards and you lose 2 life. Each opponent gets a poison counter.
 [[abilities]]
+oracle = "You draw two cards and you lose 2 life. Each opponent gets a poison counter."
 timing = "spell"
 
 # You draw two cards

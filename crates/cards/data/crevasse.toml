@@ -1,7 +1,6 @@
 # Creatures with mountainwalk can be blocked as though they didn't have mountainwalk.
 name = "Crevasse"
 otags = ["cycle-leg-anti-landwalk-enchant", "hate-landwalk", "single-english-word-name"]
-sets = ["leg"]
 id = "6d03297b-fa54-438e-99c8-37f92163aeff"
 default_print = "a432d6ae-a17f-484b-ad55-4b4b6674ba8d"
 oracle = "Creatures with mountainwalk can be blocked as though they didn't have mountainwalk."
@@ -15,6 +14,7 @@ type = "enchantment"
 
 # Creatures with mountainwalk can be blocked as though they didn't have mountainwalk.
 [[abilities]]
+oracle = "Creatures with mountainwalk can be blocked as though they didn't have mountainwalk."
 timing = "static"
 
 # Creatures with mountainwalk can be blocked as though they didn't have mountainwalk.

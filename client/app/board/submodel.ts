@@ -20,6 +20,7 @@ import { mulliganChrome } from "~/mulligan";
 import { outcome } from "~/outcome";
 import type {
   ActionView,
+  CardTextView,
   CatalogCard,
   ObjectView,
   VisibleState,
@@ -31,6 +32,7 @@ import type {
   WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
+import type { FaceData } from "../domain/card-render/frame";
 import { formatMessage } from "../domain/i18n/message";
 import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../domain/inspect";
 import { humanReason } from "../domain/reject";
@@ -121,7 +123,16 @@ import {
   primaryActionFor,
   resolveClick,
 } from "./geometry/interaction";
-import { avatarPos, CARD_H, CARD_W, landRowCenter, layout, type RenderCard, seatSlot, ZONE } from "./geometry/layout";
+import {
+  avatarPos,
+  FLIGHT_CARD_H,
+  FLIGHT_CARD_W,
+  landRowCenter,
+  layout,
+  type RenderCard,
+  seatSlot,
+  ZONE,
+} from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
@@ -190,6 +201,7 @@ export type HandDragState = {
   action: ActionView;
   name: string;
   print: string;
+  face?: FaceData;
   manaCost: WireCost;
   kind?: string;
   zone?: "hand" | "command" | "graveyard" | "exile";
@@ -259,6 +271,9 @@ export type BoardModel = {
   inspectPin: InspectPin | null;
   /** Catalog data for the current inspect pin. `undefined` = fetch in-flight; `null` = not found. */
   inspectCard: CatalogCard | null | undefined;
+  /** Printed words for the faces the bar draws, by `(card id, print)`. The snapshot carries the viewer's
+   *  whole deck once per connection, so there is nothing to fetch per card. */
+  cardText: ReadonlyMap<string, CardTextView>;
   /** Which face of a DFC to show in the inspect overlay. */
   inspectFace: "front" | "back";
   /** Hand-bar card under the pointer (DOM overlay above the canvas). */
@@ -365,6 +380,7 @@ export function initialBoardModel(): BoardModel {
     shiftDown: false,
     inspectPin: null,
     inspectCard: undefined,
+    cardText: new Map(),
     inspectFace: "front",
     handInspectHover: null,
     stackInspectHover: null,
@@ -2059,7 +2075,7 @@ function handActivated(
   if (playPlan.kind === "ignore") return [model, []];
   const withHint = hideHintOnHandUse(model);
   const world = screenToWorld(withHint.camera, x, y);
-  const dropSeed: Vec = { x: world.x - CARD_W / 2, y: world.y - CARD_H / 2 };
+  const dropSeed: Vec = { x: world.x - FLIGHT_CARD_W / 2, y: world.y - FLIGHT_CARD_H / 2 };
   const screenOrigin: Vec = { x, y };
   if (playPlan.kind === "choose") {
     const firstMode = playPlan.modes[0];
@@ -2553,6 +2569,7 @@ export function updateBoard(
             action: message.action,
             name: message.name,
             print: message.print,
+            face: message.face as FaceData | undefined,
             manaCost: message.manaCost,
             kind: message.kind,
             zone: message.zone,

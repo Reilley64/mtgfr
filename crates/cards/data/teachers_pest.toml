@@ -6,7 +6,6 @@
 #    Whenever this creature attacks, you gain 1 life.
 #    {B}{G}: Return this card from your graveyard to the battlefield tapped."
 name = "Teacher's Pest"
-sets = ["sos"]
 id = "12397dbf-99a9-40c3-aa7c-76d09baad008"
 default_print = "eaa358ac-761d-4507-aa15-3d4684027207"
 otags = ["activate-from-graveyard", "attack-trigger", "attacking-matters-self", "evasion", "punny-name", "reanimate-self", "repeatable-lifegain", "unique-type-line"]
@@ -27,6 +26,7 @@ toughness = 1
 
 # Whenever this creature attacks, you gain 1 life.
 [[abilities]]
+oracle = "Whenever this creature attacks, you gain 1 life."
 timing = "attacks"
 
 # you gain 1 life.
@@ -37,6 +37,7 @@ amount = 1
 
 # {B}{G}: Return this card from your graveyard to the battlefield tapped.
 [[abilities]]
+oracle = "{B}{G}: Return this card from your graveyard to the battlefield tapped."
 timing = "activated"
 
 [abilities.activation_cost]

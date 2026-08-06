@@ -2,6 +2,8 @@ import { Effect, type Queue as EffectQueue, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
 import { colors } from "~/design-tokens.generated";
 import type { ActionView, PlayerView, StackObjectView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
+import { loadCardFonts } from "../../domain/card-render/assets";
+import { sharedFaceCache } from "../../domain/card-render/cache";
 import { cardBackUrl, imageUrlByPrint } from "../../domain/deck-builder/scryfall";
 import { gravatarUrl, monogramLetter } from "../../domain/gravatar";
 import { type ImageCache, sharedImageCache } from "../../domain/image-cache";
@@ -20,6 +22,7 @@ import { type CardFlight, stepFlights } from "../motion/flights";
 import type { DragGhost } from "../motion/screen-motion";
 import { mergeExitFxPoses, mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
 import {
+  type FaceSource,
   paintAutoTapPreview,
   paintCard,
   paintCardAssignAmount,
@@ -307,7 +310,12 @@ function prepareLayerCtx(canvas: HTMLCanvasElement, frame: BitmapFrame): CanvasR
 }
 
 /** Layer 3 + 4: resting permanents with card chrome, then avatars and arrows on top. No flights. */
-export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, cache: Pick<ImageCache, "get">): void {
+export function paintBitmapLayer(
+  canvas: HTMLCanvasElement,
+  frame: BitmapFrame,
+  cache: Pick<ImageCache, "get">,
+  faces?: FaceSource,
+): void {
   const ctx = prepareLayerCtx(canvas, frame);
   if (ctx == null) return;
 
@@ -322,7 +330,7 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
   for (const card of frame.cards) {
     if (frame.hideCardIds.has(card.id)) continue;
     const outline = playableObjects.has(card.id) ? { color: PLAYABLE_BORDER, dash: [] } : null;
-    paintCard(ctx, frame.camera, card, cache, frame.viewer, { outline });
+    paintCard(ctx, frame.camera, card, cache, frame.viewer, { outline, faces });
     if (frame.paymentPreviewIds.has(card.id)) {
       paintAutoTapPreview(ctx, frame.camera, card, frame.viewer);
     }
@@ -347,7 +355,12 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
 }
 
 /** Layer 6: screen motion (drag ghost + flights + ExitFx), above hand/stack HTML. */
-export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, cache: Pick<ImageCache, "get">): void {
+export function paintFlightLayer(
+  canvas: HTMLCanvasElement,
+  frame: BitmapFrame,
+  cache: Pick<ImageCache, "get">,
+  faces?: FaceSource,
+): void {
   const ctx = prepareLayerCtx(canvas, frame);
   if (ctx == null) return;
 
@@ -393,17 +406,24 @@ export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
     exitFx: frame.exitFx ?? [],
     zoom: frame.camera.zoom,
     cache,
+    faces,
   });
 }
 
+// The card typefaces land after the first frames are already on screen, and a drawn face keeps
+// whatever typeface drew it — so redraw them all once the real fonts are in the document.
+void loadCardFonts().then(() => {
+  sharedFaceCache.clear();
+});
+
 function renderBoardLayer(canvas: HTMLCanvasElement): void {
   if (currentFrame == null) return;
-  paintBitmapLayer(canvas, currentFrame, sharedImageCache);
+  paintBitmapLayer(canvas, currentFrame, sharedImageCache, sharedFaceCache);
 }
 
 function renderFlightLayer(canvas: HTMLCanvasElement): void {
   if (currentFrame == null) return;
-  paintFlightLayer(canvas, currentFrame, sharedImageCache);
+  paintFlightLayer(canvas, currentFrame, sharedImageCache, sharedFaceCache);
 }
 
 function registerLayer(
@@ -415,11 +435,19 @@ function registerLayer(
   if (!(element instanceof HTMLCanvasElement)) return null;
 
   let handle: BitmapMountHandle | null = null;
-  const unsubscribe = sharedImageCache.subscribe(() => {
+  const unsubscribeArt = sharedImageCache.subscribe(() => {
     Queue.offerUnsafe(queue, ArtLoaded());
     if (handle != null) render(handle.canvas);
     handle?.kickRaf();
   });
+  const unsubscribeFaces = sharedFaceCache.subscribe(() => {
+    if (handle != null) render(handle.canvas);
+    handle?.kickRaf();
+  });
+  const unsubscribe = (): void => {
+    unsubscribeArt();
+    unsubscribeFaces();
+  };
   const frame = (now: number): void => {
     if (handle == null || currentFrame == null) return;
     handle.rafId = 0;

@@ -8,6 +8,7 @@ import {
   raiseResultDialog,
   syncBoardWithGame,
 } from "../board/submodel";
+import { cardTextKey } from "../domain/cardText";
 import { type Message as AppMessage, GotBoardMessage, GotGameMessage } from "../messages";
 import type { GameSlice } from "../model";
 import type { RpcClient } from "../resources";
@@ -68,11 +69,21 @@ export function updateGame(
   switch (message._tag) {
     case "ReceivedSnapshot": {
       const [next, commands] = mergeGameFold(game, applySnapshotPure(game, message.seq, message.state));
-      return [next, mapBoardCommands(commands)];
+      // The snapshot carries the whole book of the viewer's own deck, so it replaces rather than
+      // merges: reconnecting into another seat must not keep the previous seat's words.
+      const cardText = new Map(message.card_text.map((text) => [cardTextKey(text.card_id, text.print), text]));
+      return [{ ...next, board: { ...next.board, cardText } }, mapBoardCommands(commands)];
     }
     case "ReceivedDelta": {
       const [next, commands] = mergeGameFold(game, applyDeltaPure(game, deltaEnvelope(message)));
-      return [next, mapBoardCommands(commands)];
+      // A delta carries only the cards this frame newly showed the viewer, so it adds to the book
+      // the snapshot opened with rather than replacing it — an opponent's spell resolving off the
+      // stack must not take its own words with it while the card is still in a graveyard.
+      const arriving = message.card_text ?? [];
+      if (arriving.length === 0) return [next, mapBoardCommands(commands)];
+      const cardText = new Map(next.board.cardText);
+      for (const text of arriving) cardText.set(cardTextKey(text.card_id, text.print), text);
+      return [{ ...next, board: { ...next.board, cardText } }, mapBoardCommands(commands)];
     }
     case "StreamStatus":
       return [{ ...game, connected: message.connected }, []];

@@ -244,8 +244,8 @@ pub enum WireKind {
     },
 }
 
-/// A mana cost for the client: generic plus per-color pips (WUBRG).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// A mana cost for the client: generic plus per-color pips (WUBRG), hybrid and Phyrexian pips.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireCost {
     pub generic: u8,
     /// Colored pips indexed WUBRG (see `engine::Color::index`).
@@ -258,6 +258,31 @@ pub struct WireCost {
     /// Number of `{X}` symbols (`engine::Cost.x`).
     #[serde(default)]
     pub x_symbols: u8,
+    /// Hybrid pips (CR 107.4e — `{a/b}`), counted per unordered color pair in `engine::COLOR_PAIRS`
+    /// order. Ordering within the printed cost is lost, the same way `colored` loses it.
+    #[serde(default)]
+    pub hybrid: [u8; engine::COLOR_PAIRS.len()],
+    /// Phyrexian pips (CR 107.4f — `{a/P}`), counted per color indexed WUBRG.
+    #[serde(default)]
+    pub phyrexian: [u8; 5],
+}
+
+/// The printed words of one card in the viewer's deck: the type line, rules text and flavor a
+/// rendered face draws. The game state carries what the engine needs, not what the card prints, so
+/// these ride the opening snapshot ([`crate::snapshot::StreamFrame::Snapshot`]) — the client never
+/// asks a card API per card.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CardTextView {
+    /// Card id (Scryfall oracle id) — [`ObjectView::card_id`].
+    pub card_id: String,
+    /// Printing UUID whose flavor this record carries — [`ObjectView::print`].
+    pub print: String,
+    /// The printed type line ("Legendary Creature — Phyrexian Angel Horror").
+    pub type_line: String,
+    /// Printed (oracle) rules text; empty for a vanilla.
+    pub oracle: String,
+    /// The flavor of the printing THIS deck plays; empty when that printing prints none.
+    pub flavor: String,
 }
 
 /// One object the viewer may see, with its render-relevant state.
@@ -300,6 +325,24 @@ pub struct ObjectView {
     pub plus_counters: i32,
     pub marked_damage: i32,
     pub is_commander: bool,
+    /// Whether this object is a token (CR 111). The board draws a token with an arched top and
+    /// no title bar, the way Arena does.
+    ///
+    /// ponytail: reported even when the permanent is face down, unlike `legendary`. Nothing in the
+    /// engine can mint a face-down token today, so nothing leaks. Gate this on `face_down` the way
+    /// `legendary` is if an effect ever turns a token face down — a face-down permanent's back
+    /// looks the same whether or not it's a token.
+    #[serde(default)]
+    pub is_token: bool,
+    /// Whether the printed card is legendary — the frame renderer draws the legend crown.
+    #[serde(default)]
+    pub legendary: bool,
+    /// This object's colors (CR 105.2) as WUBRG indices (`engine::Color::index`) — the card frame
+    /// the client draws it in. Empty is colorless. Not color identity: devoid, hybrid pips, a
+    /// token's stated color, and color-setting effects all land here, and this is what the frame
+    /// shows.
+    #[serde(default)]
+    pub colors: Vec<u8>,
     /// Whether this creature is currently goaded (CR 701.38) — one-shot or continuous-from-Aura.
     #[serde(default)]
     pub goaded: bool,
@@ -376,6 +419,28 @@ pub struct StackObjectView {
     /// Source card display name for art alt / inspect. Empty when anonymized.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub name: String,
+    /// The one printed sentence this ability prints, for the text box of its stack face — an
+    /// ability on the stack is not its whole source card. Empty for a spell (which shows its
+    /// card's own text) and for an ability whose sentence isn't recorded, which shows `label`.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub ability_oracle: String,
+    /// Last-known renderer characteristics of the source. Stack abilities outlive sacrificed
+    /// sources, so their faces cannot join these facts from [`VisibleState::objects`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_face: Option<StackSourceFaceView>,
+}
+
+/// Last-known characteristics needed to choose and decorate a stack source's rendered frame.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StackSourceFaceView {
+    pub kind: WireKind,
+    /// Source colors as WUBRG indices, for the authoritative frame color.
+    #[serde(default)]
+    pub colors: Vec<u8>,
+    #[serde(default)]
+    pub is_token: bool,
+    #[serde(default)]
+    pub legendary: bool,
 }
 
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign
@@ -1557,8 +1622,7 @@ mod tests {
                 cost: WireCost {
                     generic: 1,
                     colored: [0, 0, 1, 0, 0],
-                    has_x: false,
-                    x_symbols: 0,
+                    ..Default::default()
                 },
                 label: msg("effect.draw_cards"),
                 can_pay: true,
@@ -1568,7 +1632,10 @@ mod tests {
             .unwrap(),
             serde_json::json!({
                 "kind": "pay_cost", "player": 3, "source": 7,
-                "cost": {"generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false, "x_symbols": 0},
+                "cost": {
+                    "generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false, "x_symbols": 0,
+                    "hybrid": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "phyrexian": [0, 0, 0, 0, 0],
+                },
                 "label": {"key": "effect.draw_cards", "params": [], "children": []},
                 "can_pay": true,
                 "discard_count": 0,

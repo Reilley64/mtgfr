@@ -3,7 +3,6 @@
 # Enchanted land is the chosen type.
 name = "Phantasmal Terrain"
 otags = ["land-conversion"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "inv", "lea", "leb", "me4", "sum"]
 id = "7dcbce46-2973-4a9f-93df-95ac41ce668a"
 default_print = "c521f86e-f1bb-4e63-ab12-5ecebba2701b"
 oracle = "Enchant land\nAs this Aura enters, choose a basic land type.\nEnchanted land is the chosen type."
@@ -18,6 +17,7 @@ type = "aura"
 
 # As this Aura enters, choose a basic land type.
 [[abilities]]
+oracle = "As this Aura enters, choose a basic land type."
 timing = "as_enters"
 
 # choose a basic land type.
@@ -27,6 +27,7 @@ mode = "choose_basic_land_type"
 
 # Enchanted land is the chosen type.
 [[abilities]]
+oracle = "Enchanted land is the chosen type."
 timing = "static"
 
 # Enchanted land is the chosen type.

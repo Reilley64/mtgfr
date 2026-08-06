@@ -8,6 +8,10 @@ export function pipChip<Msg>(
   h: HtmlBuilder<Msg>,
   opts: { ms: string; code: string; sizePx: number; extraClass?: string; testId?: string },
 ): Html {
+  // A hybrid pip prints half of each colour with both glyphs in the one disk (CR 107.4e), and a
+  // Phyrexian pip its colour with the Phyrexian glyph (CR 107.4f). mana-font's own `.ms-cost`
+  // already draws and positions both, so hand it the disk rather than reproducing the split here.
+  const split = opts.code.includes("/");
   return h.span(
     [
       h.Class(
@@ -22,10 +26,10 @@ export function pipChip<Msg>(
       h.Style({
         "--sz": `${opts.sizePx}px`,
         "--fsz": `${Math.round(opts.sizePx * 0.82)}px`,
-        "--plate": costPipPlate(opts.code),
+        "--plate": split ? "transparent" : costPipPlate(opts.code),
       }),
       ...(opts.testId != null ? [h.DataAttribute("testid", opts.testId)] : []),
     ],
-    [h.i([h.Class(`ms ms-${opts.ms}`)], [])],
+    [h.i([h.Class(`ms ms-${opts.ms}${split ? " ms-cost" : ""}`)], [])],
   );
 }

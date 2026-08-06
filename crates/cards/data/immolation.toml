@@ -2,7 +2,6 @@
 # Enchanted creature gets +2/-2.
 name = "Immolation"
 otags = ["flowstone", "removal-toughness", "single-english-word-name", "spot-removal", "vanilla-aura"]
-sets = ["4bb", "4ed", "dbl", "leg", "me3", "mid", "ren"]
 id = "9f40ad89-3767-4837-a078-f2dcfaf368df"
 default_print = "606b1148-4aa6-4d78-bedd-e31573282921"
 oracle = "Enchant creature\nEnchanted creature gets +2/-2."
@@ -16,6 +15,7 @@ type = "aura"
 
 # Enchanted creature gets +2/-2.
 [[abilities]]
+oracle = "Enchanted creature gets +2/-2."
 timing = "static"
 
 # Enchanted creature gets +2/-2.

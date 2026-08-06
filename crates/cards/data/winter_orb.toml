@@ -2,7 +2,6 @@
 # untap steps.
 name = "Winter Orb"
 otags = ["deprecated-untapped-artifact", "mass-land-denial", "stasis", "symmetrical", "untapped-matters-self"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "ema", "fbb", "lea", "leb", "me1", "prm", "ptc", "sld", "sum", "wc97"]
 id = "1dcbd583-3388-4b34-a7cd-131648aa6abd"
 default_print = "ee9eb598-d2ef-4b3d-8038-bc33dc5e123e"
 oracle = "As long as this artifact is untapped, players can't untap more than one land during their untap steps."
@@ -16,6 +15,7 @@ type = "artifact"
 # As long as this artifact is untapped, players can't untap more than one land during their
 # untap steps.
 [[abilities]]
+oracle = "As long as this artifact is untapped, players can't untap more than one land during their untap steps."
 timing = "static"
 condition = { type = "source_untapped" }
 

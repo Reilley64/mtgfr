@@ -1,7 +1,6 @@
 # Target player discards X cards at random.
 name = "Mind Twist"
 otags = ["discard", "random-discard", "single-target-instant-sorcery"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "mb2", "me3", "mp2", "prm", "sum"]
 id = "78f9c223-9982-4282-a496-a6f892f0a5bf"
 default_print = "f3d7381b-9075-4c9b-adf5-a0d1c26fab67"
 oracle = "Target player discards X cards at random."
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # Target player discards X cards at random.
 [[abilities]]
+oracle = "Target player discards X cards at random."
 timing = "spell"
 
 # Target player discards X cards at random.

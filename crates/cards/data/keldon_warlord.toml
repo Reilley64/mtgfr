@@ -2,7 +2,6 @@
 # control.
 name = "Keldon Warlord"
 otags = ["cda-power", "cda-toughness", "typal-non-wall", "type-errata-lord", "warlord"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me1", "sum"]
 id = "acc869f8-dcbe-4d57-baa0-3eef4aceb251"
 default_print = "f2d0bc79-d2f8-43e7-9106-c0d01db31fa2"
 oracle = "Keldon Warlord's power and toughness are each equal to the number of non-Wall creatures you control."
@@ -21,6 +20,7 @@ toughness = 0
 # Keldon Warlord's power and toughness are each equal to the number of non-Wall creatures you
 # control.
 [[abilities]]
+oracle = "Keldon Warlord's power and toughness are each equal to the number of non-Wall creatures you control."
 timing = "static"
 
 # power and toughness are each equal to the number of non-Wall creatures you control

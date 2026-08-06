@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import { worldToScreen } from "./camera";
 import {
   attackablePlaneswalker,
@@ -17,7 +18,7 @@ import {
   resolveClick,
   TOP_MARGIN,
 } from "./interaction";
-import { AVATAR_LABEL_BELOW, avatarPos, boardBounds, CARD_H, type RenderCard, ZONE } from "./layout";
+import { AVATAR_LABEL_BELOW, avatarPos, boardBounds, CARD_H, CARD_W, type RenderCard, ZONE } from "./layout";
 
 const MAIN_1 = 3;
 
@@ -46,6 +47,7 @@ function card(over: Partial<RenderCard> = {}): RenderCard {
     hasHaste: false,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: 0,
@@ -272,10 +274,13 @@ describe("fitCamera", () => {
   });
 
   // Commander is 4 seats — this is the viewport we dogfood. Cards must stay readable vs the hand.
-  it("keeps 4-player battlefield cards readable at 1440×900 with the live hand bar", () => {
+  it("keeps 4-player battlefield tiles readable at 1440×900 with the live hand bar", () => {
     const cam = fitCamera({ x: 1440, y: 900 }, 4, 128);
     // Commander is the format — 4 seats must stay readable while preserving the avatar label gutter.
-    expect(CARD_H * cam.zoom).toBeGreaterThanOrEqual(80);
+    // The square tile trades card height for width: it lands ~72px on a side, where the old 96x134
+    // card was only 57px wide. Art plus a name slot reads at 70 on a side; below that it does not.
+    expect(CARD_W * cam.zoom).toBeGreaterThanOrEqual(70);
+    expect(CARD_H * cam.zoom).toBeGreaterThanOrEqual(70);
   });
 });
 
@@ -352,6 +357,8 @@ describe("resolveClick", () => {
     has_haste: false,
     id: 50,
     is_commander: true,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { generic: 1, colored: [1, 0, 0, 0, 0] },
     marked_damage: 0,

@@ -2,7 +2,6 @@
 # during combat.
 name = "Jade Statue"
 otags = ["activated-ability", "animate-self", "type-addition-from-none"]
-sets = ["2ed", "30a", "9ed", "ced", "cei", "lea", "leb"]
 id = "96162b22-41e7-4559-aa1b-c18f42abcb52"
 default_print = "a5354edc-03d7-4176-a211-174374a9d912"
 oracle = "{2}: This artifact becomes a 3/6 Golem artifact creature until end of combat. Activate only during combat."
@@ -16,6 +15,7 @@ type = "artifact"
 # {2}: This artifact becomes a 3/6 Golem artifact creature until end of combat. Activate only
 # during combat.
 [[abilities]]
+oracle = "{2}: This artifact becomes a 3/6 Golem artifact creature until end of combat. Activate only during combat."
 timing = "activated"
 
 [abilities.activation_cost]

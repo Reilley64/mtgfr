@@ -1,7 +1,6 @@
 # Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack.
 name = "Akron Legionnaire"
 otags = ["drawback", "synergy-artifact-creature", "type-errata"]
-sets = ["5ed", "bchr", "chr", "leg", "me3"]
 id = "c5f50a78-9dc4-4f3c-aa11-b41c8278bc16"
 default_print = "b3e10240-8a4f-410f-a9b2-5df89d7038df"
 oracle = "Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack."
@@ -18,6 +17,7 @@ toughness = 4
 
 # Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack.
 [[abilities]]
+oracle = "Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack."
 timing = "static"
 
 # Except for creatures named Akron Legionnaire and artifact creatures, creatures you control can't attack. (The

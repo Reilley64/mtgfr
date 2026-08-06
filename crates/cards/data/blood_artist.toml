@@ -1,6 +1,5 @@
 # Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.
 name = "Blood Artist"
-sets = ["2x2", "avr", "c17", "dsc", "ema", "inr", "j22", "jmp", "lcc", "plst", "prm", "sld", "soc", "voc"]
 id = "310f141c-7f37-4729-aed6-dd9c09db448d"
 default_print = "b5275d76-2947-4219-be21-614c7421614a"
 otags = ["inscryption-achievement", "opponent-loses-life", "repeatable-crime", "blood-artist-ability"]
@@ -21,6 +20,7 @@ toughness = 1
 
 # Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.
 [[abilities]]
+oracle = "Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life."
 timing = "creature_dies_including_this"
 
 # target player loses 1 life and you gain 1 life

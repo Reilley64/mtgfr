@@ -4,7 +4,6 @@
 # {X}{X}, {T}: This artifact deals damage equal to the number of pin counters on it to any
 # target. X is the number of pin counters on this artifact.
 name = "Voodoo Doll"
-sets = ["bchr", "chr", "leg", "me3"]
 id = "4d330c40-3d72-4528-a254-d036683958d3"
 default_print = "c60ea64d-0209-4ca4-bee6-f9eb63784c9e"
 oracle = "At the beginning of your upkeep, put a pin counter on this artifact.\nAt the beginning of your end step, if this artifact is untapped, destroy this artifact and it deals damage to you equal to the number of pin counters on it.\n{X}{X}, {T}: This artifact deals damage equal to the number of pin counters on it to any target. X is the number of pin counters on this artifact."
@@ -17,6 +16,7 @@ type = "artifact"
 
 # At the beginning of your upkeep, put a pin counter on this artifact.
 [[abilities]]
+oracle = "At the beginning of your upkeep, put a pin counter on this artifact."
 timing = "upkeep"
 
 # put a pin counter on this artifact
@@ -30,6 +30,7 @@ kind = "pin"
 # At the beginning of your end step, if this artifact is untapped, destroy this artifact and it
 # deals damage to you equal to the number of pin counters on it.
 [[abilities]]
+oracle = "At the beginning of your end step, if this artifact is untapped, destroy this artifact and it deals damage to you equal to the number of pin counters on it."
 timing = "end_step"
 condition = { type = "source_untapped" }
 
@@ -53,6 +54,7 @@ target = "this"
 # {X}{X}, {T}: This artifact deals damage equal to the number of pin counters on it to any
 # target. X is the number of pin counters on this artifact.
 [[abilities]]
+oracle = "{X}{X}, {T}: This artifact deals damage equal to the number of pin counters on it to any target. X is the number of pin counters on this artifact."
 timing = "activated"
 taps_self = true
 activation_cost = { x = 2, x_defined = { per_counter_of_kind = "pin" } }

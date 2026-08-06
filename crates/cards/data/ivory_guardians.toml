@@ -2,7 +2,6 @@
 # Creatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent.
 name = "Ivory Guardians"
 otags = ["creature-type-guardian", "evasion", "hate-red", "quadratic", "scales-with-multiple", "type-errata", "weaker-in-singleton-formats"]
-sets = ["5ed", "bchr", "chr", "leg", "me3"]
 id = "78171447-1bc8-4588-b427-5b82701324c5"
 default_print = "e8142471-0ded-410b-bdd5-ac241735b0ce"
 oracle = "Protection from red\nCreatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent."
@@ -20,6 +19,7 @@ toughness = 3
 
 # Creatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent.
 [[abilities]]
+oracle = "Creatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent."
 timing = "static"
 
 # Creatures named Ivory Guardians get +1/+1 as long as an opponent controls a nontoken red permanent.

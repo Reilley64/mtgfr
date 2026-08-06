@@ -1527,6 +1527,17 @@ impl Game {
         }
     }
 
+    /// Whether this object is a token (CR 111) rather than a card. A token on the battlefield
+    /// carries the flag; anywhere else — a token that has left the battlefield ceases to exist —
+    /// the answer is `false`.
+    pub fn is_token(&self, id: ObjectId) -> bool {
+        match &self.objects[id as usize] {
+            Object::Permanent(p) => p.token,
+            Object::Moved { to } => self.is_token(*to),
+            _ => false,
+        }
+    }
+
     /// Whether `player` controls a commander on the battlefield right now (CR 903, "you control a
     /// commander" — Nexus Mentality's modal rider). A commander sitting anywhere else (command
     /// zone, hand, graveyard) doesn't count: control is a battlefield-only relationship, so this

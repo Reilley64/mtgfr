@@ -2,7 +2,6 @@
 # that spell's mana value.
 name = "Mana Drain"
 otags = ["adds-multiple-mana", "aikido", "counterspell", "delayed-trigger", "hate-high-mv", "interrupt", "ritual", "scales-with-mana-value", "single-target-instant-sorcery"]
-sets = ["2x2", "cmr", "ima", "j16", "leg", "me3", "otp", "prm", "vma"]
 id = "74d3277a-38e5-4732-afed-084a56148f20"
 default_print = "3c429c40-2389-41e5-8681-4bb274e25eba"
 oracle = "Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to that spell's mana value."
@@ -17,6 +16,7 @@ type = "instant"
 # Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to
 # that spell's mana value.
 [[abilities]]
+oracle = "Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to that spell's mana value."
 timing = "spell"
 
 # Counter target spell.

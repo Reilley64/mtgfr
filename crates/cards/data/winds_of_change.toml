@@ -1,7 +1,6 @@
 # Each player shuffles the cards from their hand into their library, then draws that many cards.
 name = "Winds of Change"
 otags = ["ditch-hand", "force-draw", "wheel-symmetrical", "whirlpool"]
-sets = ["4bb", "4ed", "5ed", "leg", "mar", "mb2", "me1", "omb", "por", "ren", "sld"]
 id = "f525cf10-e24c-4c46-9a13-6f8579d09d50"
 default_print = "186fd917-8d65-4de5-8546-a32a5f6d3bab"
 oracle = "Each player shuffles the cards from their hand into their library, then draws that many cards."
@@ -14,6 +13,7 @@ type = "sorcery"
 
 # Each player shuffles the cards from their hand into their library, then draws that many cards.
 [[abilities]]
+oracle = "Each player shuffles the cards from their hand into their library, then draws that many cards."
 timing = "spell"
 
 # Each player shuffles the cards from their hand into their library, then draws that many cards.

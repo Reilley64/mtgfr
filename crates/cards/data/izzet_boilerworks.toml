@@ -3,7 +3,6 @@
 # {T}: Add {U}{R}.
 name = "Izzet Boilerworks"
 otags = ["activated-ability", "cycle-rav-bounceland", "drawback", "triggered-ability"]
-sets = ["2x2", "brc", "c13", "c15", "c16", "c17", "c18", "c19", "c20", "c21", "clb", "clu", "cmd", "ddj", "gk1", "gpt", "ima", "m3c", "mm2", "otc", "plst", "prm"]
 id = "1cb9d94a-3039-4f2e-8fcc-6996f9a45f74"
 default_print = "7bf5f498-4292-42ff-a10b-251eb86583ac"
 oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {U}{R}."
@@ -14,6 +13,7 @@ type = "land"
 
 # When this land enters, return a land you control to its owner's hand.
 [[abilities]]
+oracle = "When this land enters, return a land you control to its owner's hand."
 timing = "etb"
 
 # return a land you control to its owner's hand.
@@ -24,6 +24,7 @@ target = { permanent = { types = "land", controller = "you" } }
 
 # {T}: Add {U}{R}.
 [[abilities]]
+oracle = "{T}: Add {U}{R}."
 timing = "activated"
 taps_self = true
 

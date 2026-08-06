@@ -2,7 +2,6 @@
 # it gain protection from the chosen color until end of turn.
 name = "Bathe in Light"
 otags = ["combat-trick", "gives-protection", "hate-color-choose", "protects-all", "protects-creature", "single-target-instant-sorcery", "synergy-color-share"]
-sets = ["cma", "cmd", "rav"]
 id = "8e862a8e-7954-43ad-9bc0-09ce7b9859f0"
 default_print = "d1d6dc01-278e-44cc-a488-7e3c2f2e0861"
 oracle = "Radiance — Choose a color. Target creature and each other creature that shares a color with it gain protection from the chosen color until end of turn."
@@ -17,6 +16,7 @@ type = "instant"
 # Radiance — Choose a color. Target creature and each other creature that shares a color with
 # it gain protection from the chosen color until end of turn.
 [[abilities]]
+oracle = "Radiance — Choose a color. Target creature and each other creature that shares a color with it gain protection from the chosen color until end of turn."
 timing = "spell"
 
 # Choose a color.

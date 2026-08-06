@@ -1,7 +1,6 @@
 # Defender (This creature can't attack.)
 name = "Wall of Ice"
 otags = ["drawback", "french-vanilla"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "1945e165-7636-4727-89ba-3811251ef175"
 default_print = "d79867a0-c525-4e91-8942-c61b41f9150c"
 oracle = "Defender (This creature can't attack.)"

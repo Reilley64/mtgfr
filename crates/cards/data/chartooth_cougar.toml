@@ -2,7 +2,6 @@
 # Mountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your
 # hand, then shuffle.)
 name = "Chartooth Cougar"
-sets = ["a25", "cmd", "cns", "dd2", "ddi", "jvc", "plst", "scg", "td0", "vma"]
 otags = ["activate-from-hand", "alliteration", "bottomless-mana-sink", "cheaper-than-mv", "cycle-scg-5m-landcycler", "firebreathing", "tutor-land-mountain", "tutor-to-hand"]
 oracle = "{R}: This creature gets +1/+0 until end of turn.\nMountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.)"
 subtypes = ["Cat", "Beast"]
@@ -20,6 +19,7 @@ toughness = 4
 
 # {R}: This creature gets +1/+0 until end of turn.
 [[abilities]]
+oracle = "{R}: This creature gets +1/+0 until end of turn."
 timing = "activated"
 activation_cost = { red = 1 }
 

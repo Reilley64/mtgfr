@@ -1,6 +1,5 @@
 # Whenever another creature dies, you may have this creature deal 1 damage to target player or planeswalker.
 name = "Hissing Iguanar"
-sets = ["2x2", "ala", "pc2", "pca", "td0", "uma"]
 otags = ["burn-planeswalker", "burn-player", "death-trigger", "pinger", "repeatable-crime", "repeatable-removal"]
 oracle = "Whenever another creature dies, you may have this creature deal 1 damage to target player or planeswalker."
 subtypes = ["Lizard"]
@@ -19,6 +18,7 @@ toughness = 1
 # Whenever another creature dies, you may have this creature deal 1 damage to target player or
 # planeswalker.
 [[abilities]]
+oracle = "Whenever another creature dies, you may have this creature deal 1 damage to target player or planeswalker."
 timing = "creature_dies"
 optional = true
 

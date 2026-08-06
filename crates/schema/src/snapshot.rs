@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::{wire_cost, wire_kind};
 use crate::dto::{
-    ActionView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
-    ModifierSourceView, ObjectView, PlayerView, StackObjectView, VisibleState, WireKind,
-    WireManaPool,
+    ActionView, CardTextView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
+    ModifierSourceView, ObjectView, PlayerView, StackObjectView, StackSourceFaceView, VisibleState,
+    WireKind, WireManaPool,
 };
 use crate::event::DeltaEnvelope;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
@@ -95,6 +95,10 @@ pub fn compose_delta(input: DeltaCompose<'_>) -> StreamFrame {
         events: visible,
         state,
         auto_actions: input.auto_actions,
+        // Left empty here and filled by the transport: joining printed words needs the card
+        // registry (`cards::get` / `cards::print_flavor`), which `schema` deliberately does not
+        // depend on outside tests. See `server::stream::frame_for`.
+        card_text: Vec::new(),
     })
 }
 
@@ -195,6 +199,46 @@ fn stack_source_art(game: &engine::Game, source: engine::ObjectId) -> (String, S
         card_id_src.id.to_string(),
         def.name.to_string(),
     )
+}
+
+/// Last-known renderer characteristics for a stack source. Unlike `objects`, this follows Moved
+/// and Removed arena entries so an activation keeps the same authoritative frame after its source
+/// is sacrificed as a cost.
+fn stack_source_face(game: &engine::Game, source: engine::ObjectId) -> StackSourceFaceView {
+    let def = game.def_of(source);
+    StackSourceFaceView {
+        kind: wire_kind(&def),
+        colors: game
+            .colors_of(source)
+            .iter()
+            .enumerate()
+            .filter(|(_, is_color)| **is_color)
+            .map(|(index, _)| index as u8)
+            .collect(),
+        is_token: game.is_token(source) || engine::token_def(def.id).is_some(),
+        legendary: def.legendary,
+    }
+}
+
+/// The printed sentence an ability on the stack prints, found by matching the effect the stack
+/// entry carries back to the source card's ability list — [`engine::Game::stack`] is where an
+/// internal stack item becomes a [`engine::StackEntry`], and the effect is all the ability
+/// identity that survives that. Empty means "show the effect's generated label instead".
+///
+/// ponytail: an ability granted by another permanent is on no card's list, and a card printing
+/// two abilities with the identical effect is ambiguous — both fall back to the label. Thread an
+/// ability index through the stack item if a real card needs better.
+fn stack_ability_oracle(
+    game: &engine::Game,
+    source: engine::ObjectId,
+    effect: &engine::Effect,
+) -> String {
+    let def = game.def_of(source);
+    let mut printed = def.abilities.iter().filter(|a| a.effect == *effect);
+    let (Some(only), None) = (printed.next(), printed.next()) else {
+        return String::new();
+    };
+    only.oracle.unwrap_or_default().to_string()
 }
 
 /// Wire form of one of `game`'s stored [`engine::LegalAction`]s. `MeaningfulAction::PlayLand`/
@@ -982,6 +1026,20 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 plus_counters: game.plus_counters(id),
                 marked_damage: game.marked_damage(id),
                 is_commander: game.is_commander(id),
+                is_token: game.is_token(id),
+                legendary: !face_down && def.legendary,
+                // A face-down permanent is a colorless 2/2 (CR 708.2), and telling the client
+                // otherwise would leak the card's color through its frame.
+                colors: if face_down {
+                    Vec::new()
+                } else {
+                    game.colors_of(id)
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, is_color)| **is_color)
+                        .map(|(index, _)| index as u8)
+                        .collect()
+                },
                 goaded: game.is_goaded(id),
                 taps_for_mana: game.taps_for_mana(id),
                 prepared: game.prepared(id),
@@ -1026,6 +1084,9 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     print,
                     card_id,
                     name,
+                    // A spell on the stack is the whole card, so its face shows the card's text.
+                    ability_oracle: String::new(),
+                    source_face: Some(stack_source_face(game, id)),
                 }
             }
             engine::StackEntry::Ability {
@@ -1036,6 +1097,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             } => {
                 let targets: Vec<WireTarget> = target.map(WireTarget::of).into_iter().collect();
                 let (print, card_id, name) = stack_source_art(game, source);
+                let ability_oracle = stack_ability_oracle(game, source, &effect);
                 StackObjectView {
                     kind: "ability".to_string(),
                     source,
@@ -1046,6 +1108,8 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     print,
                     card_id,
                     name,
+                    ability_oracle,
+                    source_face: Some(stack_source_face(game, source)),
                 }
             }
         })
@@ -1108,6 +1172,9 @@ pub enum StreamFrame {
     Snapshot {
         seq: u64,
         state: VisibleState,
+        /// Printed words for every card in the viewer's own deck — the only cards whose faces the
+        /// bar draws. Empty for a spectator. Private by construction: never another seat's list.
+        card_text: Vec<CardTextView>,
     },
     Delta(DeltaEnvelope),
     /// A periodic liveness ping (server emits one every few seconds) so the client can tell an
@@ -2329,6 +2396,7 @@ mod tests {
         // every use site instead of living once in the binary.
         static ABILITIES: [Ability; 2] = [
             Ability {
+                oracle: None,
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
                 effect: Effect::Life(LifeEffect::Gain {
                     who: PlayerSet::You,
@@ -2341,6 +2409,7 @@ mod tests {
                 cost: Cost::FREE,
             },
             Ability {
+                oracle: None,
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
                 effect: Effect::Draw(DrawEffect::Cards {
                     who: PlayerSet::You,
@@ -2477,6 +2546,43 @@ mod tests {
             }
             other => panic!("expected an OrderTriggers choice, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn an_ability_on_the_stack_carries_the_sentence_that_prints_it() {
+        // An ability waiting to resolve is one printed sentence, not its whole source card, so the
+        // stack face draws that sentence — matched back to the card by the effect the entry carries.
+        let mut game = Game::new();
+        let arena = game.spawn_on_battlefield(PlayerId(0), def("Phyrexian Arena"));
+        game.stack_library(PlayerId(0), &[def("Grizzly Bears"), def("Grizzly Bears")]);
+        game.stack_library(PlayerId(1), &[def("Grizzly Bears"), def("Grizzly Bears")]);
+        while game.stack().is_empty() {
+            game.submit(engine::Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let stack = snapshot(&game, PlayerId(0)).stack;
+        assert_eq!(stack.len(), 1, "the arena's upkeep trigger, alone");
+        assert_eq!(stack[0].source, arena);
+        assert_eq!(
+            stack[0].ability_oracle,
+            "At the beginning of your upkeep, you draw a card and you lose 1 life."
+        );
+    }
+
+    #[test]
+    fn an_ability_whose_card_records_no_sentence_leaves_the_label_to_draw_it() {
+        // A granted ability is on no card's printed list, and a card that records no sentence for
+        // the ability that matched projects nothing — either way the client falls back to `label`.
+        let mut game = Game::new();
+        let arena = game.spawn_on_battlefield(PlayerId(0), def("Phyrexian Arena"));
+        let granted = Effect::Life(engine::LifeEffect::Gain {
+            who: engine::PlayerSet::You,
+            amount: engine::Amount::Fixed(1),
+        });
+        assert_eq!(super::stack_ability_oracle(&game, arena, &granted), "");
     }
 
     #[test]
@@ -3433,6 +3539,124 @@ mod tests {
         assert_eq!(beast_view.card_id, "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920");
     }
 
+    /// The Arena-style card-frame renderer needs to know whether an object is a minted token
+    /// (drawn with an arched top and no title bar) and whether the printed card is legendary
+    /// (drawn with the legend crown) — neither fact was on `ObjectView` before this test.
+    #[test]
+    fn object_view_reports_token_and_legendary() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let bear = game.spawn_on_battlefield(p0, def("Grizzly Bears"));
+        let token = game.spawn_token_on_battlefield(p0, engine::treasure_token());
+
+        let view = snapshot(&game, p0);
+        let bear_view = view
+            .objects
+            .iter()
+            .find(|o| o.id == bear)
+            .expect("bear projected");
+        let token_view = view
+            .objects
+            .iter()
+            .find(|o| o.id == token)
+            .expect("token projected");
+
+        assert!(!bear_view.is_token, "a printed card is not a token");
+        assert!(token_view.is_token, "a minted token reports as one");
+        assert!(!bear_view.legendary, "Grizzly Bears is not legendary");
+    }
+
+    /// The card frame the client draws comes from the object's *colors* (CR 105.2), which the
+    /// cost's colored pip counts do not answer: a hybrid pip is both its colors (CR 105.2b) while
+    /// counting as neither, a token's color is stated on the token rather than paid for, and
+    /// devoid (CR 702.114a) makes a card with colored pips colorless. All three drew the wrong
+    /// frame before `colors` was on the projection.
+    #[test]
+    fn object_view_reports_colors_for_the_card_frame() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let liege = game.spawn_on_battlefield(p0, def("Balefire Liege"));
+        let abomination = game.spawn_on_battlefield(p0, def("Smothering Abomination"));
+        let beast = game.spawn_token_on_battlefield(
+            p0,
+            cards::get_token("6bb61f34-5d57-4eaa-a02c-f5d08c1ee920").expect("Beast token in pool"),
+        );
+
+        let snap = snapshot(&game, p0);
+        let colors = |id: ObjectId| {
+            snap.objects
+                .iter()
+                .find(|o| o.id == id)
+                .expect("projected")
+                .colors
+                .clone()
+        };
+
+        // {2}{R/W}{R/W}{R/W}: not one monocolored pip, and yet white and red.
+        assert_eq!(colors(liege), vec![0, 3], "Balefire Liege is white and red");
+        // {2}{B}{B} with devoid.
+        assert_eq!(
+            colors(abomination),
+            Vec::<u8>::new(),
+            "a devoid card is colorless"
+        );
+        // No mana cost at all; `colors = ["green"]` on the token.
+        assert_eq!(colors(beast), vec![4], "the Beast token is green");
+    }
+
+    #[test]
+    fn a_face_down_permanent_reveals_neither_legendary_nor_colors() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        let target = game.spawn_on_battlefield(p1, def("Grizzly Bears"));
+        let top = game.stack_library(p1, &[def("Ao, the Dawn Sky")])[0];
+        let shift = game.spawn_in_hand(p0, def("Reality Shift"));
+        game.fund_mana(p0);
+
+        game.submit(engine::Intent::Cast {
+            player: p0,
+            object: shift,
+            target: Some(engine::Target::Object(target)),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+        while !game.stack().is_empty() {
+            game.submit(engine::Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let manifested = game.current_id(top);
+        let snap = snapshot(&game, p0);
+        let view = snap
+            .objects
+            .iter()
+            .find(|object| object.id == manifested)
+            .expect("manifested permanent projected");
+        assert!(view.face_down, "the viewer sees a card back");
+        assert!(
+            !view.legendary,
+            "the legend crown would reveal the hidden card"
+        );
+        assert!(
+            view.colors.is_empty(),
+            "a colored frame would reveal the hidden card"
+        );
+    }
+
     /// Master Warcraft (CR 508.1a) hands the attack declaration to its caster, so the client must
     /// learn *whose* creatures to stage from the action itself — the caster's own battlefield is
     /// the wrong answer, and so is the caster's own goad requirements.
@@ -3655,6 +3879,11 @@ mod tests {
         assert_eq!(entry.print, expected_print);
         assert_eq!(entry.name, "Evolving Wilds");
         assert_eq!(entry.card_id, expected_card_id);
+        let serialized = serde_json::to_value(entry).expect("stack entry serializes");
+        assert_eq!(serialized["source_face"]["kind"]["kind"], "land");
+        assert_eq!(serialized["source_face"]["colors"], serde_json::json!([]));
+        assert_eq!(serialized["source_face"]["is_token"], false);
+        assert_eq!(serialized["source_face"]["legendary"], false);
 
         // Deck-chosen Printings overlay onto stack entries the same way as ChoiceItem picks.
         let preferred = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";

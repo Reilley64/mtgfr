@@ -1,5 +1,6 @@
 import { describe, expect, it, test } from "vitest";
 import type { ObjectView, VisibleState } from "~/wire/types";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import { engagedIds } from "../engagement";
 import { fitCamera } from "../geometry/interaction";
 import { layout, type RenderCard, ZONE } from "../geometry/layout";
@@ -31,6 +32,7 @@ function card(id: number, over: Partial<RenderCard> = {}): RenderCard {
     hasHaste: false,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: 0,
@@ -171,6 +173,8 @@ function creature(id: number, controller: number, over: Partial<ObjectView> = {}
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
     marked_damage: 0,

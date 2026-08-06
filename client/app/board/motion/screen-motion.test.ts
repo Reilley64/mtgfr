@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CARD_W } from "../geometry/layout";
+import { FLIGHT_CARD_W } from "../geometry/layout";
 import { HAND_FACE_W, handFlightScale } from "./flights";
 import { dragGhostFromHandDrag } from "./screen-motion";
 
@@ -24,7 +24,7 @@ describe("dragGhostFromHandDrag", () => {
       scale: handFlightScale(zoom),
       zone: "hand",
     });
-    expect(ghost.scale).toBe(HAND_FACE_W / (CARD_W * zoom));
+    expect(ghost.scale).toBe(HAND_FACE_W / (FLIGHT_CARD_W * zoom));
   });
 
   it("defaults missing zone to hand", () => {

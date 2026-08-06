@@ -1,7 +1,6 @@
 # When this creature dies, change the base power and toughness of all creatures that dealt damage
 # to it this turn to 0/2. (This effect lasts indefinitely.)
 name = "Brine Hag"
-sets = ["leg"]
 id = "e0165326-f1a6-4fc0-94c1-4b33f24d36f5"
 default_print = "2a1e7796-fbfb-4976-879f-bb748429d5c7"
 oracle = "When this creature dies, change the base power and toughness of all creatures that dealt damage to it this turn to 0/2. (This effect lasts indefinitely.)"
@@ -19,6 +18,7 @@ toughness = 2
 # When this creature dies, change the base power and toughness of all creatures that dealt damage
 # to it this turn to 0/2. (This effect lasts indefinitely.)
 [[abilities]]
+oracle = "When this creature dies, change the base power and toughness of all creatures that dealt damage to it this turn to 0/2. (This effect lasts indefinitely.)"
 timing = "dies"
 
 # change the base power and toughness of all creatures that dealt damage to it this turn to 0/2.

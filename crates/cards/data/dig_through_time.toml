@@ -2,7 +2,6 @@
 # Look at the top seven cards of your library. Put two of them into your hand and the rest on the bottom of your library
 # in any order.
 name = "Dig Through Time"
-sets = ["c21", "dsc", "fic", "ktk", "mar", "ncc", "otc", "pktk", "plg21", "prm", "sld", "soc", "uma", "woc"]
 id = "f8b17b89-26ce-4208-874a-9e1d66514640"
 default_print = "020939d6-72f0-4aa0-9ac2-d16cc896cd7f"
 otags = ["alliteration", "delve", "hand-positive", "impulse"]
@@ -19,6 +18,7 @@ type = "instant"
 # Look at the top seven cards of your library. Put two of them into your hand and the rest on the
 # bottom of your library in any order.
 [[abilities]]
+oracle = "Look at the top seven cards of your library. Put two of them into your hand and the rest on the bottom of your library in any order."
 timing = "spell"
 
 # Look at the top seven cards of your library. Put two of them into your hand and the rest on

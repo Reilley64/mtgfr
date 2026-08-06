@@ -2,7 +2,6 @@
 # counter from this creature: Regenerate this creature." Activate only during your upkeep.
 name = "Life Matrix"
 otags = ["activated-ability"]
-sets = ["leg"]
 id = "0fd1ddc3-65cc-489f-81b9-6c144843fc67"
 default_print = "c99a3abc-e2a3-4eee-8f72-b1b25dcd1d0b"
 oracle = "{4}, {T}: Put a matrix counter on target creature and that creature gains \"Remove a matrix counter from this creature: Regenerate this creature.\" Activate only during your upkeep."
@@ -16,6 +15,7 @@ type = "artifact"
 # {4}, {T}: Put a matrix counter on target creature and that creature gains "Remove a matrix
 # counter from this creature: Regenerate this creature." Activate only during your upkeep.
 [[abilities]]
+oracle = "{4}, {T}: Put a matrix counter on target creature and that creature gains \"Remove a matrix counter from this creature: Regenerate this creature.\" Activate only during your upkeep."
 timing = "activated"
 taps_self = true
 only_during_your_upkeep = true

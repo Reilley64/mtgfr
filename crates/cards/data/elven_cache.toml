@@ -1,6 +1,5 @@
 # Return target card from your graveyard to your hand.
 name = "Elven Cache"
-sets = ["6ed", "por", "td0", "vis"]
 otags = ["hand-neutral", "regrowth-any", "single-target-instant-sorcery"]
 oracle = "Return target card from your graveyard to your hand."
 id = "8a922366-ee2a-4ddb-a904-683dcf4f191a"
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # Return target card from your graveyard to your hand.
 [[abilities]]
+oracle = "Return target card from your graveyard to your hand."
 timing = "spell"
 
 # Return target card from your graveyard to your hand.

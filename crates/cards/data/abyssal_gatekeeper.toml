@@ -1,6 +1,5 @@
 # When this creature dies, each player sacrifices a creature of their choice.
 name = "Abyssal Gatekeeper"
-sets = ["ddc", "dvd", "td0", "wth"]
 otags = ["death-trigger-self", "multi-removal", "mutual-sacrifice", "removal-creature", "sacrifice-outlet-creature", "spot-removal", "symmetrical", "type-errata", "wth-storyline-in-cards"]
 oracle = "When this creature dies, each player sacrifices a creature of their choice."
 subtypes = ["Horror"]
@@ -18,6 +17,7 @@ toughness = 1
 
 # When this creature dies, each player sacrifices a creature of their choice.
 [[abilities]]
+oracle = "When this creature dies, each player sacrifices a creature of their choice."
 timing = "dies"
 
 # each player sacrifices a creature of their choice.

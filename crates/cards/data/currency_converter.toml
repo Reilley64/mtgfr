@@ -8,7 +8,6 @@
 #    {T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card,
 #    create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token."
 name = "Currency Converter"
-sets = ["aa2", "msc", "ncc", "pncc", "prm", "soc"]
 id = "981298e6-ddee-49c0-9377-f47f019b4138"
 default_print = "4eab054c-93f8-4da4-afb9-8f4c73c19213"
 otags = ["activated-ability", "alliteration", "discarded-type-matters", "hate-discard", "ramp", "repeatable-creature-tokens", "repeatable-loot", "repeatable-treasures", "self-discard-matters", "triggered-ability"]
@@ -22,6 +21,7 @@ type = "artifact"
 
 # {2}, {T}: Draw a card, then discard a card.
 [[abilities]]
+oracle = "{2}, {T}: Draw a card, then discard a card."
 timing = "activated"
 taps_self = true
 
@@ -42,6 +42,7 @@ generic = 2
 
 # Whenever you discard a card, you may exile that card from your graveyard.
 [[abilities]]
+oracle = "Whenever you discard a card, you may exile that card from your graveyard."
 timing = "you_discard"
 optional = true
 
@@ -53,6 +54,7 @@ mode = "exile_discarded_with_this"
 # {T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card,
 # create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.
 [[abilities]]
+oracle = "{T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token."
 timing = "activated"
 taps_self = true
 

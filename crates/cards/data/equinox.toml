@@ -2,7 +2,6 @@
 # Enchanted land has "{T}: Counter target spell if it would destroy a land you control."
 name = "Equinox"
 otags = ["activated-ability", "protects-land", "single-english-word-name"]
-sets = ["leg", "me3"]
 id = "0fa2cb01-476e-4e82-94e6-9639e53a7743"
 default_print = "840c6586-a7a9-4ae8-96be-a995a0693eb6"
 oracle = "Enchant land\nEnchanted land has \"{T}: Counter target spell if it would destroy a land you control.\""
@@ -23,6 +22,7 @@ type = "aura"
 
 # Enchanted land has "{T}: Counter target spell if it would destroy a land you control."
 [[abilities]]
+oracle = "Enchanted land has \"{T}: Counter target spell if it would destroy a land you control.\""
 timing = "static"
 
 # Enchanted land has "{T}: Counter target spell if it would destroy a land you control."

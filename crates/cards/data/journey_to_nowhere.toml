@@ -2,7 +2,6 @@
 # When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.
 name = "Journey to Nowhere"
 otags = ["banish", "leaves-trigger-self", "old-banish-templating", "removal-creature", "spot-removal"]
-sets = ["cmd", "ddf", "otp", "plst", "zen"]
 id = "2bfec482-be0d-4768-84e7-1c2c74ea1373"
 default_print = "4686b51c-e02b-48c1-bafe-e8d08a5407b9"
 oracle = "When this enchantment enters, exile target creature.\nWhen this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control."
@@ -18,6 +17,7 @@ type = "enchantment"
 # When this enchantment leaves the battlefield, return the exiled card to the battlefield under
 # its owner's control.
 [[abilities]]
+oracle = "When this enchantment enters, exile target creature. When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control."
 timing = "etb"
 
 # exile target creature.

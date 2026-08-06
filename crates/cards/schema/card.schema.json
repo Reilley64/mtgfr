@@ -229,6 +229,14 @@
           "default": false,
           "type": "boolean"
         },
+        "oracle": {
+          "default": null,
+          "description": "This one ability's printed sentence, quoted verbatim from the card's `oracle` — what the stack shows while the ability waits to resolve, since an ability on the stack is not its whole source card. Unset falls back to the effect's generated label.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "pay_life": {
           "$ref": "#/$defs/Amount"
         },
@@ -1701,14 +1709,6 @@
           "default": false,
           "description": "Retrace (CR 702.83) — `retrace = true`; absent (`false`) for a card without retrace.",
           "type": "boolean"
-        },
-        "sets": {
-          "default": [],
-          "description": "Every Scryfall set code with a printing of this oracle, used by coverage and catalog search. Pure metadata; gameplay never reads it.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
         },
         "snow": {
           "default": false,
@@ -14861,14 +14861,6 @@
       "default": false,
       "description": "Retrace (CR 702.83) — `retrace = true`; absent (`false`) for a card without retrace.",
       "type": "boolean"
-    },
-    "sets": {
-      "default": [],
-      "description": "Every Scryfall set code with a printing of this oracle, used by coverage and catalog search. Pure metadata; gameplay never reads it.",
-      "items": {
-        "type": "string"
-      },
-      "type": "array"
     },
     "snow": {
       "default": false,

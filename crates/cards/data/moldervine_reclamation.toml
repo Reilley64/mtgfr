@@ -2,7 +2,6 @@
 # Moldervine Reclamation (soc): "Whenever a creature you control dies, you gain 1 life and draw
 # a card."
 name = "Moldervine Reclamation"
-sets = ["blc", "c21", "khc", "m20", "onc", "plst", "sld", "soc"]
 id = "68639a3d-2192-4921-8298-c76bb0cd6b02"
 default_print = "f3e93085-ffcb-4f48-8649-3fcbc5e97699"
 otags = ["cycle-m20-draft-signpost", "death-trigger", "draw-engine", "repeatable-lifegain", "repeatable-pure-draw"]
@@ -18,6 +17,7 @@ type = "enchantment"
 
 # Whenever a creature you control dies, you gain 1 life and draw a card.
 [[abilities]]
+oracle = "Whenever a creature you control dies, you gain 1 life and draw a card."
 timing = "creature_you_control_dies"
 
 # you gain 1 life

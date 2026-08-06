@@ -2,7 +2,6 @@
 # When this land enters, you gain 1 life.
 # {T}: Add {R} or {G}.
 name = "Kazandu Refuge"
-sets = ["arc", "c13", "c18", "c19", "cmd", "ddh", "ddl", "pc2", "pca", "plst", "scd", "zen"]
 id = "03332772-18b0-446a-a7e2-a4bdf38c4f0c"
 default_print = "6ca097f1-eef0-4e18-ab5d-49bb4aeb74e2"
 otags = ["cycle-zen-gainland", "lifegain", "triggered-ability"]
@@ -14,6 +13,7 @@ type = "land"
 
 # When this land enters, you gain 1 life.
 [[abilities]]
+oracle = "When this land enters, you gain 1 life."
 timing = "etb"
 
 # you gain 1 life.
@@ -24,6 +24,7 @@ amount = 1
 
 # {T}: Add {R} or {G}.
 [[abilities]]
+oracle = "{T}: Add {R} or {G}."
 timing = "activated"
 taps_self = true
 

@@ -1,7 +1,6 @@
 # You may spend white mana as though it were red mana.
 name = "Sunglasses of Urza"
 otags = ["mana-filter", "namesake-spell", "virtual-legendary"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "eea64b1f-d6a9-4f72-8612-efab4b124b63"
 default_print = "b894acd5-818b-4ac5-bbf8-47db2ed9a825"
 oracle = "You may spend white mana as though it were red mana."
@@ -14,6 +13,7 @@ type = "artifact"
 
 # You may spend white mana as though it were red mana.
 [[abilities]]
+oracle = "You may spend white mana as though it were red mana."
 timing = "static"
 
 # You may spend white mana as though it were red mana.

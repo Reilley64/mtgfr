@@ -7,7 +7,7 @@ Define how Magic card and token behavior is authored as data, validated, interne
 ## Requirements
 
 ### Requirement: Cards are authored as structured definition files
-The system SHALL represent each deckable card as a structured definition file that loads into a printed card definition. Authors SHALL be able to add or change a card without changing rules-engine code when the required effect vocabulary already exists. Each definition file SHALL open with the card's verbatim oracle text as a leading comment, then identity and rules fields, cost, kind, and ability blocks. Each ability block SHALL be preceded by a comment quoting the oracle sentence(s) it implements.
+The system SHALL represent each deckable card as a structured definition file that loads into a printed card definition. Authors SHALL be able to add or change a card without changing rules-engine code when the required effect vocabulary already exists. Each definition file SHALL open with the card's verbatim oracle text as a leading comment, then identity and rules fields, cost, kind, and ability blocks. Each ability block SHALL be preceded by a comment quoting the oracle sentence(s) it implements, and SHALL repeat that quotation as the block's own recorded sentence whenever it can be quoted verbatim.
 
 #### Scenario: Author a simple damage spell
 - **WHEN** an author writes a definition for a spell whose effect vocabulary already exists
@@ -95,11 +95,29 @@ When a card diverges from oracle text, the definition SHALL carry a machine-read
 - **THEN** the card is noted in the deck's fidelity increments with an approximates note instead of being silently mis-modeled
 
 ### Requirement: Catalog metadata is non-rules
-Oracle text, oracle tags, and set codes SHALL be catalog metadata for hover, thematic search, and printing coverage. The rules engine MUST NOT parse oracle text or read oracle tags or set codes for gameplay. Rules behavior SHALL come only from abilities, keywords, costs, kinds, and related rules fields.
+Oracle text, flavor text, oracle tags, and set codes SHALL be catalog metadata for hover, card rendering, thematic search, and printing coverage. The rules engine MUST NOT parse oracle or flavor text or read oracle tags or set codes for gameplay. Rules behavior SHALL come only from abilities, keywords, costs, kinds, and related rules fields.
 
 #### Scenario: Search by oracle tag
 - **WHEN** a deck builder searches for a thematic tag such as ramp or typal-spirit
 - **THEN** matching uses oracle tags even if that tag is not itself a rules keyword
+
+### Requirement: An ability may carry its own printed sentence
+An ability block SHALL be able to record the one printed sentence that prints it, quoted verbatim from its card's oracle text, so that surfaces showing a single ability — the stack, where a player reads what is about to resolve — can show that sentence rather than the whole card's text box. Like all catalog metadata the rules engine MUST NOT parse it. Every recorded ability sentence SHALL be a whitespace-normalised substring of its card's oracle text. An ability that records none SHALL fall back to the message the effect generates.
+
+#### Scenario: An ability quotes the sentence that prints it
+- **WHEN** an ability block records a sentence that is not printed on its card
+- **THEN** the pool test that holds every ability sentence to its card's oracle text fails
+
+### Requirement: Printing records carry what a printing prints
+Every printed detail that differs between printings of one card SHALL live in printing records — one file per card under `crates/cards/data/prints/`, recording each printing's Scryfall card UUID, its set code, and the flavor text that printing prints. Flavor SHALL NOT be authored on the card definition, because a card has no one flavor. A card definition's set codes SHALL be derived from its printing records at pool load, not authored a second time on the card; authoring either `flavor` or `sets` on a card SHALL be a load error. The records SHALL be generated from Scryfall bulk data (`just cards-printings`) rather than hand-maintained.
+
+#### Scenario: Flavor is looked up by printing, not by card
+- **WHEN** a deck plays a printing whose flavor differs from another printing of the same card
+- **THEN** the flavor is read from that printing's record by its Scryfall card UUID, and no rules decision reads it
+
+#### Scenario: A card's set codes come from its printings
+- **WHEN** the pool loads a card whose printing records list several sets
+- **THEN** the card's set codes are those sets, alphabetical, without the card file naming any
 
 ### Requirement: Authoring schema and reference stay generated
 Committed JSON Schemas for card and token authoring surfaces SHALL be generated from the TOML authoring types. A generated field reference SHALL be produced from the same surface. Structural validation against the schema SHALL catch authoring-shape mistakes (including misspelled effect family tags) with file path, JSON Pointer, and schema message. Rust deserialization into the printed definition SHALL remain authoritative for load. Schema validation MUST NOT encode fidelity judgment, Scryfall freshness, deck legality, or every custom fold that still lives in the loader. Full-pool structural validation SHALL be part of the server verification bar.

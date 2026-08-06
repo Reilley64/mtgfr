@@ -1,7 +1,6 @@
 # This spell costs {2} less to cast if you gained life this turn.
 # Destroy target nonland permanent.
 name = "Mortality Spear"
-sets = ["prm", "soc", "stx"]
 id = "544acde0-850d-4c4f-8389-e22930d87345"
 default_print = "f6cdff9b-bb09-45b9-aa3c-16a3136d183c"
 otags = ["discount-self", "infusion", "removal-destroy", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
@@ -18,6 +17,7 @@ type = "instant"
 
 # Destroy target nonland permanent.
 [[abilities]]
+oracle = "Destroy target nonland permanent."
 timing = "spell"
 
 # Destroy target nonland permanent.

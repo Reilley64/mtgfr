@@ -1,7 +1,6 @@
 # This creature can't block creatures with power 2 or greater.
 name = "Ironclaw Orcs"
 otags = ["restricted-blocker"]
-sets = ["2ed", "30a", "4bb", "4ed", "5ed", "ced", "cei", "itp", "lea", "leb", "me2", "ren", "rin", "rqs", "wc98"]
 id = "c645a616-0d7d-416c-b5f3-057b3a1666a0"
 default_print = "0e17623a-5bc0-42d7-a842-394de0a01a01"
 oracle = "This creature can't block creatures with power 2 or greater."
@@ -18,6 +17,7 @@ toughness = 2
 
 # This creature can't block creatures with power 2 or greater.
 [[abilities]]
+oracle = "This creature can't block creatures with power 2 or greater."
 timing = "static"
 
 # This creature can't block creatures with power 2 or greater.

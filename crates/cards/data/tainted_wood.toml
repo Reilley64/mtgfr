@@ -5,13 +5,13 @@ otags = ["activated-ability", "cycle-tor-tainted-land", "synergy-swamp"]
 id = "fa6d05a1-3df4-4751-b1a0-8d9693faec73"
 default_print = "3da7ab6b-b10a-4786-b1eb-92de7e66690e"
 oracle = "{T}: Add {C}.\n{T}: Add {B} or {G}. Activate only if you control a Swamp."
-sets = ["dsc"]
 
 [kind]
 type = "land"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 
@@ -23,6 +23,7 @@ mana = ["colorless"]
 
 # {T}: Add {B} or {G}. Activate only if you control a Swamp.
 [[abilities]]
+oracle = "{T}: Add {B} or {G}. Activate only if you control a Swamp."
 timing = "activated"
 taps_self = true
 

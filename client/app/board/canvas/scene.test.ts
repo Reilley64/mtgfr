@@ -4,6 +4,7 @@ import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
+import { TAP_TILT } from "../bitmap/paint-cards";
 import { COMMANDER_GOLD, PLAYABLE_BORDER } from "../chrome";
 import { ZONE } from "../geometry/layout";
 import { sceneShapes } from "./scene";
@@ -31,6 +32,8 @@ function object(overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id: 1,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
     marked_damage: 0,
@@ -244,6 +247,8 @@ describe("sceneShapes", () => {
         name: "Atraxa, Praetors' Voice",
         zone: ZONE.Command,
         is_commander: true,
+        is_token: false,
+        legendary: false,
         kind: { kind: "creature", power: 4, toughness: 4 },
         power: 4,
         toughness: 4,
@@ -265,7 +270,7 @@ describe("sceneShapes", () => {
     expect(texts.some((text) => text.content === "2/2")).toBe(true);
   });
 
-  it("rotates tapped card groups around their center", () => {
+  it("tilts tapped card groups around their center", () => {
     const state = boardFixture();
     const shapes = sceneShapes({ ...state, objects: [object({ tapped: true })] });
 
@@ -276,7 +281,7 @@ describe("sceneShapes", () => {
       return;
     }
 
-    expect(group.rotate).toBeCloseTo(Math.PI / 2);
+    expect(group.rotate).toBeCloseTo(TAP_TILT);
   });
 
   it("paints arrows above resting cards and avatars", () => {

@@ -1,10 +1,10 @@
 import type { ImageCache } from "../../domain/image-cache";
 import { COMMANDER_GOLD, EXILE_OUTLINE, GRAVEYARD_OUTLINE, PLAYABLE_BORDER } from "../chrome";
-import { CARD_H, CARD_W } from "../geometry/layout";
+import { FLIGHT_CARD_H, FLIGHT_CARD_W } from "../geometry/layout";
 import { type ExitFx, exitFxParticles, particleAllowancePerFx } from "../motion/exit-fx";
 import type { CardFlight } from "../motion/flights";
 import type { DragGhost, DragGhostZone } from "../motion/screen-motion";
-import type { BitmapImageCache } from "./paint-cards";
+import type { BitmapImageCache, FaceSource } from "./paint-cards";
 import { roundRect } from "./paint-cards";
 import { paintExitFx } from "./paint-exit-fx";
 import { paintFlightCard } from "./paint-flights";
@@ -15,6 +15,7 @@ export type ScreenMotionPaintInput = {
   exitFx: readonly ExitFx[];
   zoom: number;
   cache: BitmapImageCache | Pick<ImageCache, "get">;
+  faces?: FaceSource;
 };
 
 function zoneOutline(zone: DragGhostZone): string | null {
@@ -30,6 +31,7 @@ export function paintDragGhost(
   ghost: DragGhost,
   zoom: number,
   cache: BitmapImageCache | Pick<ImageCache, "get">,
+  faces?: FaceSource,
 ): void {
   paintFlightCard(
     ctx,
@@ -37,6 +39,7 @@ export function paintDragGhost(
       id: -1,
       print: ghost.print,
       name: ghost.name,
+      face: ghost.face,
       x: ghost.x,
       y: ghost.y,
       scale: ghost.scale,
@@ -48,10 +51,11 @@ export function paintDragGhost(
     },
     zoom,
     cache,
+    faces,
   );
 
-  const w = CARD_W * zoom * ghost.scale;
-  const h = CARD_H * zoom * ghost.scale;
+  const w = FLIGHT_CARD_W * zoom * ghost.scale;
+  const h = FLIGHT_CARD_H * zoom * ghost.scale;
   const x = ghost.x - w / 2;
   const y = ghost.y - h / 2;
   const r = 6 * zoom * Math.max(ghost.scale, 0.5);
@@ -77,10 +81,10 @@ export function paintDragGhost(
 /** Single flight-layer paint pass: drag ghost, then flights, then ExitFx. */
 export function paintScreenMotion(ctx: CanvasRenderingContext2D, input: ScreenMotionPaintInput): void {
   if (input.dragGhost != null) {
-    paintDragGhost(ctx, input.dragGhost, input.zoom, input.cache);
+    paintDragGhost(ctx, input.dragGhost, input.zoom, input.cache, input.faces);
   }
   for (const flight of input.flights) {
-    paintFlightCard(ctx, flight, input.zoom, input.cache);
+    paintFlightCard(ctx, flight, input.zoom, input.cache, input.faces);
   }
   const exitFx = input.exitFx;
   const particleAllowance = particleAllowancePerFx(exitFx.length);

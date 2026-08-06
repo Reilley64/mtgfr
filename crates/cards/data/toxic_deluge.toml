@@ -1,7 +1,6 @@
 # As an additional cost to cast this spell, pay X life.
 # All creatures get -X/-X until end of turn.
 name = "Toxic Deluge"
-sets = ["2xm", "c13", "cc2", "cmm", "ema", "ltc", "mh3", "mkc", "msc", "prm", "pz1", "sld", "soc"]
 id = "afaef788-34d1-460b-b884-9d7ae6ddeb18"
 default_print = "de5afccc-8d42-4bd6-b068-b9ea2361655e"
 otags = ["life-payment", "removal-toughness", "sweeper", "symmetrical"]
@@ -19,6 +18,7 @@ type = "sorcery"
 
 # All creatures get -X/-X until end of turn.
 [[abilities]]
+oracle = "All creatures get -X/-X until end of turn."
 timing = "spell"
 
 # All creatures get -X/-X until end of turn.

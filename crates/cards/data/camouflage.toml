@@ -7,7 +7,6 @@
 # that can block the creature that pile is assigned to does so. (Piles can be empty.)
 name = "Camouflage"
 otags = ["combat-timing-restriction", "control-blocker", "notorious-templating", "pile", "rules-nightmare", "single-english-word-name"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb"]
 id = "9cf44db4-627a-4197-9588-6da72e41f03d"
 default_print = "09243dc6-c56c-42a8-969b-2ecffe89e1ca"
 oracle = "Cast this spell only during your declare attackers step.\nThis turn, instead of declaring blockers, each defending player chooses any number of creatures they control and divides them into a number of piles equal to the number of attacking creatures for whom that player is the defending player. Creatures those players control that can block additional creatures may likewise be put into additional piles. Assign each pile to a different one of those attacking creatures at random. Each creature in a pile that can block the creature that pile is assigned to does so. (Piles can be empty.)"

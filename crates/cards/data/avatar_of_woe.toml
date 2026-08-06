@@ -2,7 +2,6 @@
 # Fear (This creature can't be blocked except by artifact creatures and/or black creatures.)
 # {T}: Destroy target creature. It can't be regenerated.
 name = "Avatar of Woe"
-sets = ["arc", "cm2", "cmd", "cn2", "mp2", "pcy", "pd3", "ppro", "prm", "td0", "tsb"]
 id = "2da5aa33-3794-4f83-936c-9d8640833d86"
 default_print = "7e8e34de-4b0a-48fe-bb13-c7e181d37e6c"
 otags = ["removal-creature", "removal-destroy", "spot-removal", "tap-ability"]
@@ -22,6 +21,7 @@ toughness = 5
 
 # {T}: Destroy target creature. It can't be regenerated.
 [[abilities]]
+oracle = "{T}: Destroy target creature. It can't be regenerated."
 timing = "activated"
 taps_self = true
 

@@ -5,7 +5,6 @@
 # counters mode: a Vehicle permanent that can receive +1/+1 counters. Crew is omitted (Ao does
 # not need the Vehicle to be a creature).
 name = "Smuggler's Copter"
-sets = ["2x2", "aer", "kld", "moc", "nec", "pip", "sld"]
 id = "49136bdc-bc50-49a2-999a-1ef9c16ea130"
 default_print = "2680ed41-da35-475a-9d80-ae2f4686feed"
 otags = ["crew", "looting", "vehicle"]

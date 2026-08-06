@@ -3,7 +3,6 @@
 # ability.
 name = "Clergy of the Holy Nimbus"
 otags = ["activated-ability", "regenerates-self", "rhystic", "type-errata"]
-sets = ["leg"]
 id = "66566999-f70a-4f14-9bf0-23325295a977"
 default_print = "db1f578f-fa3b-4447-953b-1490852b6c80"
 oracle = "If this creature would be destroyed, regenerate it.\n{1}: This creature can't be regenerated this turn. Only your opponents may activate this ability."
@@ -19,6 +18,7 @@ toughness = 1
 
 # If this creature would be destroyed, regenerate it.
 [[abilities]]
+oracle = "If this creature would be destroyed, regenerate it."
 timing = "static"
 
 # If this creature would be destroyed, regenerate it.
@@ -29,6 +29,7 @@ mode = "regenerates_instead_of_being_destroyed"
 # {1}: This creature can't be regenerated this turn. Only your opponents may activate this
 # ability.
 [[abilities]]
+oracle = "{1}: This creature can't be regenerated this turn. Only your opponents may activate this ability."
 timing = "activated"
 activation_cost = { generic = 1 }
 activator = "opponents"

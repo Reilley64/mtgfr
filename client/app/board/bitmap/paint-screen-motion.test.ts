@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { FaceData } from "../../domain/card-render/frame";
 import { COMMANDER_GOLD, PLAYABLE_BORDER } from "../chrome";
 import { LIFT_SHADOW_COLOR } from "../lift-shadow";
 import type { DragGhost } from "../motion/screen-motion";
@@ -56,6 +57,23 @@ function fakeCtx(calls: string[]): CanvasRenderingContext2D {
   return ctx;
 }
 
+const FACE: FaceData = {
+  print: "p1",
+  name: "Bolt",
+  colors: [1],
+  isLand: false,
+  isToken: false,
+  legendary: false,
+  power: "",
+  toughness: "",
+  loyalty: "",
+  typeLine: "Instant",
+  oracle: "",
+  flavor: "",
+};
+
+const request = vi.fn();
+
 function ghost(overrides: Partial<DragGhost> = {}): DragGhost {
   return {
     print: "",
@@ -83,6 +101,47 @@ describe("paintDragGhost", () => {
     paintDragGhost(ctx, ghost({ zone: "command" }), 1, { get: () => undefined });
     expect(calls).toContain(`stroke:${PLAYABLE_BORDER}`);
     expect(calls).toContain(`stroke:${COMMANDER_GOLD}`);
+  });
+
+  // The tile the player grabbed wears its rendered face, so the card under the cursor must not
+  // flip back to the printed scan for the length of the drag.
+  it("flies the dragged card's rendered face, not its printed image", () => {
+    const ctx = fakeCtx([]);
+    const drawn = { width: 745, height: 1040 } as CanvasImageSource;
+    const printed = { width: 488, height: 680 } as HTMLImageElement;
+
+    paintDragGhost(ctx, ghost({ print: "p1", face: FACE }), 1, { get: () => printed }, { get: () => drawn, request });
+
+    expect(ctx.drawImage).toHaveBeenCalledWith(
+      drawn,
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+    );
+  });
+
+  it("asks for the face and shows the printed image until it is drawn", () => {
+    const ctx = fakeCtx([]);
+    const printed = { width: 488, height: 680 } as HTMLImageElement;
+    const asked = vi.fn();
+
+    paintDragGhost(
+      ctx,
+      ghost({ print: "p1", face: FACE }),
+      1,
+      { get: () => printed },
+      { get: () => undefined, request: asked },
+    );
+
+    expect(asked).toHaveBeenCalledWith(FACE, "full");
+    expect(ctx.drawImage).toHaveBeenCalledWith(
+      printed,
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+    );
   });
 });
 

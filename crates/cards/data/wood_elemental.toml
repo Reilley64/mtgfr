@@ -2,7 +2,6 @@
 # Wood Elemental's power and toughness are each equal to the number of Forests sacrificed as it
 # entered.
 name = "Wood Elemental"
-sets = ["leg", "me4"]
 id = "2b6da458-e075-4696-a74f-c8846e0cc370"
 default_print = "71ced69c-921c-4a31-a213-0faf927134ef"
 oracle = "As this creature enters, sacrifice any number of untapped Forests.\nWood Elemental's power and toughness are each equal to the number of Forests sacrificed as it entered."
@@ -20,6 +19,7 @@ toughness = 0
 
 # As this creature enters, sacrifice any number of untapped Forests.
 [[abilities]]
+oracle = "As this creature enters, sacrifice any number of untapped Forests."
 timing = "as_enters"
 
 # sacrifice any number of untapped Forests.
@@ -31,6 +31,7 @@ filter = { types = "land", subtypes = ["Forest"], controller = "you", tapped = f
 # Wood Elemental's power and toughness are each equal to the number of Forests sacrificed as it
 # entered.
 [[abilities]]
+oracle = "Wood Elemental's power and toughness are each equal to the number of Forests sacrificed as it entered."
 timing = "static"
 
 # power and toughness are each equal to the number of Forests sacrificed as it entered — the

@@ -2,7 +2,6 @@
 # Enchanted creature has protection from green. This effect doesn't remove this Aura.
 name = "Green Ward"
 otags = ["cycle-lea-ward", "french-vanilla-aura", "gives-protection", "hate-green"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "727ab7f2-741e-4442-b5cb-e3032549fa87"
 default_print = "73f6058a-9292-4474-a794-7161ec9a99f0"
 oracle = "Enchant creature\nEnchanted creature has protection from green. This effect doesn't remove this Aura."
@@ -16,6 +15,7 @@ type = "aura"
 
 # Enchanted creature has protection from green. This effect doesn't remove this Aura.
 [[abilities]]
+oracle = "Enchanted creature has protection from green. This effect doesn't remove this Aura."
 timing = "static"
 
 # Enchanted creature has protection from green.

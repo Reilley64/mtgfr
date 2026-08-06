@@ -1,7 +1,6 @@
 # Enchant permanent
 # You control enchanted permanent.
 name = "Confiscate"
-sets = ["7ed", "8ed", "9ed", "cmr", "dmr", "fdn", "psal", "td0", "usg", "wc00"]
 otags = ["land-ramp", "single-english-word-name", "theft-permanent"]
 subtypes = ["Aura"]
 id = "d599a38c-7719-443e-bb59-55bd43a8fee6"
@@ -18,6 +17,7 @@ type = "aura"
 
 # You control enchanted permanent.
 [[abilities]]
+oracle = "You control enchanted permanent."
 timing = "static"
 
 # You control enchanted permanent.

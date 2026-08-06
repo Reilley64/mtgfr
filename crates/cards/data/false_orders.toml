@@ -4,7 +4,6 @@
 # an attacking creature of your choice.
 name = "False Orders"
 otags = ["combat-timing-restriction", "control-blocker", "force-blocker", "remove-from-combat", "single-target-instant-sorcery"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb"]
 id = "38c5c952-8153-4d98-89b5-a75260383345"
 default_print = "a59c24d9-804b-45d0-b60c-cfc7a6af7ef5"
 oracle = "Cast this spell only during the declare blockers step.\nRemove target creature defending player controls from combat. Creatures it was blocking that had become blocked by only that creature this combat become unblocked. You may have it block an attacking creature of your choice."
@@ -22,6 +21,7 @@ type = "instant"
 # had become blocked by only that creature this combat become unblocked. You may have it block
 # an attacking creature of your choice.
 [[abilities]]
+oracle = "Remove target creature defending player controls from combat. Creatures it was blocking that had become blocked by only that creature this combat become unblocked. You may have it block an attacking creature of your choice."
 timing = "spell"
 
 # Remove target creature defending player controls from combat. Creatures it was blocking that

@@ -1,7 +1,6 @@
 # {T}: Destroy target blue creature.
 name = "Spinal Villain"
 otags = ["activated-ability", "hate-blue", "removal-creature", "removal-destroy", "repeatable-crime", "repeatable-removal", "spot-removal", "type-errata"]
-sets = ["leg", "me1"]
 id = "990c0359-c2d6-4a3c-aa0b-1904da805e15"
 default_print = "44134b59-af94-42a0-9696-2d0181ff7887"
 oracle = "{T}: Destroy target blue creature."
@@ -18,6 +17,7 @@ toughness = 2
 
 # {T}: Destroy target blue creature.
 [[abilities]]
+oracle = "{T}: Destroy target blue creature."
 timing = "activated"
 taps_self = true
 

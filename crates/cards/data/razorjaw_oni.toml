@@ -1,6 +1,5 @@
 # Black creatures can't block.
 name = "Razorjaw Oni"
-sets = ["cma", "cmd", "sok"]
 id = "ed8bc0f2-5a65-4eb4-bf88-3642a55b6889"
 default_print = "89cdde9e-eb7d-4111-8ee1-cc02070a368c"
 otags = ["anthem", "prevent-block", "static"]
@@ -18,6 +17,7 @@ toughness = 5
 
 # Black creatures can't block.
 [[abilities]]
+oracle = "Black creatures can't block."
 timing = "static"
 
 [[abilities.effects]]

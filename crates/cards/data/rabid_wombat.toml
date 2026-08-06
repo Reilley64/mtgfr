@@ -1,7 +1,6 @@
 # Vigilance
 # This creature gets +2/+2 for each Aura attached to it.
 name = "Rabid Wombat"
-sets = ["5ed", "bchr", "chr", "leg", "me1"]
 id = "c886eeb5-f86f-48c8-9adb-af13015972b1"
 default_print = "9d9b9eb8-6367-4ab5-8e00-a9c9e1d69032"
 otags = ["enchantment-engine", "uril-ability", "vigilance"]
@@ -20,6 +19,7 @@ toughness = 1
 
 # This creature gets +2/+2 for each Aura attached to it.
 [[abilities]]
+oracle = "This creature gets +2/+2 for each Aura attached to it."
 timing = "static"
 
 # This creature gets +2/+2 for each Aura attached to it.

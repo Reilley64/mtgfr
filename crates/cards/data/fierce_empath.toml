@@ -2,7 +2,6 @@
 # or greater, reveal it, put it into your hand, then shuffle.
 name = "Fierce Empath"
 otags = ["mana-value-matters", "triggered-ability", "tutor-creature", "tutor-mv", "tutor-to-hand", "virtual-vanilla"]
-sets = ["2xm", "a25", "arc", "cmd", "cmm", "ddu", "fdn", "m21", "plst", "scg", "sld"]
 id = "5104053a-d394-4b00-82a4-60fd9f051a6e"
 default_print = "28a1dd7f-2e42-4062-a941-b489b98a49fc"
 oracle = "When this creature enters, you may search your library for a creature card with mana value 6 or greater, reveal it, put it into your hand, then shuffle."
@@ -20,6 +19,7 @@ toughness = 1
 # When this creature enters, you may search your library for a creature card with mana value 6 or
 # greater, reveal it, put it into your hand, then shuffle.
 [[abilities]]
+oracle = "When this creature enters, you may search your library for a creature card with mana value 6 or greater, reveal it, put it into your hand, then shuffle."
 timing = "etb"
 optional = true
 

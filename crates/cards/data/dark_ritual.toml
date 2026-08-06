@@ -4,7 +4,6 @@ otags = ["adds-multiple-mana", "color-break", "cycle-lea-boon", "interrupt", "ma
 id = "53f7c868-b03e-4fc2-8dcf-a75bbfa3272b"
 default_print = "11e12a84-e7be-4afc-a230-c2e644743fa8"
 oracle = "Add {B}{B}{B}."
-sets = ["msc"]
 
 [cost]
 black = 1
@@ -14,6 +13,7 @@ type = "instant"
 
 # Add {B}{B}{B}.
 [[abilities]]
+oracle = "Add {B}{B}{B}."
 timing = "spell"
 
 # Add {B}{B}{B}.

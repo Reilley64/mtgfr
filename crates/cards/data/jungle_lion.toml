@@ -1,6 +1,5 @@
 # This creature can't block.
 name = "Jungle Lion"
-sets = ["me3", "plst", "por", "td0"]
 otags = ["drawback", "type-errata-summon-creature"]
 subtypes = ["Cat"]
 id = "45b42694-9ee8-44f3-9de3-aa2c0f1b6a13"

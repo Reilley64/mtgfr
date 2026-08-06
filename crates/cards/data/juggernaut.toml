@@ -2,7 +2,6 @@
 # This creature can't be blocked by Walls.
 name = "Juggernaut"
 otags = ["eponymous", "forced-attacker", "hate-typal-wall", "single-english-word-name", "type-addition-from-none"]
-sets = ["10e", "2ed", "30a", "3ed", "arc", "bbd", "ced", "cei", "ddf", "dmr", "dom", "dst", "ema", "f05", "fbb", "fdn", "j22", "jmp", "lea", "leb", "m11", "m15", "me4", "plst", "prm", "sum"]
 id = "4ac9116f-36bc-4d71-b696-d6ee064e1d58"
 default_print = "0cde95ea-ad1a-4acb-a8bd-5457f119aeb7"
 oracle = "This creature attacks each combat if able.\nThis creature can't be blocked by Walls."
@@ -19,6 +18,7 @@ also = ["artifact"]
 
 # This creature attacks each combat if able.
 [[abilities]]
+oracle = "This creature attacks each combat if able."
 timing = "static"
 
 # This creature attacks each combat if able.
@@ -29,6 +29,7 @@ self_only = true
 
 # This creature can't be blocked by Walls.
 [[abilities]]
+oracle = "This creature can't be blocked by Walls."
 timing = "static"
 
 # This creature can't be blocked by Walls.

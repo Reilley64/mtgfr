@@ -1,7 +1,6 @@
 # {X}, {T}: Choose a card name. Target opponent reveals X cards at random from their hand. Then that
 # player discards all cards with that name revealed this way. Activate only during your turn.
 name = "Nebuchadnezzar"
-sets = ["leg"]
 id = "7c48448e-4e13-4cda-999e-e06ae0f7dcea"
 default_print = "e3f17ce3-711b-4bd9-addf-dd440fa7d2b7"
 otags = ["activated-ability", "hand-disruption", "named-choice", "random-discard", "reveal-hand"]
@@ -22,6 +21,7 @@ toughness = 3
 # {X}, {T}: Choose a card name. Target opponent reveals X cards at random from their hand. Then that
 # player discards all cards with that name revealed this way. Activate only during your turn.
 [[abilities]]
+oracle = "{X}, {T}: Choose a card name. Target opponent reveals X cards at random from their hand. Then that player discards all cards with that name revealed this way. Activate only during your turn."
 timing = "activated"
 taps_self = true
 only_during_your_turn = true

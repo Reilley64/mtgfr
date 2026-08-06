@@ -1,5 +1,4 @@
 name = "Unbound Flourishing"
-sets = ["mh1", "plst", "sld", "soc"]
 id = "4db030f5-d7c4-4aa0-ae2e-12943e2683d7"
 default_print = "aa5931c8-e453-4bfd-98b2-0baf5c55f1cb"
 otags = ["cast-trigger-you", "copy-ability", "copy-instant", "copy-sorcery", "copy-spell", "intervening-if-clause", "synergy-instant", "synergy-sorcery", "unique-doubler", "x-cost-matters"]
@@ -14,6 +13,7 @@ type = "enchantment"
 
 # Whenever you cast a permanent spell with a mana cost that contains {X}, double the value of X.
 [[abilities]]
+oracle = "Whenever you cast a permanent spell with a mana cost that contains {X}, double the value of X."
 timing = "static"
 
 # double the value of X.

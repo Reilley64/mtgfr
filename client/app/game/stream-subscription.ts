@@ -16,7 +16,7 @@ export const streamDeltas = streamDeltasEffect;
 
 function frameToMessage(frame: GameFrame): GameMessage {
   if (frame.frame === "snapshot") {
-    return ReceivedSnapshot({ seq: frame.seq, state: frame.state });
+    return ReceivedSnapshot({ seq: frame.seq, state: frame.state, card_text: frame.card_text ?? [] });
   }
 
   return ReceivedDelta({
@@ -24,6 +24,7 @@ function frameToMessage(frame: GameFrame): GameMessage {
     state: frame.state,
     events: frame.events,
     auto_actions: frame.auto_actions,
+    card_text: frame.card_text,
   });
 }
 

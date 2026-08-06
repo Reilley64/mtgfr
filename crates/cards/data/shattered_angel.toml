@@ -2,7 +2,6 @@
 # Whenever a land an opponent controls enters, you may gain 3 life.
 name = "Shattered Angel"
 otags = ["evasion", "landfall-other", "repeatable-lifegain", "toll", "triggered-ability", "type-addition-phyrexian"]
-sets = ["cma", "cmd", "moc", "nph", "plst"]
 id = "e339c6cb-c75d-4dd4-8c1a-78f844983242"
 default_print = "58e4fb9b-76bc-4daf-b0a3-4bf62757902d"
 oracle = "Flying\nWhenever a land an opponent controls enters, you may gain 3 life."
@@ -20,6 +19,7 @@ toughness = 3
 
 # Whenever a land an opponent controls enters, you may gain 3 life.
 [[abilities]]
+oracle = "Whenever a land an opponent controls enters, you may gain 3 life."
 timing = "permanent_enters"
 controller = "opponent"
 filter = { types = "land" }
