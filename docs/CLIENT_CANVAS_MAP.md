@@ -30,13 +30,14 @@ surfaces (Canvas vector, Mount bitmap, HTML overlays). Living board requirements
 |--------|------|
 | `app/board/geometry/camera.ts` | Camera SoT: `screen = world * zoom + pan` |
 | `app/board/geometry/hit-test.ts` | Screen→world card/avatar hits (tapped/fan footprints) |
+| `app/board/geometry/attachment-hover.ts` | Stable resting+destination hover hits and root-host avatar-relative slide direction |
 | `app/board/geometry/layout.ts` | Seat bands, card size, zone columns, attach layout, row packing, clusters ([game-board](../openspec/specs/game-board/spec.md)) |
 | `app/board/engagement.ts` | Committed permanents that split out of a cluster (attackers, blockers, targets) |
 | `app/board/geometry/interaction.ts` | Pointer FSM reducers + `fitCamera` |
 | `app/board/geometry/combat-staging.ts` | Combat pointer resolution |
 | `app/board/canvas/scene.ts` | Plain `BoardScene` builder + dumb `paintBoardScene` |
 | `app/board/canvas/{felt,avatars,arrows}.ts` | Dumb canvas paint helpers |
-| `app/board/bitmap/mount.ts` | Foldkit `Mount` regions for card faces |
+| `app/board/bitmap/mount.ts` | Foldkit `Mount` regions for card faces; owns attachment-hover interpolation and resting-layer repaint |
 | `app/board/bitmap/paint-cards.ts` / `paint-flights.ts` | Bitmap draw routines using `ImageCache` |
 | `app/board/motion/flights.ts` | Flight spawn/step; `hideCardIds` / `flightOwnedIds` |
 | `app/board/motion/exit-fx.ts` | Battlefield destroy/exile FX step + particle budgeting |
@@ -45,7 +46,7 @@ surfaces (Canvas vector, Mount bitmap, HTML overlays). Living board requirements
 | `app/board/action/session.ts` | Play / target / combat staging session state |
 | `app/board/action/{execution,targeting,modal,chrome}.ts` | Pure action planners |
 | `app/board/bitmap/paint-exit-fx.ts` | Paint battlefield exit FX on the flight canvas |
-| `app/board/submodel.ts` | Board `Model`/`update` composition |
+| `app/board/submodel.ts` | Board `Model`/`update` composition; owns `hoveredAttachmentId` |
 | `app/board/view.ts` | Board composition root (canvas + Mount + HTML overlays) |
 | `app/board/html/stack.ts` | Stack DOM (pile / strip / full) |
 | `app/board/html/turn-chrome.ts` | Turn/priority chrome |
@@ -58,7 +59,7 @@ surfaces (Canvas vector, Mount bitmap, HTML overlays). Living board requirements
 
 ## Invariants (do not break)
 
-1. **`layout()` owns resting permanent depth and hits:** within each seat it emits avatar-near lands, then creatures, then centerward noncreatures and planeswalkers. Later entries paint above earlier entries and reverse-order hit testing selects that same visual topmost card. Attachment subtrees use stable postorder: descendants before their parent attachment, sibling subtrees in authority order, and the root host last/topmost.
+1. **`layout()` owns resting permanent depth and hits:** within each seat it emits avatar-near lands, then creatures, then centerward noncreatures and planeswalkers. Later entries paint above earlier entries and reverse-order hit testing selects that same visual topmost card. Attachment subtrees use stable postorder: descendants before their parent attachment, sibling subtrees in authority order, and the root host last/topmost. Foldkit owns `hoveredAttachmentId`; the attachment-hover geometry helper owns stable resting+destination hit resolution and the root-host controller direction; the resting bitmap Mount owns interpolation and repaint in place while preserving the layout array's paint order. A hovered attachment therefore moves only inside layer 3 and is never extracted into a top layer.
 2. **Hits use logical layout**, never tweened/`drawnCards` paint positions.
 3. **Board layer stack (authoritative):** bottom → top paint/DOM order is fixed below. New board visuals must declare which layer they join; no ad-hoc `z-*` without updating this map.
 
