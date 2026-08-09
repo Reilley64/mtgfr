@@ -3786,6 +3786,10 @@ id = "e5da22bf-bc8a-4810-b273-1e33a6b37323"
 set = "msh"
 
 [[printings]]
+id = "8dd6cfef-6eac-4fa2-b9f3-808bd5502f27"
+set = "sld"
+
+[[printings]]
 id = "5f533364-0f91-4e49-aaeb-83c4c1f6d316"
 set = "hob"
 
@@ -3793,3 +3797,11 @@ set = "hob"
 id = "c3e84b42-5423-4d4d-b8fc-cfbb2c53a4ca"
 set = "hob"
 flavor = "Sigh no more Pine, till the wind of the morn!\nFall Moon! Dark be the land!\nHush! Hush! Oak, Ash, and Thorn!\nHushed be all water, till dawn is at hand!"
+
+[[printings]]
+id = "4fae200d-5757-4924-8cf4-ab2a5ef2ccc0"
+set = "trk"
+
+[[printings]]
+id = "dce15387-4114-4b3e-91aa-5b42b45c44ac"
+set = "trk"

@@ -5,6 +5,18 @@ card = "09b7ea91-2620-4c45-af3c-60bbeab89966"
 id = "09d1f048-f411-4677-a0dc-dbddd06fe694"
 set = "soc"
 
+[[printings.faces]]
+name = "Eiganjo Dynastorian"
+
+[[printings.faces]]
+name = "Replenish"
+
 [[printings]]
 id = "f6a504a6-2501-4384-9db9-da6abe1cf81d"
 set = "soc"
+
+[[printings.faces]]
+name = "Eiganjo Dynastorian"
+
+[[printings.faces]]
+name = "Replenish"

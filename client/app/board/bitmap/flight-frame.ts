@@ -103,6 +103,9 @@ export function restingPaintSnapshot(
       .map(([id, amount]) => `${id}:${amount}`),
     targetPlayers: sortedSetValues(frame.targetPlayers),
     pickedPlayers: sortedSetValues(frame.pickedPlayers),
+    avatarPositions: Object.entries(frame.avatarPositions ?? {})
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([seat, position]) => `${seat}:${position.x}:${position.y}`),
     paymentPreviewIds: sortedSetValues(frame.paymentPreviewIds),
     cards: [...frame.cards].sort((a, b) => a.id - b.id).map(cardPaintKey),
     players: [...frame.players].sort((a, b) => a.player - b.player).map(playerPaintKey),

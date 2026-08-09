@@ -179,7 +179,9 @@ export function applyPublishedFrame(
 function settledFlightHasAuthoritativeDestination(flight: CardFlight, frame: BitmapFrame): boolean {
   if (flight.phase !== "settled" || flight.hold !== true) return false;
   if (flight.kind === "battlefield") return frame.cards.some((card) => card.id === flight.id);
-  if (flight.kind === "stack") return (frame.stack ?? []).some((entry) => entry.source === flight.id);
+  if (flight.kind === "stack") {
+    return (frame.stack ?? []).some((entry) => entry.kind === "spell" && entry.source === flight.id);
+  }
   return false;
 }
 

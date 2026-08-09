@@ -359,3 +359,13 @@ set = "sld"
 [[printings]]
 id = "379f4020-a58c-484d-9b44-72b200884079"
 set = "mar"
+
+[[printings]]
+id = "77d16cf5-d85a-44cf-aaac-c4134837cbe4"
+set = "sld"
+flavor = "\"How pathetic! To Doom, even your best efforts are an embarrassment!\""
+
+[[printings]]
+id = "d6a1907c-59c4-4c72-b0f0-9e2402c05719"
+set = "sld"
+flavor = "\"How pathetic! To Doom, even your best efforts are an embarrassment!\""

@@ -109,11 +109,19 @@ An ability block SHALL be able to record the one printed sentence that prints it
 - **THEN** the pool test that holds every ability sentence to its card's oracle text fails
 
 ### Requirement: Printing records carry what a printing prints
-Every printed detail that differs between printings of one card SHALL live in printing records — one file per card under `crates/cards/data/prints/`, recording each printing's Scryfall card UUID, its set code, and the flavor text that printing prints. Flavor SHALL NOT be authored on the card definition, because a card has no one flavor. A card definition's set codes SHALL be derived from its printing records at pool load, not authored a second time on the card; authoring either `flavor` or `sets` on a card SHALL be a load error. The records SHALL be generated from Scryfall bulk data (`just cards-printings`) rather than hand-maintained.
+Every printed detail that differs between printings of one card SHALL live in printing records — one file per card under `crates/cards/data/prints/`, recording each printing's Scryfall card UUID, its set code, and the flavor text that printing prints. A multi-face printing SHALL record every authoritative face name, including faces that print no flavor, rather than collapsing the physical card to its front face. A face's optional flavor SHALL distinguish a known face with no flavor from an unknown face: the known unflavored face SHALL return no flavor, while an unknown face MAY use the printing-level legacy fallback. Flavor SHALL NOT be authored on the card definition, because a card has no one flavor. A card definition's set codes SHALL be derived from its printing records at pool load, not authored a second time on the card; authoring either `flavor` or `sets` on a card SHALL be a load error. The records SHALL be generated from Scryfall bulk data (`just cards-printings`) rather than hand-maintained.
 
 #### Scenario: Flavor is looked up by printing, not by card
 - **WHEN** a deck plays a printing whose flavor differs from another printing of the same card
 - **THEN** the flavor is read from that printing's record by its Scryfall card UUID, and no rules decision reads it
+
+#### Scenario: A multi-face printing has distinct face flavor
+- **WHEN** two named faces of one printing print different flavor text
+- **THEN** each face's flavor is retained under that printing UUID and face name, and an active face reads its own words
+
+#### Scenario: A named back face prints no flavor
+- **WHEN** a printing's front face has flavor and its named back face has none
+- **THEN** the back face is still recorded and returns no flavor rather than inheriting the front face's words
 
 #### Scenario: A card's set codes come from its printings
 - **WHEN** the pool loads a card whose printing records list several sets

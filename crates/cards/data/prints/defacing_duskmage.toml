@@ -5,6 +5,18 @@ card = "27c366cf-00d7-47d4-9577-736bfc4a3b81"
 id = "91493530-bc0a-4ed1-8a4a-9a732fcb3752"
 set = "soc"
 
+[[printings.faces]]
+name = "Defacing Duskmage"
+
+[[printings.faces]]
+name = "Vandal's Edit"
+
 [[printings]]
 id = "c35a1c6f-1656-4619-9ab8-40044c857a7f"
 set = "soc"
+
+[[printings.faces]]
+name = "Defacing Duskmage"
+
+[[printings.faces]]
+name = "Vandal's Edit"

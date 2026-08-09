@@ -5,6 +5,18 @@ card = "10389ff7-2ea4-4413-90cc-0e3ca268c64d"
 id = "159c2891-c1e2-4ec3-8c20-d6b97315dd1c"
 set = "soc"
 
+[[printings.faces]]
+name = "Striding Shotcaller"
+
+[[printings.faces]]
+name = "Run the Play"
+
 [[printings]]
 id = "34303632-6062-4f6e-aeb4-bea74b7da0d7"
 set = "soc"
+
+[[printings.faces]]
+name = "Striding Shotcaller"
+
+[[printings.faces]]
+name = "Run the Play"

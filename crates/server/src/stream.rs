@@ -169,12 +169,19 @@ pub fn public_card_text(
 /// Add per-print flavor to schema-projected active spell-face words. Schema deliberately has no
 /// card-registry dependency; the transport is the existing boundary that joins printing flavor.
 fn hydrate_active_face_text(state: &mut VisibleState) {
+    hydrate_active_face_text_with(state, cards::print_face_flavor);
+}
+
+fn hydrate_active_face_text_with<'a>(
+    state: &mut VisibleState,
+    flavor_for: impl Fn(&str, &str) -> Option<&'a str>,
+) {
     for entry in &mut state.stack {
         let Some(text) = &mut entry.active_face_text else {
             continue;
         };
         text.print.clone_from(&entry.print);
-        text.flavor = cards::print_flavor(&entry.print)
+        text.flavor = flavor_for(&entry.print, &entry.name)
             .unwrap_or_default()
             .to_string();
     }
@@ -450,6 +457,46 @@ mod tests {
             .expect("spell carries active-face text");
         assert_eq!(active.print, print);
         assert!(active.flavor.starts_with("The sparkmage shrieked"));
+    }
+
+    #[test]
+    fn active_spell_face_flavor_joins_on_print_and_authoritative_face_name() {
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let bolt = game.spawn_in_hand(PlayerId(0), def("Lightning Bolt"));
+        game.submit(engine::Intent::Cast {
+            player: PlayerId(0),
+            object: bolt,
+            target: Some(engine::Target::Player(PlayerId(1))),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .expect("cast spell");
+        let extras = ViewExtras::default();
+        let mut state = complete_visible(&game, Some(PlayerId(0)), &extras);
+        state.stack[0].print = "two-face-print".into();
+        state.stack[0].name = "Back Face".into();
+
+        hydrate_active_face_text_with(&mut state, |print, face| match (print, face) {
+            ("two-face-print", "Front Face") => Some("front words"),
+            ("two-face-print", "Back Face") => Some("back words"),
+            _ => None,
+        });
+
+        assert_eq!(
+            state.stack[0].active_face_text.as_ref().unwrap().flavor,
+            "back words"
+        );
     }
 
     #[test]

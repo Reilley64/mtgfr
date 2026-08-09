@@ -1314,6 +1314,36 @@ describe("flight clock helpers", () => {
     expect(published.sync).toEqual({ flights: [held], exitFx: [], now: expect.any(Number) });
   });
 
+  it("does not hand off a held spell flight to an ability-only entry with the same source", () => {
+    const held = {
+      ...spawnFlight({
+        id: 91,
+        print: "bolt-print",
+        name: "Lightning Bolt",
+        x: 100,
+        y: 100,
+        scale: 1,
+        targetX: 100,
+        targetY: 100,
+        targetScale: 1,
+        kind: "stack",
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+    const published = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({
+        cards: [],
+        flights: [held],
+        stack: [{ controller: 0, kind: "ability", label: testMessageRef("Bolt trigger"), source: 91 }],
+      }),
+    );
+
+    expect(published.sync).toBeNull();
+    expect(published.frame.flights).toEqual([held]);
+  });
+
   it("drag-ghost pose change paints the flight layer without resting paint", () => {
     const ghost = {
       print: "bolt",

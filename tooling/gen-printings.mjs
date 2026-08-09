@@ -23,6 +23,8 @@ import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { createGunzip } from "node:zlib";
 
+import { printingFlavors } from "./printing-flavors.mjs";
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DATA_DIR = join(ROOT, "crates/cards/data");
 const PRINTS_DIR = join(DATA_DIR, "prints");
@@ -33,13 +35,6 @@ const cached = (() => {
   const at = process.argv.indexOf("--bulk");
   return at < 0 ? null : process.argv[at + 1];
 })();
-
-// The front face's flavor: a card prints one block per face, and a face renders its own.
-function flavorOf(card) {
-  if (typeof card.flavor_text === "string") return card.flavor_text;
-  if (Array.isArray(card.card_faces)) return card.card_faces[0]?.flavor_text ?? "";
-  return "";
-}
 
 // A single-line TOML basic string: escape backslashes, quotes, and newlines (flavor runs to
 // several lines, and an attribution sits on its own). Matches what `oracle` already does.
@@ -67,6 +62,10 @@ function writePrintings(slug, name, oracleId, printings) {
   for (const p of printings) {
     lines.push("", "[[printings]]", `id = ${tomlStr(p.id)}`, `set = ${tomlStr(p.set)}`);
     if (p.flavor !== "") lines.push(`flavor = ${tomlStr(p.flavor)}`);
+    for (const face of p.faces) {
+      lines.push("", "[[printings.faces]]", `name = ${tomlStr(face.name)}`);
+      if (face.flavor != null) lines.push(`flavor = ${tomlStr(face.flavor)}`);
+    }
   }
   writeFileSync(join(PRINTS_DIR, `${slug}.toml`), `${lines.join("\n")}\n`);
 }
@@ -101,7 +100,7 @@ for await (const line of await bulkLines()) {
   const card = JSON.parse(line.replace(/,\s*$/, ""));
   const entry = cards.get(card.oracle_id);
   if (entry == null) continue;
-  entry.printings.push({ id: card.id, set: card.set, released: card.released_at ?? "", flavor: flavorOf(card) });
+  entry.printings.push({ id: card.id, set: card.set, released: card.released_at ?? "", ...printingFlavors(card) });
 }
 
 rmSync(PRINTS_DIR, { recursive: true, force: true });

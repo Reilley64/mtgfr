@@ -629,12 +629,13 @@ function stackFlightAim(
 
 function stackFlightAimForSource(
   model: BoardModel,
-  stack: ReadonlyArray<{ source: number }>,
+  stack: ReadonlyArray<{ source: number; kind: string }>,
   sourceId: number,
-): { x: number; y: number; scale: number } {
+): { x: number; y: number; scale: number } | null {
   const count = Math.max(1, stack.length);
-  const row = stack.findIndex((entry) => entry.source === sourceId);
-  return stackFlightAim(model, { count, row: row >= 0 ? row : count - 1 });
+  const row = stack.findIndex((entry) => entry.kind === "spell" && entry.source === sourceId);
+  if (row < 0) return null;
+  return stackFlightAim(model, { count, row });
 }
 
 function cardTarget(camera: Camera, card: RenderCard): Vec2 {
@@ -743,6 +744,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     }
     if (flight.kind !== "stack") continue;
     const aim = stackFlightAimForSource(model, state.stack, id);
+    if (aim == null) continue;
     flights.set(id, retargetFlight(flight, { x: aim.x, y: aim.y, scale: aim.scale }));
   }
 
@@ -843,9 +845,18 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   }
 
   for (const [spell, meta] of fold.provenance.stackEntrances) {
-    const aim = stackFlightAimForSource(model, state.stack, spell);
     const stackCard = state.objects.find((object) => object.id === spell);
     const stackEntry = state.stack.find((entry) => entry.source === spell && entry.kind === "spell");
+    if (stackEntry == null) {
+      flights.delete(spell);
+      if (meta.from != null) {
+        flights.delete(meta.from);
+        handHidden.delete(meta.from);
+      }
+      continue;
+    }
+    const aim = stackFlightAimForSource(model, state.stack, spell);
+    if (aim == null) continue;
     const authoritativeFace = stackCard == null ? undefined : renderedStackSpellFace(model, stackCard, stackEntry);
     if (!flights.has(spell) && flights.has(meta.from)) {
       flights = rebindFlightId(flights, meta.from, spell);
@@ -947,6 +958,11 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     }
     if (flight.kind === "stack") {
       const aim = stackFlightAimForSource(model, state.stack, id);
+      if (aim == null) {
+        flights.delete(id);
+        if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+        continue;
+      }
       if (poseAtTarget(flight, aim) || poseNearHandoff(flight, aim)) {
         flights.delete(id);
         if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
@@ -1046,7 +1062,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     );
   }
 
-  const stackSources = new Set(state.stack.map((stackObject) => stackObject.source));
+  const stackSources = new Set(
+    state.stack.filter((stackObject) => stackObject.kind === "spell").map((stackObject) => stackObject.source),
+  );
   const pendingResolve = fold.provenance.resolvedFromStack.size > 0 || fold.provenance.leftStackToPile.size > 0;
   for (const [id, flight] of flights) {
     if (flight.kind !== "stack") continue;
@@ -1422,7 +1440,7 @@ function authorityOwnsFlightDestination(fold: BoardFold | null, flight: CardFlig
   if (state == null) return false;
 
   if (flight.kind === "stack") {
-    return state.stack.some((entry) => entry.source === flight.id);
+    return state.stack.some((entry) => entry.kind === "spell" && entry.source === flight.id);
   }
 
   if (flight.kind === "battlefield") {

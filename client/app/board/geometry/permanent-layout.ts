@@ -19,13 +19,19 @@ export function permanentRowMetrics(slotCount: number, rowWidth: number): Perman
   if (slotCount <= 7) return { side: PERMANENT_SIDE, step: PERMANENT_STEP, width: rowWidth };
 
   const gaps = slotCount - 1;
-  const numerator = rowWidth - gaps * (2 * PERMANENT_MAX_CHROME_OUTSET * TILT_AXIS_FACTOR + PERMANENT_CLEARANCE);
-  const fittedSide = Math.min(PERMANENT_SIDE, numerator / (1 + gaps * TILT_AXIS_FACTOR));
+  const fittedSide = Math.min(
+    PERMANENT_SIDE,
+    (rowWidth - gaps * PERMANENT_CLEARANCE) / (slotCount * TILT_AXIS_FACTOR) - 2 * PERMANENT_MAX_CHROME_OUTSET,
+  );
   if (fittedSide >= MIN_CROWDED_PERMANENT_SIDE) {
-    return { side: fittedSide, step: (rowWidth - fittedSide) / gaps, width: rowWidth };
+    return {
+      side: fittedSide,
+      step: tiltedPermanentExtent(fittedSide) + PERMANENT_CLEARANCE,
+      width: rowWidth,
+    };
   }
 
   const side = MIN_CROWDED_PERMANENT_SIDE;
   const step = tiltedPermanentExtent(side) + PERMANENT_CLEARANCE;
-  return { side, step, width: gaps * step + side };
+  return { side, step, width: gaps * step + tiltedPermanentExtent(side) };
 }

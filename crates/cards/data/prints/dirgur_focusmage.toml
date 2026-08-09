@@ -5,6 +5,18 @@ card = "655ee0db-1913-464f-bd06-072c6bf446bd"
 id = "7bdabeba-0cfb-4953-b725-50a48164a044"
 set = "soc"
 
+[[printings.faces]]
+name = "Dirgur Focusmage"
+
+[[printings.faces]]
+name = "Braingeyser"
+
 [[printings]]
 id = "baae3f8f-f282-40db-a1e0-cf6efc70bff0"
 set = "soc"
+
+[[printings.faces]]
+name = "Dirgur Focusmage"
+
+[[printings.faces]]
+name = "Braingeyser"

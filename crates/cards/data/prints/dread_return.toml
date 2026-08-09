@@ -75,3 +75,7 @@ flavor = "Those who forget the horrors of the past are doomed to re-meet them."
 id = "721aff76-9f80-4ec2-ae29-2dc8494a1a06"
 set = "cmm"
 flavor = "The luckiest acolytes were those who didn't survive long enough to see the archfiend's return."
+
+[[printings]]
+id = "0e2181c0-e0ff-4e5e-b59c-0e389642d45c"
+set = "sld"

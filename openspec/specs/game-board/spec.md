@@ -34,7 +34,7 @@ The live board SHALL compose Foldkit Canvas (vector furniture/arrows), Mount bit
 
 ### Requirement: Camera, Layout, and Hit Testing
 
-Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. Wheel and two-finger pinch SHALL emit `BoardCameraZoomed` via the camera gesture mount and set `cameraUserMoved` so later sync does not re-fit. `fitCamera` SHALL reserve live hand-bar height and re-fit on cold load, player-count change, and resize until the user moves the camera. `layout` SHALL emit world-space `RenderCard[]` with seat bands from the viewer perspective, packing, and cluster collapse. A permanent at rest SHALL occupy a square footprint; a card in motion — drag ghost or flight — SHALL keep the taller card-shaped footprint, so a played card is card-shaped until it settles. Zone-column piles — library, graveyard, exile, commander — SHALL keep the printed card's proportions, because a pile is a stack of cards rather than a permanent. Hits SHALL resolve against logical layout (topmost wins), not flight poses. A card's hit footprint SHALL be its upright rect whether it is tapped or not, because every rotation the board draws — the opponent's half turn, the tapped tile's tilt — leaves the card centred on that rect. DPR-aware canvas backing stores SHALL match the CSS viewport.
+Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. Wheel and two-finger pinch SHALL emit `BoardCameraZoomed` via the camera gesture mount and set `cameraUserMoved` so later sync does not re-fit. `fitCamera` SHALL reserve live hand-bar height and re-fit on cold load, player-count change, and resize until the user moves the camera. `layout` SHALL emit world-space `RenderCard[]` with seat bands from the viewer perspective, packing, and cluster collapse. Within each controller's battlefield, permanent paint depth SHALL proceed from that controller's avatar toward the table center: avatar-near lands below creatures below centerward noncreatures and planeswalkers, including on mirrored seats. Maximum-tilt painted permanent footprints SHALL retain at least eight world units of horizontal and vertical clearance. Rows through seven rendered slots SHALL remain full size; an overcrowded row SHALL uniformly shrink only its own permanents within the fixed row extent down to a 24-unit side, then widen its seat and table bounds rather than shrink or reduce clearance further. Attachments SHALL share their host row's size and depth and paint in stable attachment-subtree postorder: descendants before their parent attachment, sibling subtrees in authority order, and the root host last and topmost. Tap state SHALL NOT change permanent scale. At 1440 by 900 with the 128-pixel live hand bar, a fitted four-player board SHALL keep resting permanents at least 60 screen pixels per side. A permanent at rest SHALL occupy a square footprint; a card in motion — drag ghost or flight — SHALL keep the taller card-shaped footprint, so a played card is card-shaped until it settles. Zone-column piles — library, graveyard, exile, commander — SHALL keep the printed card's proportions, because a pile is a stack of cards rather than a permanent. Hits SHALL resolve against logical layout (topmost wins), not flight poses. A card's hit footprint SHALL be its upright rect whether it is tapped or not, because every rotation the board draws — the opponent's half turn, the tapped tile's tilt — leaves the card centred on that rect. DPR-aware canvas backing stores SHALL match the CSS viewport.
 
 #### Scenario: User zoom persists across sync
 - **WHEN** the player has panned or zoomed and a game delta arrives
@@ -48,9 +48,21 @@ Camera SHALL be pure `{ panX, panY, zoom }` with `screen = world * zoom + pan`. 
 - **WHEN** a card is played and its flight settles onto the battlefield
 - **THEN** the flight paints at card proportions and the resting permanent paints square
 
+#### Scenario: Mirrored seats preserve avatar-relative depth
+- **WHEN** a mirrored seat has lands, creatures, and noncreatures or planeswalkers on its battlefield
+- **THEN** its avatar-near lands paint below creatures, which paint below its centerward permanents
+
+#### Scenario: An overcrowded row shrinks independently
+- **WHEN** one battlefield row has eight rendered slots and another row has seven or fewer
+- **THEN** only the eight-slot row shrinks uniformly while the other row remains full size
+
+#### Scenario: Tap does not resize a permanent
+- **WHEN** a permanent changes between untapped and tapped
+- **THEN** its resting width and height remain equal
+
 #### Scenario: Four seats stay readable
 - **WHEN** the camera fits a four-player board at 1440×900 with the live hand bar
-- **THEN** a resting permanent is at least 70 screen pixels on each side
+- **THEN** a resting permanent is at least 60 screen pixels on each side
 
 #### Scenario: Piles stay card-shaped
 - **WHEN** a seat's zone column lays out its library, graveyard, exile, and commander slots
@@ -235,7 +247,7 @@ Resolved target captions SHALL list every destination below the stack card. Gene
 
 ### Requirement: Screen Motion
 
-Drag ghosts, `CardFlight`s, and battlefield `ExitFx` SHALL share one Mount flight-layer paint pass. Flights SHALL spawn from authorized local seeds or sync provenance, retarget to authoritative poses, hold local hand seeds until provenance, and settle without duplicate resting faces (`hideCardIds`, `handHidden`, owned ids). Battlefield→graveyard/exile SHALL use in-place ExitFx (destroy/exile), not a zone glide. Rejected intents and Cancel SHALL drop held seeds. Reduced motion SHALL snap flights and complete ExitFx immediately. Pose-only ticks SHALL repaint only the flight layer. Lift shadow on drag ghosts and flights SHALL match the shared lift-shadow tokens. A card in motion SHALL paint the same rendered card face its tile paints, falling back to the printed card image only until that face has been rendered.
+Drag ghosts, `CardFlight`s, and battlefield `ExitFx` SHALL share one Mount flight-layer paint pass. Flights SHALL spawn from authorized local seeds or sync provenance, retarget to authoritative poses, hold local hand seeds until provenance, and settle without duplicate resting faces (`hideCardIds`, `handHidden`, owned ids). A settled held flight whose authoritative destination appears SHALL synchronize and hand off during frame publication without waiting for another animation frame or interaction. Battlefield→graveyard/exile SHALL use in-place ExitFx (destroy/exile), not a zone glide. Rejected intents and Cancel SHALL drop held seeds. Reduced motion SHALL snap flights and complete ExitFx immediately. Pose-only ticks SHALL repaint only the flight layer. Lift shadow on drag ghosts and flights SHALL match the shared lift-shadow tokens. A card in motion SHALL paint the same rendered card face its tile paints, falling back to the printed card image only until that face has been rendered.
 
 #### Scenario: A dragged card keeps its face
 - **WHEN** a hand tile painting a rendered face is dragged
@@ -248,6 +260,11 @@ Drag ghosts, `CardFlight`s, and battlefield `ExitFx` SHALL share one Mount fligh
 #### Scenario: Battlefield destroy exit
 - **WHEN** provenance marks a permanent leaving the battlefield for the graveyard
 - **THEN** ExitFx destroy choreography runs at the last battlefield pose and suppresses the generic glide
+
+#### Scenario: A tapped entrance hands off after settling
+- **GIVEN** a held entrance flight settled before its authoritative battlefield object arrived
+- **WHEN** the authoritative object appears tapped
+- **THEN** the flight releases and the resting tapped permanent repaints without camera movement or another action
 
 ### Requirement: Mana Tray
 

@@ -30,7 +30,7 @@ pub mod types;
 #[cfg(feature = "card-dsl")]
 pub use de::{install_token_defs, token_def};
 pub use defs::{CardId, card_def, intern_card_def, interned_len};
-pub use printings::print_flavor;
+pub use printings::{print_face_flavor, print_flavor};
 #[cfg(feature = "card-dsl")]
 pub use toml_surface::CardToml;
 pub use types::*;

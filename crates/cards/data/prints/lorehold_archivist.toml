@@ -5,6 +5,18 @@ card = "a371d035-488e-4b3d-81de-ee7859452c0e"
 id = "cb535433-f062-4c35-977e-2f896251b1d8"
 set = "soc"
 
+[[printings.faces]]
+name = "Lorehold Archivist"
+
+[[printings.faces]]
+name = "Restore Relic"
+
 [[printings]]
 id = "e6498b64-7178-43e1-b317-0ad03f894db3"
 set = "soc"
+
+[[printings.faces]]
+name = "Lorehold Archivist"
+
+[[printings.faces]]
+name = "Restore Relic"

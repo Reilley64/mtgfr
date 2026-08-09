@@ -22,11 +22,13 @@ describe("permanent row metrics", () => {
     });
   });
 
-  it("shrinks an overcrowded row while retaining maximum-tilt clearance", () => {
+  it.each([8, 12, 20])("fits %i crowded slots by their complete maximum-tilt footprint", (slotCount) => {
     const rowWidth = 6 * PERMANENT_STEP + PERMANENT_SIDE;
-    const metrics = permanentRowMetrics(12, rowWidth);
+    const metrics = permanentRowMetrics(slotCount, rowWidth);
+    const gaps = slotCount - 1;
     expect(metrics.side).toBeLessThan(PERMANENT_SIDE);
-    expect(11 * metrics.step + metrics.side).toBeCloseTo(rowWidth);
+    expect(gaps * metrics.step + tiltedPermanentExtent(metrics.side)).toBeCloseTo(rowWidth);
+    expect(metrics.width).toBe(rowWidth);
     expect(metrics.step - tiltedPermanentExtent(metrics.side)).toBeGreaterThanOrEqual(PERMANENT_CLEARANCE - 1e-9);
   });
 
@@ -36,6 +38,6 @@ describe("permanent row metrics", () => {
     expect(metrics.side).toBe(MIN_CROWDED_PERMANENT_SIDE);
     expect(metrics.width).toBeGreaterThan(rowWidth);
     expect(metrics.step - tiltedPermanentExtent(metrics.side)).toBeGreaterThanOrEqual(PERMANENT_CLEARANCE);
-    expect(58 * metrics.step + metrics.side).toBeCloseTo(metrics.width);
+    expect(58 * metrics.step + tiltedPermanentExtent(metrics.side)).toBeCloseTo(metrics.width);
   });
 });

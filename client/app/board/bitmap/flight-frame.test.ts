@@ -40,6 +40,12 @@ describe("restingPaintChanged", () => {
     expect(restingPaintChanged(a, b)).toBe(true);
   });
 
+  it("is true when only an overflow-shifted avatar position changes", () => {
+    const before = restingPaintSnapshot({ ...baseResting, avatarPositions: { 0: { x: 200, y: 300 } } } as never);
+    const after = restingPaintSnapshot({ ...baseResting, avatarPositions: { 0: { x: 900, y: 300 } } } as never);
+    expect(restingPaintChanged(before, after)).toBe(true);
+  });
+
   it("is true when only a card's tap rotation changes", () => {
     const upright = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, tapFrac: 0 }] } as never);
     const tapped = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, tapFrac: 0.5 }] } as never);

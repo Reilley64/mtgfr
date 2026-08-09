@@ -4,3 +4,9 @@ card = "df1c0d06-2109-4297-9271-8a003fc892bc"
 [[printings]]
 id = "676ba521-66e4-42cf-a315-70d03cb7334e"
 set = "sos"
+
+[[printings.faces]]
+name = "Kirol, History Buff"
+
+[[printings.faces]]
+name = "Pack a Punch"

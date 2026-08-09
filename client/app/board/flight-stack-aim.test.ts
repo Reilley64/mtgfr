@@ -812,6 +812,74 @@ describe("stack flight settle handoff", () => {
     expect(afterSettle.flights.size).toBe(0);
   });
 
+  it("drops a held spell seed when only a same-source ability remains on the stack", () => {
+    const spellId = 42;
+    const held = spawnFlight({
+      id: spellId,
+      print: "bolt-print",
+      name: "Lightning Bolt",
+      x: 200,
+      y: 700,
+      scale: 1,
+      targetX: 200,
+      targetY: 700,
+      targetScale: 1,
+      kind: "stack",
+      fromCardId: 7,
+      hold: true,
+    });
+    const board0 = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      flights: new Map([[spellId, held]]),
+      handHidden: new Set([7]),
+    };
+
+    const after = syncBoardWithGame(
+      board0,
+      gameFold(
+        state({
+          objects: [],
+          stack: [{ controller: 0, kind: "ability", label: testMessageRef("Bolt trigger"), source: spellId }],
+        }),
+      ),
+    );
+
+    expect(after.flights.size).toBe(0);
+    expect(after.handHidden.has(7)).toBe(false);
+  });
+
+  it("removes a non-held spell flight when only a same-source ability remains", () => {
+    const spellId = 42;
+    const flight = spawnFlight({
+      id: spellId,
+      print: "bolt-print",
+      name: "Lightning Bolt",
+      x: 200,
+      y: 700,
+      scale: 1,
+      targetX: 250,
+      targetY: 700,
+      targetScale: 1,
+      kind: "stack",
+    });
+    const board0 = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      flights: new Map([[spellId, flight]]),
+    };
+    const after = syncBoardWithGame(
+      board0,
+      gameFold(
+        state({
+          stack: [{ controller: 0, kind: "ability", label: testMessageRef("Bolt trigger"), source: spellId }],
+        }),
+      ),
+    );
+
+    expect(after.flights.has(spellId)).toBe(false);
+  });
+
   it("FlightsSynced hands off a settled held stack flight once the spell is on the stack", () => {
     // After retarget, the Mount parks at the face with hold still set. Without a handoff on
     // FlightsSynced, the screen-space flight stays until the next game sync and tracks the camera.

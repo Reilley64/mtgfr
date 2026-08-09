@@ -17,8 +17,9 @@ surfaces (Canvas vector, Mount bitmap, HTML overlays). Living board requirements
    Flight / ExitFx animation is Mount-local rAF: mid-flight ticks paint only the
    flight canvas. Drag ghosts republish with Foldkit pointer updates (no rAF
    required for drag alone). Resting bitmap republishes when layout/chrome/hide
-   sets change, not on every pose tick. Model receives `FlightsSynced` when
-   flying or `ExitFx` membership changes.
+   sets change, not on every pose tick. A publish whose authoritative destination
+   arrives for a settled held flight can emit `FlightsSynced` even when no rAF is
+   active; the model also receives it when flying or `ExitFx` membership changes.
 
 5. **Board submodel:** `client/app/board/submodel.ts` composes canvas, bitmap, motion, action-session, and HTML overlays. `view.ts` is the composition root.
 6. **HTML chrome:** `client/app/board/html/` — `stack.ts`, `turn-chrome.ts`, `priority-bar.ts`, `discoverability.ts`, `overlays.ts`, `hand.ts`, `mana-tray.ts`, `actions.ts`, `log-panel.ts`, `prompts.ts`, `activation-menu.ts`, `inspect.ts`.
@@ -57,8 +58,9 @@ surfaces (Canvas vector, Mount bitmap, HTML overlays). Living board requirements
 
 ## Invariants (do not break)
 
-1. **Hits use logical layout**, never tweened/`drawnCards` paint positions.
-2. **Board layer stack (authoritative):** bottom → top paint/DOM order is fixed below. New board visuals must declare which layer they join; no ad-hoc `z-*` without updating this map.
+1. **`layout()` owns resting permanent depth and hits:** within each seat it emits avatar-near lands, then creatures, then centerward noncreatures and planeswalkers. Later entries paint above earlier entries and reverse-order hit testing selects that same visual topmost card. Attachment subtrees use stable postorder: descendants before their parent attachment, sibling subtrees in authority order, and the root host last/topmost.
+2. **Hits use logical layout**, never tweened/`drawnCards` paint positions.
+3. **Board layer stack (authoritative):** bottom → top paint/DOM order is fixed below. New board visuals must declare which layer they join; no ad-hoc `z-*` without updating this map.
 
    **Bottom → top:**
 
@@ -87,9 +89,9 @@ surfaces (Canvas vector, Mount bitmap, HTML overlays). Living board requirements
    6. Inspect (10) above everything else on the board, including system modals, while pinned.
    7. Under-card name labels are forbidden on resting permanents (not a separate layer — deleted).
 
-3. **Flight ownership:** while a flight or active `ExitFx` owns an id, suppress duplicate HTML entrances and hide the resting face (`hideCardIds` / `flightOwnedIds`).
-4. **Hand/stack rest as HTML;** battlefield + zone piles + flights are canvas/Mount. Do not merge into one scene graph.
-5. **Canvas colors** are hex literals (see DESIGN.md); keep the legend swatches in sync when changing badge/outline colors.
+4. **Flight ownership:** while a flight or active `ExitFx` owns an id, suppress duplicate HTML entrances and hide the resting face (`hideCardIds` / `flightOwnedIds`).
+5. **Hand/stack rest as HTML;** battlefield + zone piles + flights are canvas/Mount. Do not merge into one scene graph.
+6. **Canvas colors** are hex literals (see DESIGN.md); keep the legend swatches in sync when changing badge/outline colors.
 
 ## Related docs
 

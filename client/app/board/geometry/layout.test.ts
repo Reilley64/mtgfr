@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
 import { emptyManaPool } from "~/manaPips";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
-import { hitTest } from "./hit-test";
+import { stackTargetArrowEndpoints } from "../canvas/arrows";
+import { combatArrowEndpoints } from "../canvas/combatArrowEndpoints";
+import { hitAvatar, hitTest } from "./hit-test";
 import {
   AVATAR_LABEL_BELOW,
   AVATAR_R,
@@ -364,6 +367,52 @@ describe("layout", () => {
     expect(rightBand.x).toBeGreaterThanOrEqual(leftBand.x + leftBand.w);
   });
 
+  it("uses overflow-shifted avatars for hits and combat and stack arrow endpoints", () => {
+    const crowded = Array.from({ length: 59 }, (_, index) => mkObject({ id: index + 1, name: `Unique Bear ${index}` }));
+    const state = mkState({
+      players: [0, 1, 2, 3].map((player) => mkPlayer({ player })),
+      objects: crowded,
+    });
+    const board = layoutBoard(state, 0);
+    const shifted = board.avatarPositions[2];
+    const oldStatic = avatarPos(2, 0, 4);
+    expect(shifted).toBeDefined();
+    if (shifted == null) throw new Error("missing shifted avatar");
+    expect(shifted).not.toEqual(oldStatic);
+
+    const identity = { panX: 0, panY: 0, zoom: 1 };
+    expect(hitAvatar(identity, shifted.x, shifted.y, { 2: shifted })).toBe(2);
+    expect(hitAvatar(identity, oldStatic.x, oldStatic.y, { 2: shifted })).toBeNull();
+
+    const combat = combatArrowEndpoints({
+      camera: identity,
+      cards: board.cards,
+      avatars: board.avatarPositions,
+      attackers: [{ attacker: 1, defender: 2 }],
+      blocks: [],
+      blockersDeclared: [],
+      blockedAttackers: [],
+    });
+    expect(combat[0]?.to).toEqual(shifted);
+
+    const stack = stackTargetArrowEndpoints({
+      viewport: { width: 1440, height: 900 },
+      stack: [
+        {
+          controller: 0,
+          kind: "spell",
+          label: testMessageRef("card.name"),
+          source: 100,
+          target: { kind: "player", player: 2 },
+        },
+      ],
+      cards: board.cards,
+      avatars: board.avatarPositions,
+      camera: identity,
+    });
+    expect(stack[0]?.to).toEqual(shifted);
+  });
+
   // Board layout collisions (foldkit remaining-bugs task 9): zone-column faces are half-size art;
   // combat chrome (P/T) on those faces shares the art AABB. Prefer face-only in the column —
   // P/T belongs on battlefield permanents (and inspect), not on command/GY/exile miniatures.
@@ -724,7 +773,8 @@ describe("layout", () => {
     const rightmost = cards
       .filter((card) => card.zone === ZONE.Battlefield)
       .reduce((max, card) => Math.max(max, card.x + card.w), -Infinity);
-    expect(rightmost).toBeCloseTo(TEST_ROW_W);
+    const metrics = permanentRowMetrics(left.length + pws.length, TEST_ROW_W);
+    expect(rightmost + tiltedPermanentExtent(metrics.side) - metrics.side).toBeCloseTo(TEST_ROW_W);
     expect(new Set(xs).size).toBe(xs.length);
   });
 
@@ -748,7 +798,7 @@ describe("layout", () => {
       .sort((a, b) => a - b);
     expect(xs[0]).toBe(0);
     const metrics = permanentRowMetrics(creatures.length, TEST_ROW_W);
-    expect(xs[xs.length - 1]).toBeCloseTo(TEST_ROW_W - metrics.side);
+    expect(xs[xs.length - 1]).toBeCloseTo(TEST_ROW_W - tiltedPermanentExtent(metrics.side));
     const step = metrics.step;
     for (let i = 0; i < xs.length; i++) {
       expect(xs[i]).toBeCloseTo(i * step, 5);
@@ -955,7 +1005,9 @@ describe("layout", () => {
     );
     expect(bf.every((c) => c.cluster === 0)).toBe(true);
     expect(Math.min(...bf.map((c) => c.x))).toBe(0);
-    expect(Math.max(...bf.map((c) => c.x + c.w))).toBeCloseTo(TEST_ROW_W);
+    const metrics = permanentRowMetrics(creatures.length, TEST_ROW_W);
+    const rightmost = Math.max(...bf.map((c) => c.x + c.w));
+    expect(rightmost + tiltedPermanentExtent(metrics.side) - metrics.side).toBeCloseTo(TEST_ROW_W);
   });
 
   it("clusters when keywords arrive in different order", () => {

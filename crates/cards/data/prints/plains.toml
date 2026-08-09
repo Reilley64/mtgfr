@@ -3598,6 +3598,10 @@ id = "f29448c0-3126-4018-a934-5a4ed019ea76"
 set = "msh"
 
 [[printings]]
+id = "e2289fd7-19bb-4034-a6dd-267c4914975b"
+set = "sld"
+
+[[printings]]
 id = "128226f4-a733-4f0a-ab2b-7789cfa8b443"
 set = "hob"
 
@@ -3637,3 +3641,11 @@ set = "hob"
 [[printings]]
 id = "f82548c7-24ed-4529-8b57-7407dc0b8c8b"
 set = "hob"
+
+[[printings]]
+id = "09b3c8bb-10ca-4b9f-8507-db6e8c52a918"
+set = "trk"
+
+[[printings]]
+id = "8ab0f4c0-b331-4c57-b68f-2e24bb5ba06c"
+set = "trk"
