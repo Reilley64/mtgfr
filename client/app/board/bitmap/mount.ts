@@ -416,6 +416,7 @@ export function paintBitmapLayer(
       ]),
     ),
     frame.viewer,
+    frame.players.length,
   );
   for (const card of cards) {
     if (frame.hideCardIds.has(card.id)) continue;

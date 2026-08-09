@@ -1114,7 +1114,15 @@ function pointerMoveModel(model: BoardModel, fold: GameFoldState, x: number, y: 
       ...model,
       cursor: { x, y },
       pointer: moved.phase,
-      hoveredAttachmentId: hitAttachmentHover(model.camera, x, y, cards, model.hoveredAttachmentId, fold.state.viewer),
+      hoveredAttachmentId: hitAttachmentHover(
+        model.camera,
+        x,
+        y,
+        cards,
+        model.hoveredAttachmentId,
+        fold.state.viewer,
+        fold.state.players.length,
+      ),
     };
   }
 

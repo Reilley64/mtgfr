@@ -1,5 +1,5 @@
 import { type Camera, screenToWorld } from "./camera";
-import type { RenderCard } from "./layout";
+import { isFlipped, type RenderCard } from "./layout";
 
 export const ATTACHMENT_HOVER_RISE = 0.2;
 
@@ -7,10 +7,13 @@ function clampProgress(progress: number): number {
   return Math.min(1, Math.max(0, progress));
 }
 
-function rootHost(cards: readonly RenderCard[], attachment: RenderCard): RenderCard | null {
+function cardIndex(cards: readonly RenderCard[]): ReadonlyMap<number, RenderCard> {
+  return new Map(cards.map((card) => [card.id, card]));
+}
+
+function rootHost(byId: ReadonlyMap<number, RenderCard>, attachment: RenderCard): RenderCard | null {
   if (attachment.attachedTo == null) return null;
 
-  const byId = new Map(cards.map((card) => [card.id, card]));
   const seen = new Set<number>();
   let current = attachment;
 
@@ -26,11 +29,14 @@ function rootHost(cards: readonly RenderCard[], attachment: RenderCard): RenderC
   return current;
 }
 
-function attachmentOffset(card: RenderCard, cards: readonly RenderCard[], progress: number, viewer: number): number {
-  const root = rootHost(cards, card);
-  if (root == null) return 0;
-
-  const direction = root.controller === viewer ? -1 : 1;
+function attachmentOffset(
+  card: RenderCard,
+  root: RenderCard,
+  progress: number,
+  viewer: number,
+  playerCount: number,
+): number {
+  const direction = isFlipped(root.controller, viewer, playerCount) ? 1 : -1;
   return direction * card.h * ATTACHMENT_HOVER_RISE * clampProgress(progress);
 }
 
@@ -43,25 +49,36 @@ export function attachmentHoverOffset(
   hoveredId: number | null,
   progress: number,
   viewer: number,
+  playerCount: number,
 ): number {
   if (hoveredId == null) return 0;
 
-  const attachment = cards.find((card) => card.id === hoveredId);
+  const byId = cardIndex(cards);
+  const attachment = byId.get(hoveredId);
   if (attachment == null) return 0;
 
-  return attachmentOffset(attachment, cards, progress, viewer);
+  const root = rootHost(byId, attachment);
+  if (root == null) return 0;
+
+  return attachmentOffset(attachment, root, progress, viewer, playerCount);
 }
 
 export function attachmentHoverCards(
   cards: readonly RenderCard[],
   progressById: ReadonlyMap<number, number>,
   viewer: number,
+  playerCount: number,
 ): RenderCard[] {
+  const byId = cardIndex(cards);
+
   return cards.map((card) => {
     const progress = clampProgress(progressById.get(card.id) ?? 0);
     if (progress === 0) return card;
 
-    return { ...card, y: card.y + attachmentOffset(card, cards, progress, viewer) };
+    const root = rootHost(byId, card);
+    if (root == null) return card;
+
+    return { ...card, y: card.y + attachmentOffset(card, root, progress, viewer, playerCount) };
   });
 }
 
@@ -72,17 +89,19 @@ export function hitAttachmentHover(
   cards: readonly RenderCard[],
   hoveredId: number | null,
   viewer: number,
+  playerCount: number,
 ): number | null {
   const point = screenToWorld(camera, screenX, screenY);
+  const byId = cardIndex(cards);
 
   for (let index = cards.length - 1; index >= 0; index--) {
     const card = cards[index];
-    const root = rootHost(cards, card);
+    const root = rootHost(byId, card);
     const inRestingRect = contains(card, point.x, point.y);
     const inHoveredRect =
       card.id === hoveredId &&
       root != null &&
-      contains({ ...card, y: card.y + attachmentOffset(card, cards, 1, viewer) }, point.x, point.y);
+      contains({ ...card, y: card.y + attachmentOffset(card, root, 1, viewer, playerCount) }, point.x, point.y);
 
     if (!inRestingRect && !inHoveredRect) continue;
     if (root == null) return null;

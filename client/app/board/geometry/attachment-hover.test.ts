@@ -40,19 +40,29 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
 }
 
 const cards = [card({ id: 2, attachedTo: 1 }), card({ id: 1 })];
-const mirroredCards = [card({ id: 12, attachedTo: 11 }), card({ id: 11, controller: 1 })];
-const crossControllerCards = [card({ id: 22, attachedTo: 21, controller: 3 }), card({ id: 21, controller: 0 })];
+const topRowCards = [card({ id: 12, attachedTo: 11 }), card({ id: 11, controller: 1 })];
+const bottomSideCards = [card({ id: 22, attachedTo: 21 }), card({ id: 21, controller: 2 })];
+const crossControllerCards = [card({ id: 32, attachedTo: 31, controller: 3 }), card({ id: 31, controller: 2 })];
 const nestedCards = [
-  card({ id: 33, y: 40, attachedTo: 32 }),
-  card({ id: 32, y: 80, attachedTo: 31 }),
-  card({ id: 31, y: 80 }),
+  card({ id: 43, y: 40, attachedTo: 42 }),
+  card({ id: 42, y: 80, attachedTo: 41 }),
+  card({ id: 41, y: 80 }),
 ];
 
 describe("attachment hover geometry", () => {
-  it("raises attachments toward the root host controller's avatar", () => {
-    expect(attachmentHoverOffset(cards, 2, 1, 0)).toBe(-20);
-    expect(attachmentHoverOffset(mirroredCards, 12, 1, 0)).toBe(20);
-    expect(attachmentHoverOffset(crossControllerCards, 22, 1, 0)).toBe(-20);
+  it("raises attachments centerward according to the root host's four-player row", () => {
+    expect(attachmentHoverOffset(cards, 2, 1, 0, 4)).toBe(-20);
+    expect(attachmentHoverOffset(bottomSideCards, 22, 1, 0, 4)).toBe(-20);
+    expect(attachmentHoverOffset(topRowCards, 12, 1, 0, 4)).toBe(20);
+  });
+
+  it("follows the root host row for cross-controller attachments", () => {
+    expect(attachmentHoverOffset(crossControllerCards, 32, 1, 0, 4)).toBe(-20);
+  });
+
+  it("raises attachments centerward in spectator bottom and top rows", () => {
+    expect(attachmentHoverOffset(cards, 2, 1, 4, 4)).toBe(-20);
+    expect(attachmentHoverOffset(topRowCards, 12, 1, 4, 4)).toBe(20);
   });
 
   it("uses a nested attachment's own rendered height for its rise distance", () => {
@@ -62,17 +72,17 @@ describe("attachment hover geometry", () => {
       card({ id: 60, y: 100, h: 100 }),
     ];
 
-    expect(attachmentHoverOffset(differentlySizedNestedCards, 62, 1, 0)).toBe(-8);
-    expect(attachmentHoverCards(differentlySizedNestedCards, new Map([[62, 1]]), 0)[0]?.y).toBe(92);
+    expect(attachmentHoverOffset(differentlySizedNestedCards, 62, 1, 0, 4)).toBe(-8);
+    expect(attachmentHoverCards(differentlySizedNestedCards, new Map([[62, 1]]), 0, 4)[0]?.y).toBe(92);
   });
 
   it("moves only the hovered nested attachment without changing layout order or dimensions", () => {
-    const presented = attachmentHoverCards(nestedCards, new Map([[32, 1]]), 0);
+    const presented = attachmentHoverCards(nestedCards, new Map([[42, 1]]), 0, 4);
 
     expect(presented.map((presentedCard) => presentedCard.id)).toEqual(nestedCards.map((nestedCard) => nestedCard.id));
-    expect(presented.find((presentedCard) => presentedCard.id === 32)?.y).toBe(60);
-    expect(presented.find((presentedCard) => presentedCard.id === 31)?.y).toBe(80);
-    expect(presented.find((presentedCard) => presentedCard.id === 33)?.y).toBe(40);
+    expect(presented.find((presentedCard) => presentedCard.id === 42)?.y).toBe(60);
+    expect(presented.find((presentedCard) => presentedCard.id === 41)?.y).toBe(80);
+    expect(presented.find((presentedCard) => presentedCard.id === 43)?.y).toBe(40);
     expect(
       presented.every(
         (presentedCard, index) =>
@@ -82,18 +92,18 @@ describe("attachment hover geometry", () => {
   });
 
   it("keeps root-host precedence while allowing the hovered attachment's shifted footprint", () => {
-    expect(hitAttachmentHover(identity, 50, 70, nestedCards, 32, 0)).toBe(32);
-    expect(hitAttachmentHover(identity, 50, 105, nestedCards, 32, 0)).toBeNull();
-    expect(hitAttachmentHover(identity, 50, 10, nestedCards, 32, 0)).toBeNull();
+    expect(hitAttachmentHover(identity, 50, 70, nestedCards, 42, 0, 4)).toBe(42);
+    expect(hitAttachmentHover(identity, 50, 105, nestedCards, 42, 0, 4)).toBeNull();
+    expect(hitAttachmentHover(identity, 50, 10, nestedCards, 42, 0, 4)).toBeNull();
   });
 
   it("rejects cycles and missing attachment hosts", () => {
     const cyclicCards = [card({ id: 41, attachedTo: 42 }), card({ id: 42, attachedTo: 41 })];
     const missingHostCards = [card({ id: 51, attachedTo: 52 })];
 
-    expect(attachmentHoverOffset(cyclicCards, 41, 1, 0)).toBe(0);
-    expect(attachmentHoverOffset(missingHostCards, 51, 1, 0)).toBe(0);
-    expect(hitAttachmentHover(identity, 50, 110, cyclicCards, 41, 0)).toBeNull();
+    expect(attachmentHoverOffset(cyclicCards, 41, 1, 0, 4)).toBe(0);
+    expect(attachmentHoverOffset(missingHostCards, 51, 1, 0, 4)).toBe(0);
+    expect(hitAttachmentHover(identity, 50, 110, cyclicCards, 41, 0, 4)).toBeNull();
   });
 
   it("clamps hover progress before applying the raised presentation", () => {
@@ -104,6 +114,7 @@ describe("attachment hover geometry", () => {
         [1, -1],
       ]),
       0,
+      4,
     );
 
     expect(presented.find((presentedCard) => presentedCard.id === 2)?.y).toBe(80);
