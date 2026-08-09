@@ -198,6 +198,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model, h) 
     dpr: model.board.dpr,
     camera: model.board.camera,
     cards,
+    hoveredAttachmentId: model.board.hoveredAttachmentId,
     avatarPositions: boardLayout.avatarPositions,
     viewer: state.viewer,
     players: state.players,

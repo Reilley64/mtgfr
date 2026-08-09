@@ -102,6 +102,7 @@ function frameOf(model: BoardModel, fold: GameFoldState): BitmapFrame {
     dpr: model.dpr,
     camera: model.camera,
     cards: layout(visible, visible.viewer),
+    hoveredAttachmentId: model.hoveredAttachmentId,
     viewer: visible.viewer,
     players: visible.players,
     priority: visible.priority,

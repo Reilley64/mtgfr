@@ -102,6 +102,7 @@ import {
   type SpotlightStep,
   spotlightSteps,
 } from "./first-player-reveal";
+import { hitAttachmentHover } from "./geometry/attachment-hover";
 import type { Camera, Vec2 } from "./geometry/camera";
 import { panBy, screenToWorld, worldToScreen, zoomAt } from "./geometry/camera";
 import {
@@ -238,6 +239,8 @@ export type BoardModel = {
   lastProvenanceSeq: number | null;
   ownedIds: Set<number>;
   pointer: PointerPhase;
+  /** Attached permanent under the idle battlefield pointer, if any. */
+  hoveredAttachmentId: number | null;
   selectedId: number | null;
   /** Activation radial pointer arm (down on a wedge). */
   radialPress: RadialPress;
@@ -362,6 +365,7 @@ export function initialBoardModel(): BoardModel {
     lastProvenanceSeq: null,
     ownedIds: new Set(),
     pointer: { kind: "idle" },
+    hoveredAttachmentId: null,
     selectedId: null,
     radialPress: { armed: null },
     radialHover: null,
@@ -422,7 +426,7 @@ export function initialBoardModel(): BoardModel {
 type BoardFold = Pick<GameFoldState, "provenance" | "seq" | "state">;
 
 export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardModel {
-  if (fold.state == null) return model;
+  if (fold.state == null) return { ...model, hoveredAttachmentId: null };
 
   let next = undecidedMulliganInspectLock(fold.state) ? clearInspectState(model) : model;
   next = syncCombatStaging(next, fold);
@@ -467,7 +471,10 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
     next = syncFlightsWithGame(next, fold);
   }
   next = syncPlayModePick(next, fold);
-  return syncStackChrome(next, fold);
+  next = syncStackChrome(next, fold);
+  if (next.hoveredAttachmentId == null) return next;
+  if (boardLayout.cards.some((card) => card.id === next.hoveredAttachmentId && card.attachedTo != null)) return next;
+  return { ...next, hoveredAttachmentId: null };
 }
 
 function syncPlayModePick(model: BoardModel, fold: BoardFold): BoardModel {
@@ -1089,19 +1096,35 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
 function pointerDownModel(model: BoardModel, fold: GameFoldState, x: number, y: number): BoardModel {
   const state = fold.state;
-  if (state == null) return model;
+  if (state == null) return { ...model, hoveredAttachmentId: null };
 
   return {
     ...model,
     cursor: { x, y },
     pointer: pointerDown(cardAt(fold, model, x, y), x, y, stageableSeats(fold)),
+    hoveredAttachmentId: null,
   };
 }
 
-function pointerMoveModel(model: BoardModel, x: number, y: number): BoardModel {
+function pointerMoveModel(model: BoardModel, fold: GameFoldState, x: number, y: number): BoardModel {
   const moved = pointerMove(model.pointer, x, y);
+  if (moved.phase.kind === "idle" && fold.state != null) {
+    const cards = cardsFor(fold, model);
+    return {
+      ...model,
+      cursor: { x, y },
+      pointer: moved.phase,
+      hoveredAttachmentId: hitAttachmentHover(model.camera, x, y, cards, model.hoveredAttachmentId, fold.state.viewer),
+    };
+  }
+
   if (moved.pan == null) {
-    return { ...model, cursor: { x, y }, pointer: moved.phase };
+    return {
+      ...model,
+      cursor: { x, y },
+      pointer: moved.phase,
+      hoveredAttachmentId: null,
+    };
   }
 
   return {
@@ -1110,6 +1133,7 @@ function pointerMoveModel(model: BoardModel, x: number, y: number): BoardModel {
     cameraUserMoved: true,
     cursor: { x, y },
     pointer: moved.phase,
+    hoveredAttachmentId: null,
   };
 }
 
@@ -2610,7 +2634,7 @@ export function updateBoard(
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
     case "BoardPointerMove": {
-      const moved = releaseStickyHandInspect(pointerMoveModel(model, message.x, message.y));
+      const moved = releaseStickyHandInspect(pointerMoveModel(model, fold, message.x, message.y));
       return applyLiveInspectPin(moved, fold);
     }
     case "BoardPointerUp":
@@ -2645,6 +2669,7 @@ export function updateBoard(
             y: message.y,
           },
           hoverActionId: message.action.id,
+          hoveredAttachmentId: null,
           cursor: { x: message.x, y: message.y },
         },
         [],

@@ -7,6 +7,7 @@ const baseResting = {
   height: 900,
   camera: { panX: 0, panY: 0, zoom: 1 },
   cards: [{ id: 1 }],
+  hoveredAttachmentId: null,
   viewer: 0,
   players: [],
   priority: 0,

@@ -38,6 +38,8 @@ export type BitmapFrame = {
   dpr: number;
   camera: Camera;
   cards: readonly RenderCard[];
+  /** Attached permanent under the idle battlefield pointer, if any. */
+  hoveredAttachmentId: number | null;
   avatarPositions?: Readonly<Record<number, { x: number; y: number }>>;
   viewer: number;
   players: readonly PlayerView[];

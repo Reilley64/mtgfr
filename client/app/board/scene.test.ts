@@ -29,6 +29,8 @@ import {
 } from "./html/scene-helpers";
 import { CopyBoardLog } from "./log-commands";
 import {
+  BoardPointerDown,
+  BoardPointerMove,
   BoardPointerUp,
   CancelActionClicked,
   CombatBandToggled,
@@ -36,6 +38,7 @@ import {
   DiscardCostConfirmed,
   GyExileChosen,
   HandActionActivated,
+  HandDragStarted,
   KeyboardEnterPressed,
   KeyboardSpacePressed,
   LogCopyRequested,
@@ -805,6 +808,126 @@ function renderStub(id: number): RenderCard {
     clusterMembers: [],
   };
 }
+
+function attachmentHoverFixture(): {
+  aura: ObjectView;
+  gameFold: GameFoldState;
+  board: BoardModel;
+  hoverPoint: { x: number; y: number };
+  raisedOnlyPoint: { x: number; y: number };
+} {
+  const host = creature(101, 0);
+  const aura = creature(102, 0, {
+    name: "Rancor",
+    kind: { kind: "enchantment" },
+    attached_to: host.id,
+  });
+  const gameFold = fold(state({ objects: [host, aura] }));
+  const board = syncBoardWithGame(initialBoardModel(), gameFold);
+  const attachment = layout(gameFold.state as VisibleState, 0).find((card) => card.id === aura.id);
+  if (attachment == null) throw new Error("missing attachment");
+
+  return {
+    aura,
+    gameFold,
+    board,
+    hoverPoint: worldToScreen(board.camera, attachment.x + attachment.w / 2, attachment.y + attachment.h * 0.1),
+    raisedOnlyPoint: worldToScreen(board.camera, attachment.x + attachment.w / 2, attachment.y - attachment.h * 0.1),
+  };
+}
+
+test("pointer move tracks an attached permanent", () => {
+  const { aura, gameFold, board, hoverPoint } = attachmentHoverFixture();
+
+  const [hovered] = updateBoard(board, BoardPointerMove(hoverPoint), gameFold, "T1");
+
+  expect(hovered.hoveredAttachmentId).toBe(aura.id);
+});
+
+test("pointer move retains attachment hover in its raised-only rectangle", () => {
+  const { aura, gameFold, board, hoverPoint, raisedOnlyPoint } = attachmentHoverFixture();
+  const [hovered] = updateBoard(board, BoardPointerMove(hoverPoint), gameFold, "T1");
+
+  const [stillHovered] = updateBoard(hovered, BoardPointerMove(raisedOnlyPoint), gameFold, "T1");
+
+  expect(stillHovered.hoveredAttachmentId).toBe(aura.id);
+});
+
+test("pointer movement away clears attachment hover", () => {
+  const { gameFold, board, hoverPoint } = attachmentHoverFixture();
+  const [hovered] = updateBoard(board, BoardPointerMove(hoverPoint), gameFold, "T1");
+
+  const [left] = updateBoard(hovered, BoardPointerMove({ x: 0, y: 0 }), gameFold, "T1");
+
+  expect(left.hoveredAttachmentId).toBeNull();
+});
+
+test("pointer down clears attachment hover", () => {
+  const { gameFold, board, hoverPoint } = attachmentHoverFixture();
+  const [hovered] = updateBoard(board, BoardPointerMove(hoverPoint), gameFold, "T1");
+
+  const [pressed] = updateBoard(hovered, BoardPointerDown(hoverPoint), gameFold, "T1");
+
+  expect(pressed.hoveredAttachmentId).toBeNull();
+});
+
+test("hand drag start clears attachment hover", () => {
+  const { gameFold, board } = attachmentHoverFixture();
+  const action: ActionView = {
+    id: 9,
+    kind: "cast",
+    label: testMessageRef("Cast Rancor"),
+    needs_target: false,
+    object: 102,
+    section: "hand",
+  };
+  const hovered = { ...board, hoveredAttachmentId: 102 };
+
+  const [dragging] = updateBoard(
+    hovered,
+    HandDragStarted({
+      action,
+      name: "Rancor",
+      print: "",
+      manaCost: { colored: [0, 0, 0, 0, 0], generic: 1 },
+      x: 100,
+      y: 100,
+    }),
+    gameFold,
+    "T1",
+  );
+
+  expect(dragging.hoveredAttachmentId).toBeNull();
+});
+
+test("game sync clears attachment hover after its object leaves the battlefield", () => {
+  const { aura, gameFold, board } = attachmentHoverFixture();
+  const hovered = { ...board, hoveredAttachmentId: aura.id };
+  const withoutAura = fold(state({ objects: [creature(101, 0)] }));
+
+  const synced = syncBoardWithGame(hovered, { ...withoutAura, seq: gameFold.seq + 1 });
+
+  expect(synced.hoveredAttachmentId).toBeNull();
+});
+
+test("game sync clears attachment hover after its object detaches", () => {
+  const { aura, gameFold, board } = attachmentHoverFixture();
+  const hovered = { ...board, hoveredAttachmentId: aura.id };
+  const detachedAura = creature(aura.id, 0, { name: "Rancor", kind: { kind: "enchantment" } });
+  const detached = fold(state({ objects: [creature(101, 0), detachedAura] }));
+
+  const synced = syncBoardWithGame(hovered, { ...detached, seq: gameFold.seq + 1 });
+
+  expect(synced.hoveredAttachmentId).toBeNull();
+});
+
+test("game sync clears attachment hover when no live state is available", () => {
+  const board = { ...initialBoardModel(), hoveredAttachmentId: 102 };
+
+  const synced = syncBoardWithGame(board, fold(null));
+
+  expect(synced.hoveredAttachmentId).toBeNull();
+});
 
 function intentFromCommand(cmd: unknown): unknown {
   return (cmd as { args: { intent: unknown } }).args.intent;
