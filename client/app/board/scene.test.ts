@@ -824,7 +824,9 @@ function attachmentHoverFixture(): {
   });
   const gameFold = fold(state({ objects: [host, aura] }));
   const board = syncBoardWithGame(initialBoardModel(), gameFold);
-  const attachment = layout(gameFold.state as VisibleState, 0).find((card) => card.id === aura.id);
+  const liveState = gameFold.state;
+  if (liveState == null) throw new Error("missing live game state");
+  const attachment = layout(liveState, 0).find((card) => card.id === aura.id);
   if (attachment == null) throw new Error("missing attachment");
 
   return {
