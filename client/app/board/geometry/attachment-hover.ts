@@ -31,7 +31,7 @@ function attachmentOffset(card: RenderCard, cards: readonly RenderCard[], progre
   if (root == null) return 0;
 
   const direction = root.controller === viewer ? -1 : 1;
-  return direction * root.h * ATTACHMENT_HOVER_RISE * clampProgress(progress);
+  return direction * card.h * ATTACHMENT_HOVER_RISE * clampProgress(progress);
 }
 
 function contains(card: RenderCard, x: number, y: number): boolean {

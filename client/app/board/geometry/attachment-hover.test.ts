@@ -55,6 +55,17 @@ describe("attachment hover geometry", () => {
     expect(attachmentHoverOffset(crossControllerCards, 22, 1, 0)).toBe(-20);
   });
 
+  it("uses a nested attachment's own rendered height for its rise distance", () => {
+    const differentlySizedNestedCards = [
+      card({ id: 62, y: 100, h: 40, attachedTo: 61 }),
+      card({ id: 61, y: 100, h: 70, attachedTo: 60 }),
+      card({ id: 60, y: 100, h: 100 }),
+    ];
+
+    expect(attachmentHoverOffset(differentlySizedNestedCards, 62, 1, 0)).toBe(-8);
+    expect(attachmentHoverCards(differentlySizedNestedCards, new Map([[62, 1]]), 0)[0]?.y).toBe(92);
+  });
+
   it("moves only the hovered nested attachment without changing layout order or dimensions", () => {
     const presented = attachmentHoverCards(nestedCards, new Map([[32, 1]]), 0);
 
