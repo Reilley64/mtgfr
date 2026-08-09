@@ -1,3 +1,8 @@
+/**
+ * @vitest-environment happy-dom
+ */
+
+import { Effect, Stream } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
@@ -13,8 +18,11 @@ import {
   type BitmapFrame,
   bitmapFrameNeedsRaf,
   type FlightClockState,
+  MountBitmapLayer,
+  MountFlightLayer,
   paintBitmapLayer,
   paintFlightLayer,
+  publishBitmapFrame,
   tickFlightClock,
 } from "./mount";
 
@@ -162,6 +170,15 @@ function mockCtx(
   return ctx;
 }
 
+function canvasWithContext(ctx: CanvasRenderingContext2D): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  Object.defineProperty(canvas, "getContext", {
+    configurable: true,
+    value: vi.fn(() => ctx),
+  });
+  return canvas;
+}
+
 function battlefieldAction(objectId: number, overrides: Partial<ActionView> = {}): ActionView {
   return {
     id: objectId + 100,
@@ -221,12 +238,7 @@ describe("paintBitmapLayer", () => {
     const calls: string[] = [];
     const imageDraws: Array<{ label: string; x: number; y: number }> = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });
-    const canvas = {
-      width: 0,
-      height: 0,
-      getContext: vi.fn(() => mockCtx(calls, imageDraws)),
-      style: {},
-    } as unknown as HTMLCanvasElement;
+    const canvas = canvasWithContext(mockCtx(calls, imageDraws));
     class TestImage {
       label = "";
     }
@@ -247,13 +259,13 @@ describe("paintBitmapLayer", () => {
           card({ id: 8, print: "host-print", y: 100 }),
         ],
         hoveredAttachmentId: 7,
-        attachmentHoverProgress: new Map([[7, 0.5]]),
+        attachmentHoverProgress: new Map([[7, 0.25]]),
       }),
       cache,
     );
 
     expect(imageDraws).toEqual([
-      { label: "attachment", x: 10, y: 86.6 },
+      { label: "attachment", x: 10, y: 95.8125 },
       { label: "host", x: 10, y: 100 },
     ]);
   });
@@ -1287,6 +1299,94 @@ describe("bitmapFrameNeedsRaf", () => {
       }),
     ).toBe(true);
   });
+});
+
+describe("mounted attachment hover clock", () => {
+  it("uses only the flight RAF to repaint resting enter, leave, and reduced-motion frames", () =>
+    Effect.runPromise(
+      Effect.gen(function* () {
+        const restingCalls: string[] = [];
+        const flightCalls: string[] = [];
+        const restingCanvas = canvasWithContext(mockCtx(restingCalls));
+        const flightCanvas = canvasWithContext(mockCtx(flightCalls));
+        const scheduled = new Map<number, FrameRequestCallback>();
+        let nextRafId = 1;
+        let reducedMotion = false;
+        const requestRaf = vi.fn((callback: FrameRequestCallback): number => {
+          const id = nextRafId;
+          nextRafId += 1;
+          scheduled.set(id, callback);
+          return id;
+        });
+
+        vi.stubGlobal("requestAnimationFrame", requestRaf);
+        vi.stubGlobal(
+          "cancelAnimationFrame",
+          vi.fn((id: number) => scheduled.delete(id)),
+        );
+        vi.stubGlobal(
+          "matchMedia",
+          vi.fn(() => ({ matches: reducedMotion })),
+        );
+
+        const runOnlyRaf = (now: number): void => {
+          const entries = [...scheduled.entries()];
+          expect(entries).toHaveLength(1);
+          const entry = entries[0];
+          if (entry == null) throw new Error("expected one scheduled bitmap frame");
+          scheduled.delete(entry[0]);
+          entry[1](now);
+        };
+        const restingPaints = (): number => restingCalls.filter((call) => call === "clear").length;
+
+        yield* Effect.forkChild(Stream.runDrain(MountBitmapLayer().f(restingCanvas)), { startImmediately: true });
+        yield* Effect.forkChild(Stream.runDrain(MountFlightLayer().f(flightCanvas)), { startImmediately: true });
+        yield* Effect.yieldNow;
+
+        expect(requestRaf).not.toHaveBeenCalled();
+
+        publishBitmapFrame(frame({ cards: [], hoveredAttachmentId: 7 }));
+        expect(restingPaints()).toBe(1);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(0);
+        expect(restingPaints()).toBe(2);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(104);
+        expect(restingPaints()).toBe(3);
+        expect(scheduled.size).toBe(0);
+
+        publishBitmapFrame(frame({ cards: [], hoveredAttachmentId: null }));
+        expect(restingPaints()).toBe(4);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(200);
+        expect(restingPaints()).toBe(5);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(304);
+        expect(restingPaints()).toBe(6);
+        expect(scheduled.size).toBe(0);
+
+        reducedMotion = true;
+        publishBitmapFrame(frame({ cards: [], hoveredAttachmentId: 7 }));
+        expect(restingPaints()).toBe(7);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(400);
+        expect(restingPaints()).toBe(8);
+        expect(scheduled.size).toBe(0);
+
+        publishBitmapFrame(frame({ cards: [], hoveredAttachmentId: null }));
+        expect(restingPaints()).toBe(9);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(416);
+        expect(restingPaints()).toBe(10);
+        expect(scheduled.size).toBe(0);
+      }),
+    ));
 });
 
 describe("flight clock helpers", () => {

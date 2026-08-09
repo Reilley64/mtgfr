@@ -1,77 +1,131 @@
 import { describe, expect, it } from "vitest";
+import { testMessageRef } from "~/i18n/testMessageRef";
+import type { PlayerView } from "~/wire/types";
+import { BLANK_FACE } from "../../domain/card-render/frame";
+import { type RenderCard, ZONE } from "../geometry/layout";
 import { spawnFlight } from "../motion/flights";
 import { mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
+import type { BitmapFrame } from "./mount";
 
-const baseResting = {
-  width: 1440,
-  height: 900,
-  camera: { panX: 0, panY: 0, zoom: 1 },
-  cards: [{ id: 1 }],
-  hoveredAttachmentId: null,
-  viewer: 0,
-  players: [],
-  priority: 0,
-  combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
-  stagedAttackers: [],
-  stagedBlocks: [],
-  hideCardIds: new Set<number>(),
-  targetObjects: new Set<number>(),
-  pickedObjects: new Set<number>(),
-  assignAmounts: new Map<number, number>(),
-  targetPlayers: new Set<number>(),
-  pickedPlayers: new Set<number>(),
-  aimFrom: null,
-  cursor: { x: 0, y: 0 },
-  combatDragFrom: null,
-  combatDragStroke: null,
-  paymentPreviewIds: new Set<number>(),
-  actions: undefined as undefined,
-};
+type RestingFrame = Omit<BitmapFrame, "flights" | "exitFx" | "dragGhost">;
+
+function card(overrides: Partial<RenderCard> = {}): RenderCard {
+  return {
+    cardId: "card",
+    cluster: 0,
+    clusterMembers: [],
+    controller: 0,
+    counters: 0,
+    faceDown: false,
+    goaded: false,
+    face: BLANK_FACE,
+    h: 134,
+    hasHaste: false,
+    id: 1,
+    isCommander: false,
+    keywords: [],
+    kind: "creature",
+    markedDamage: 0,
+    name: "Grizzly Bears",
+    owner: 0,
+    pile: 0,
+    prepared: false,
+    print: "resting-print",
+    pt: "2/2",
+    summoningSick: false,
+    tapped: false,
+    tapsForMana: false,
+    w: 96,
+    x: 10,
+    y: 20,
+    zone: ZONE.Battlefield,
+    ...overrides,
+  };
+}
+
+function player(overrides: Partial<PlayerView> = {}): PlayerView {
+  return {
+    commander_tax: 0,
+    hand_count: 7,
+    library_count: 80,
+    life: 40,
+    lost: false,
+    mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+    player: 0,
+    username: "Alice",
+    ...overrides,
+  };
+}
+
+function restingFrame(overrides: Partial<RestingFrame> = {}): RestingFrame {
+  return {
+    width: 1440,
+    height: 900,
+    dpr: 1,
+    camera: { panX: 0, panY: 0, zoom: 1 },
+    cards: [card()],
+    hoveredAttachmentId: null,
+    viewer: 0,
+    players: [],
+    priority: 0,
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
+    stagedAttackers: [],
+    stagedBlocks: [],
+    hideCardIds: new Set(),
+    targetObjects: new Set(),
+    pickedObjects: new Set(),
+    assignAmounts: new Map(),
+    targetPlayers: new Set(),
+    pickedPlayers: new Set(),
+    aimFrom: null,
+    cursor: { x: 0, y: 0 },
+    combatDragFrom: null,
+    combatDragStroke: null,
+    paymentPreviewIds: new Set(),
+    ...overrides,
+  };
+}
 
 describe("restingPaintChanged", () => {
   it("is false when only flights would differ (snapshot omits flights)", () => {
-    const a = restingPaintSnapshot({ ...baseResting /* snapshot factory ignores flights */ } as never);
-    const b = restingPaintSnapshot({ ...baseResting } as never);
+    const a = restingPaintSnapshot(restingFrame());
+    const b = restingPaintSnapshot(restingFrame());
     expect(restingPaintChanged(a, b)).toBe(false);
   });
 
   it("is true when hideCardIds or camera changes", () => {
-    const a = restingPaintSnapshot({ ...baseResting, hideCardIds: new Set([1]) } as never);
-    const b = restingPaintSnapshot({ ...baseResting, hideCardIds: new Set() } as never);
+    const a = restingPaintSnapshot(restingFrame({ hideCardIds: new Set([1]) }));
+    const b = restingPaintSnapshot(restingFrame({ hideCardIds: new Set() }));
     expect(restingPaintChanged(a, b)).toBe(true);
   });
 
   it("is true when only the hovered attachment changes", () => {
-    const before = restingPaintSnapshot({ ...baseResting, hoveredAttachmentId: null } as never);
-    const after = restingPaintSnapshot({ ...baseResting, hoveredAttachmentId: 7 } as never);
+    const before = restingPaintSnapshot(restingFrame({ hoveredAttachmentId: null }));
+    const after = restingPaintSnapshot(restingFrame({ hoveredAttachmentId: 7 }));
 
     expect(restingPaintChanged(before, after)).toBe(true);
   });
 
   it("is false when only attachment hover animation progress changes", () => {
-    const before = restingPaintSnapshot({
-      ...baseResting,
-      hoveredAttachmentId: 7,
-      attachmentHoverProgress: new Map([[7, 0]]),
-    } as never);
-    const after = restingPaintSnapshot({
-      ...baseResting,
-      hoveredAttachmentId: 7,
-      attachmentHoverProgress: new Map([[7, 0.5]]),
-    } as never);
+    const before = restingPaintSnapshot(
+      restingFrame({ hoveredAttachmentId: 7, attachmentHoverProgress: new Map([[7, 0]]) }),
+    );
+    const after = restingPaintSnapshot(
+      restingFrame({ hoveredAttachmentId: 7, attachmentHoverProgress: new Map([[7, 0.5]]) }),
+    );
 
     expect(restingPaintChanged(before, after)).toBe(false);
   });
 
   it("is true when only an overflow-shifted avatar position changes", () => {
-    const before = restingPaintSnapshot({ ...baseResting, avatarPositions: { 0: { x: 200, y: 300 } } } as never);
-    const after = restingPaintSnapshot({ ...baseResting, avatarPositions: { 0: { x: 900, y: 300 } } } as never);
+    const before = restingPaintSnapshot(restingFrame({ avatarPositions: { 0: { x: 200, y: 300 } } }));
+    const after = restingPaintSnapshot(restingFrame({ avatarPositions: { 0: { x: 900, y: 300 } } }));
     expect(restingPaintChanged(before, after)).toBe(true);
   });
 
   it("is true when only a card's tap rotation changes", () => {
-    const upright = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, tapFrac: 0 }] } as never);
-    const tapped = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, tapFrac: 0.5 }] } as never);
+    const upright = restingPaintSnapshot(restingFrame({ cards: [card({ tapFrac: 0 })] }));
+    const tapped = restingPaintSnapshot(restingFrame({ cards: [card({ tapFrac: 0.5 })] }));
     expect(restingPaintChanged(upright, tapped)).toBe(true);
   });
 
@@ -90,65 +144,43 @@ describe("restingPaintChanged", () => {
       oracle: "",
       flavor: "",
     };
-    const before = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, face }] } as never);
-    const after = restingPaintSnapshot({
-      ...baseResting,
-      cards: [{ id: 1, face: { ...face, colors: [1] } }],
-    } as never);
+    const before = restingPaintSnapshot(restingFrame({ cards: [card({ face })] }));
+    const after = restingPaintSnapshot(restingFrame({ cards: [card({ face: { ...face, colors: [1] } })] }));
 
     expect(restingPaintChanged(before, after)).toBe(true);
   });
 
   it("is true when only stack declared targets change", () => {
-    const before = restingPaintSnapshot({
-      ...baseResting,
-      stack: [{ controller: 0, kind: "spell", label: { key: "card.name", params: [] }, source: 9 }],
-    } as never);
-    const after = restingPaintSnapshot({
-      ...baseResting,
-      stack: [
-        {
-          controller: 0,
-          kind: "spell",
-          label: { key: "card.name", params: [] },
-          source: 9,
-          target: { kind: "object", id: 1 },
-        },
-      ],
-    } as never);
+    const before = restingPaintSnapshot(
+      restingFrame({ stack: [{ controller: 0, kind: "spell", label: testMessageRef("Card"), source: 9 }] }),
+    );
+    const after = restingPaintSnapshot(
+      restingFrame({
+        stack: [
+          {
+            controller: 0,
+            kind: "spell",
+            label: testMessageRef("Card"),
+            source: 9,
+            target: { kind: "object", id: 1 },
+          },
+        ],
+      }),
+    );
     expect(restingPaintChanged(before, after)).toBe(true);
   });
 
   it("is true when only commander_damage changes on a player", () => {
-    const before = restingPaintSnapshot({
-      ...baseResting,
-      players: [{ player: 0, life: 40, lost: false, username: "Alice", hand_count: 7 }],
-    } as never);
-    const after = restingPaintSnapshot({
-      ...baseResting,
-      players: [
-        {
-          player: 0,
-          life: 40,
-          lost: false,
-          username: "Alice",
-          hand_count: 7,
-          commander_damage: [{ from: 1, amount: 14 }],
-        },
-      ],
-    } as never);
+    const before = restingPaintSnapshot(restingFrame({ players: [player()] }));
+    const after = restingPaintSnapshot(
+      restingFrame({ players: [player({ commander_damage: [{ from: 1, amount: 14 }] })] }),
+    );
     expect(restingPaintChanged(before, after)).toBe(true);
   });
 
   it("is true when only gravatar_hash changes on a player", () => {
-    const before = restingPaintSnapshot({
-      ...baseResting,
-      players: [{ player: 0, life: 40, lost: false, username: "Alice", hand_count: 7, gravatar_hash: "" }],
-    } as never);
-    const after = restingPaintSnapshot({
-      ...baseResting,
-      players: [{ player: 0, life: 40, lost: false, username: "Alice", hand_count: 7, gravatar_hash: "abc123" }],
-    } as never);
+    const before = restingPaintSnapshot(restingFrame({ players: [player({ gravatar_hash: "" })] }));
+    const after = restingPaintSnapshot(restingFrame({ players: [player({ gravatar_hash: "abc123" })] }));
 
     expect(restingPaintChanged(before, after)).toBe(true);
   });
