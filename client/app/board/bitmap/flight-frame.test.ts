@@ -41,6 +41,28 @@ describe("restingPaintChanged", () => {
     expect(restingPaintChanged(a, b)).toBe(true);
   });
 
+  it("is true when only the hovered attachment changes", () => {
+    const before = restingPaintSnapshot({ ...baseResting, hoveredAttachmentId: null } as never);
+    const after = restingPaintSnapshot({ ...baseResting, hoveredAttachmentId: 7 } as never);
+
+    expect(restingPaintChanged(before, after)).toBe(true);
+  });
+
+  it("is false when only attachment hover animation progress changes", () => {
+    const before = restingPaintSnapshot({
+      ...baseResting,
+      hoveredAttachmentId: 7,
+      attachmentHoverProgress: new Map([[7, 0]]),
+    } as never);
+    const after = restingPaintSnapshot({
+      ...baseResting,
+      hoveredAttachmentId: 7,
+      attachmentHoverProgress: new Map([[7, 0.5]]),
+    } as never);
+
+    expect(restingPaintChanged(before, after)).toBe(false);
+  });
+
   it("is true when only an overflow-shifted avatar position changes", () => {
     const before = restingPaintSnapshot({ ...baseResting, avatarPositions: { 0: { x: 200, y: 300 } } } as never);
     const after = restingPaintSnapshot({ ...baseResting, avatarPositions: { 0: { x: 900, y: 300 } } } as never);

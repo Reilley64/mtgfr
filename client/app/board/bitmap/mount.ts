@@ -13,10 +13,18 @@ import { stackTargetArrowEndpoints } from "../canvas/arrows";
 import { clockChips } from "../canvas/avatars";
 import { combatArrowEndpoints } from "../canvas/combatArrowEndpoints";
 import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
+import { attachmentHoverCards } from "../geometry/attachment-hover";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarLabelOffsets, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
 import type { StackPresentation } from "../geometry/stackLayout";
 import { ArtLoaded, FlightsSynced } from "../messages";
+import {
+  type AttachmentHoverProgress,
+  attachmentHoverNeedsFrame,
+  easedAttachmentHoverProgress,
+  reconcileAttachmentHover,
+  stepAttachmentHover,
+} from "../motion/attachment-hover";
 import { type ExitFx, stepExitFx } from "../motion/exit-fx";
 import { type CardFlight, stepFlights } from "../motion/flights";
 import type { DragGhost } from "../motion/screen-motion";
@@ -40,6 +48,8 @@ export type BitmapFrame = {
   cards: readonly RenderCard[];
   /** Attached permanent under the idle battlefield pointer, if any. */
   hoveredAttachmentId: number | null;
+  /** Renderer-owned raw tween progress for attachments entering or leaving hover. */
+  attachmentHoverProgress?: AttachmentHoverProgress;
   avatarPositions?: Readonly<Record<number, { x: number; y: number }>>;
   viewer: number;
   players: readonly PlayerView[];
@@ -76,6 +86,7 @@ export type FlightClockState = {
   liveFlights: CardFlight[];
   liveExitFx: ExitFx[];
   liveDragGhost: DragGhost | null;
+  liveAttachmentHover: Map<number, number>;
   lastRestingSnapshot: ReturnType<typeof restingPaintSnapshot> | null;
 };
 
@@ -87,6 +98,7 @@ let flightClockState: FlightClockState = {
   liveFlights: [],
   liveExitFx: [],
   liveDragGhost: null,
+  liveAttachmentHover: new Map(),
   lastRestingSnapshot: null,
 };
 const mountedLayers = new Set<BitmapMountHandle>();
@@ -138,7 +150,14 @@ export function applyPublishedFrame(
   );
   const liveExitFx = [...steppedExitFx.exitFx.values()];
   const liveDragGhost = frame.dragGhost ?? null;
-  const mergedFrame = { ...frame, flights: mergedFlights, exitFx: liveExitFx, dragGhost: liveDragGhost };
+  const liveAttachmentHover = reconcileAttachmentHover(state.liveAttachmentHover, frame.hoveredAttachmentId);
+  const mergedFrame = {
+    ...frame,
+    flights: mergedFlights,
+    exitFx: liveExitFx,
+    dragGhost: liveDragGhost,
+    attachmentHoverProgress: liveAttachmentHover,
+  };
   const priorSettledHandoffs = new Map(
     state.liveFlights
       .filter((flight) => {
@@ -165,6 +184,7 @@ export function applyPublishedFrame(
       liveFlights,
       liveExitFx,
       liveDragGhost,
+      liveAttachmentHover,
       lastRestingSnapshot: nextRestingSnapshot,
     },
     paintResting: restingPaintChanged(state.lastRestingSnapshot, nextRestingSnapshot),
@@ -200,6 +220,7 @@ export function tickFlightClock(
 ): {
   state: FlightClockState;
   frame: BitmapFrame;
+  paintResting: boolean;
   paintFlight: boolean;
   sync: { flights: CardFlight[]; exitFx: ExitFx[]; now: number } | null;
 } {
@@ -207,6 +228,12 @@ export function tickFlightClock(
   const liveFlights = [...stepped.flights.values()];
   const steppedExitFx = stepExitFx(new Map(state.liveExitFx.map((fx) => [fx.id, fx])), dtMs, reducedMotion);
   const liveExitFx = [...steppedExitFx.exitFx.values()];
+  const liveAttachmentHover = stepAttachmentHover(
+    state.liveAttachmentHover,
+    frame.hoveredAttachmentId,
+    dtMs,
+    reducedMotion,
+  );
   const prevFlyingIds = flyingIds(state.liveFlights);
   const nextFlyingIds = flyingIds(liveFlights);
   const flyingMembershipChanged = !sameIdSet(prevFlyingIds, nextFlyingIds);
@@ -218,8 +245,16 @@ export function tickFlightClock(
       ...state,
       liveFlights,
       liveExitFx,
+      liveAttachmentHover,
     },
-    frame: { ...frame, flights: liveFlights, exitFx: liveExitFx, dragGhost: frame.dragGhost ?? null },
+    frame: {
+      ...frame,
+      flights: liveFlights,
+      exitFx: liveExitFx,
+      dragGhost: frame.dragGhost ?? null,
+      attachmentHoverProgress: liveAttachmentHover,
+    },
+    paintResting: attachmentHoverProgressChanged(state.liveAttachmentHover, liveAttachmentHover),
     paintFlight: true,
     sync:
       flyingMembershipChanged || allSettled || exitFxMembershipChanged
@@ -292,6 +327,14 @@ function dragGhostChanged(prev: DragGhost | null, next: DragGhost | null): boole
   );
 }
 
+function attachmentHoverProgressChanged(prev: AttachmentHoverProgress, next: AttachmentHoverProgress): boolean {
+  if (prev.size !== next.size) return true;
+  for (const [id, progress] of prev) {
+    if (next.get(id) !== progress) return true;
+  }
+  return false;
+}
+
 function flyingIds(flights: readonly CardFlight[]): Set<number> {
   return new Set(flights.filter((flight) => flight.phase === "flying").map((flight) => flight.id));
 }
@@ -314,14 +357,18 @@ function resetClockState(): void {
     liveFlights: [],
     liveExitFx: [],
     liveDragGhost: null,
+    liveAttachmentHover: new Map(),
     lastRestingSnapshot: null,
   };
 }
 
-export function bitmapFrameNeedsRaf(frame: Pick<BitmapFrame, "flights" | "exitFx"> | null): boolean {
+export function bitmapFrameNeedsRaf(
+  frame: Pick<BitmapFrame, "flights" | "exitFx" | "hoveredAttachmentId" | "attachmentHoverProgress"> | null,
+): boolean {
   if (frame == null) return false;
   if (frame.flights.some((flight) => flight.phase === "flying")) return true;
-  return (frame.exitFx?.length ?? 0) > 0;
+  if ((frame.exitFx?.length ?? 0) > 0) return true;
+  return attachmentHoverNeedsFrame(frame.attachmentHoverProgress ?? new Map(), frame.hoveredAttachmentId);
 }
 
 /** Size the backing store to the DPR, reset the transform, and clear. Returns the 2D context. */
@@ -360,7 +407,17 @@ export function paintBitmapLayer(
       hasHaste: card.hasHaste,
     })),
   );
-  for (const card of frame.cards) {
+  const cards = attachmentHoverCards(
+    frame.cards,
+    new Map(
+      [...(frame.attachmentHoverProgress ?? new Map()).entries()].map(([id, progress]) => [
+        id,
+        easedAttachmentHoverProgress(progress),
+      ]),
+    ),
+    frame.viewer,
+  );
+  for (const card of cards) {
     if (frame.hideCardIds.has(card.id)) continue;
     const outline = playableObjects.has(card.id) ? { color: PLAYABLE_BORDER, dash: [] } : null;
     paintCard(ctx, frame.camera, card, cache, frame.viewer, { outline, faces });
@@ -489,6 +546,11 @@ function registerLayer(
     const tick = tickFlightClock(flightClockState, currentFrame, now, dtMs, prefersReducedMotion());
     flightClockState = tick.state;
     currentFrame = tick.frame;
+    if (tick.paintResting) {
+      for (const mountedHandle of mountedLayers) {
+        if (!mountedHandle.animates) mountedHandle.render(mountedHandle.canvas);
+      }
+    }
     if (tick.paintFlight) render(handle.canvas);
     if (tick.sync != null) Queue.offerUnsafe(queue, FlightsSynced(tick.sync));
     handle.kickRaf();

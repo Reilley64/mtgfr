@@ -137,7 +137,13 @@ type Sim = {
 function newSim(model: BoardModel): Sim {
   return {
     model,
-    clock: { liveFlights: [], liveExitFx: [], liveDragGhost: null, lastRestingSnapshot: null },
+    clock: {
+      liveFlights: [],
+      liveExitFx: [],
+      liveDragGhost: null,
+      liveAttachmentHover: new Map(),
+      lastRestingSnapshot: null,
+    },
     frame: null,
     now: 0,
   };
@@ -363,6 +369,7 @@ describe("a played card is never left stuck at the end of its flight", () => {
       liveFlights: [held],
       liveExitFx: [],
       liveDragGhost: null,
+      liveAttachmentHover: new Map(),
       lastRestingSnapshot: null,
     };
 

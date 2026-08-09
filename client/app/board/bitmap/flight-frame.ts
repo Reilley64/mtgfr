@@ -94,6 +94,7 @@ export function restingPaintSnapshot(
     camera: frame.camera,
     viewer: frame.viewer,
     priority: frame.priority,
+    hoveredAttachmentId: frame.hoveredAttachmentId,
     hideCardIds: sortedSetValues(frame.hideCardIds),
     targetObjects: sortedSetValues(frame.targetObjects),
     pickedObjects: sortedSetValues(frame.pickedObjects),

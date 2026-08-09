@@ -4,6 +4,7 @@ import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, PlayerView } from "~/wire/types";
 import { BLANK_FACE } from "../../domain/card-render/frame";
 import { gravatarUrl } from "../../domain/gravatar";
+import type { ImageCache } from "../../domain/image-cache";
 import { AVATAR_LIFE_LABEL_BELOW, avatarPos, type RenderCard, ZONE } from "../geometry/layout";
 import { spawnExitFx } from "../motion/exit-fx";
 import { spawnFlight } from "../motion/flights";
@@ -105,7 +106,10 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
   };
 }
 
-function mockCtx(calls: string[]): CanvasRenderingContext2D {
+function mockCtx(
+  calls: string[],
+  imageDraws?: Array<{ label: string; x: number; y: number }>,
+): CanvasRenderingContext2D {
   const state = { fillStyle: "", strokeStyle: "" };
   const ctx = {
     arc: vi.fn(() => calls.push("avatar")),
@@ -113,7 +117,11 @@ function mockCtx(calls: string[]): CanvasRenderingContext2D {
     clearRect: vi.fn(() => calls.push("clear")),
     clip: vi.fn(),
     closePath: vi.fn(),
-    drawImage: vi.fn((image: { label?: string }) => calls.push(`image:${image.label ?? "unknown"}`)),
+    drawImage: vi.fn((image: { label?: string }, x: number, y: number) => {
+      const label = image.label ?? "unknown";
+      calls.push(`image:${label}`);
+      imageDraws?.push({ label, x, y });
+    }),
     fill: vi.fn(() => calls.push(`fill:${state.fillStyle}`)),
     fillRect: vi.fn(),
     fillText: vi.fn((text: string, _x: number, y: number) => {
@@ -202,12 +210,54 @@ function flightClockState(overrides: Partial<FlightClockState> = {}): FlightCloc
     liveFlights: [],
     liveExitFx: [],
     liveDragGhost: null,
+    liveAttachmentHover: new Map(),
     lastRestingSnapshot: null,
     ...overrides,
   };
 }
 
 describe("paintBitmapLayer", () => {
+  it("moves a hovered attachment in place without changing card paint order", () => {
+    const calls: string[] = [];
+    const imageDraws: Array<{ label: string; x: number; y: number }> = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls, imageDraws)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    class TestImage {
+      label = "";
+    }
+    vi.stubGlobal("HTMLImageElement", TestImage);
+    const attachmentImage = new HTMLImageElement();
+    const hostImage = new HTMLImageElement();
+    Reflect.set(attachmentImage, "label", "attachment");
+    Reflect.set(hostImage, "label", "host");
+    const cache = {
+      get: vi.fn((url: string) => (url.includes("attachment-print") ? attachmentImage : hostImage)),
+    } satisfies Pick<ImageCache, "get">;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        cards: [
+          card({ id: 7, attachedTo: 8, print: "attachment-print", y: 100 }),
+          card({ id: 8, print: "host-print", y: 100 }),
+        ],
+        hoveredAttachmentId: 7,
+        attachmentHoverProgress: new Map([[7, 0.5]]),
+      }),
+      cache,
+    );
+
+    expect(imageDraws).toEqual([
+      { label: "attachment", x: 10, y: 86.6 },
+      { label: "host", x: 10, y: 100 },
+    ]);
+  });
+
   it("paints battlefield permanent chrome on the resting layer without under-card labels", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });
@@ -1181,7 +1231,7 @@ describe("paintFlightLayer", () => {
 
 describe("bitmapFrameNeedsRaf", () => {
   it("idles while no bitmap animation is active", () => {
-    expect(bitmapFrameNeedsRaf({ flights: [], exitFx: [] })).toBe(false);
+    expect(bitmapFrameNeedsRaf({ flights: [], exitFx: [], hoveredAttachmentId: null })).toBe(false);
   });
 
   it("requests frames while flights are active", () => {
@@ -1202,6 +1252,7 @@ describe("bitmapFrameNeedsRaf", () => {
           }),
         ],
         exitFx: [],
+        hoveredAttachmentId: null,
       }),
     ).toBe(true);
   });
@@ -1221,12 +1272,56 @@ describe("bitmapFrameNeedsRaf", () => {
             scale: 1,
           }),
         ],
+        hoveredAttachmentId: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("requests frames while attachment hover motion is unfinished", () => {
+    expect(
+      bitmapFrameNeedsRaf({
+        flights: [],
+        exitFx: [],
+        hoveredAttachmentId: 7,
+        attachmentHoverProgress: new Map([[7, 0.5]]),
       }),
     ).toBe(true);
   });
 });
 
 describe("flight clock helpers", () => {
+  it("publishes and reverses attachment hover progress on the resting layer clock", () => {
+    const entered = applyPublishedFrame(flightClockState(), frame({ hoveredAttachmentId: 7 }));
+
+    expect(entered.paintResting).toBe(true);
+    expect(entered.frame.attachmentHoverProgress).toEqual(new Map([[7, 0]]));
+    expect(bitmapFrameNeedsRaf(entered.frame)).toBe(true);
+
+    const entering = tickFlightClock(entered.state, entered.frame, 60, 60, false);
+
+    expect(entering.paintResting).toBe(true);
+    expect(entering.frame.attachmentHoverProgress).toEqual(new Map([[7, 0.5]]));
+    expect(bitmapFrameNeedsRaf(entering.frame)).toBe(true);
+
+    const settled = tickFlightClock(entering.state, entering.frame, 120, 60, false);
+
+    expect(settled.paintResting).toBe(true);
+    expect(settled.frame.attachmentHoverProgress).toEqual(new Map([[7, 1]]));
+    expect(bitmapFrameNeedsRaf(settled.frame)).toBe(false);
+
+    const left = applyPublishedFrame(settled.state, frame({ hoveredAttachmentId: null }));
+
+    expect(left.paintResting).toBe(true);
+    expect(left.frame.attachmentHoverProgress).toEqual(new Map([[7, 1]]));
+    expect(bitmapFrameNeedsRaf(left.frame)).toBe(true);
+
+    const leaving = tickFlightClock(left.state, left.frame, 180, 60, false);
+
+    expect(leaving.paintResting).toBe(true);
+    expect(leaving.frame.attachmentHoverProgress).toEqual(new Map([[7, 0.5]]));
+    expect(bitmapFrameNeedsRaf(leaving.frame)).toBe(true);
+  });
+
   it("synchronizes a settled held battlefield flight when its destination appears", () => {
     const held = {
       ...spawnFlight({
