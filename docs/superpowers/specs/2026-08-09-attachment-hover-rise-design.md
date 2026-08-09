@@ -12,11 +12,11 @@ Only the topmost attached permanent under the pointer responds. Hovering one att
 
 ## Interaction
 
-An attached permanent rises one existing attachment-peek step: 20% of its current rendered side length. The direction is controller-relative and follows the attachment stack's existing exposure direction:
+An attached permanent rises one existing attachment-peek step: 20% of its current rendered side length. The direction is relative to the attachment stack's root host controller and follows the stack's existing exposure direction. An attachment controlled by another player still follows its root host's controller/avatar so it always slides farther out from under that host:
 
 - a card controlled from the viewer-side seat moves upward on screen, toward the table center;
 - a card controlled from the mirrored seat moves downward on screen, toward the table center;
-- other supported seat layouts use the same away-from-controller-avatar, toward-table-center rule.
+- other supported seat layouts use the same away-from-root-host-controller-avatar, toward-table-center rule.
 
 The rise and return each ease over 120 milliseconds. When reduced motion is requested, the card snaps to the destination without interpolation.
 
@@ -52,7 +52,8 @@ If the ID is missing, stale, unattached, or otherwise invalid, rendering safely 
 Focused pure tests shall prove:
 
 - the rise is exactly 20% of the card's current side;
-- normal and mirrored controllers move away from their avatar toward the table center;
+- normal and mirrored root-host controllers move away from their avatar toward the table center;
+- a cross-controller attachment follows its root host controller rather than its own controller;
 - only the hovered attachment moves, including when it hosts another attachment;
 - card size, tap state, and `RenderCard[]` order do not change;
 - the stable hit union covers the original exposed strip and shifted destination;
