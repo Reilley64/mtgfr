@@ -1148,6 +1148,31 @@ describe("layout", () => {
       kind: { kind: "artifact" },
       attached_to: root.id,
     });
+    const mirroredRoot = mkObject({
+      id: 1010,
+      name: "Mirrored Root Bear",
+      controller: 1,
+      owner: 1,
+      kind: { kind: "creature", power: 2, toughness: 2 },
+      power: 2,
+      toughness: 2,
+    });
+    const mirroredEquipment = mkObject({
+      id: 1011,
+      name: "Mirrored Bonesplitter",
+      controller: 0,
+      owner: 0,
+      kind: { kind: "artifact" },
+      attached_to: mirroredRoot.id,
+    });
+    const mirroredAura = mkObject({
+      id: 1012,
+      name: "Mirrored Artifact Ward",
+      controller: 2,
+      owner: 2,
+      kind: { kind: "enchantment" },
+      attached_to: mirroredEquipment.id,
+    });
     const cycleA = mkObject({
       id: 1003,
       name: "Looping Equipment",
@@ -1171,6 +1196,9 @@ describe("layout", () => {
         equipment,
         aura,
         shield,
+        mirroredRoot,
+        mirroredEquipment,
+        mirroredAura,
         cycleA,
         cycleB,
         ...Array.from({ length: 59 }, (_, index) => mkObject({ id: index + 1, name: `Left Column Bear ${index}` })),
@@ -1190,11 +1218,25 @@ describe("layout", () => {
     const equipmentCard = cards.find((card) => card.id === equipment.id);
     const auraCard = cards.find((card) => card.id === aura.id);
     const shieldCard = cards.find((card) => card.id === shield.id);
+    const mirroredRootCard = cards.find((card) => card.id === mirroredRoot.id);
+    const mirroredEquipmentCard = cards.find((card) => card.id === mirroredEquipment.id);
+    const mirroredAuraCard = cards.find((card) => card.id === mirroredAura.id);
     expect(rootCard).toBeDefined();
     expect(equipmentCard).toBeDefined();
     expect(auraCard).toBeDefined();
     expect(shieldCard).toBeDefined();
-    if (rootCard == null || equipmentCard == null || auraCard == null || shieldCard == null) {
+    expect(mirroredRootCard).toBeDefined();
+    expect(mirroredEquipmentCard).toBeDefined();
+    expect(mirroredAuraCard).toBeDefined();
+    if (
+      rootCard == null ||
+      equipmentCard == null ||
+      auraCard == null ||
+      shieldCard == null ||
+      mirroredRootCard == null ||
+      mirroredEquipmentCard == null ||
+      mirroredAuraCard == null
+    ) {
       throw new Error("missing attachment subtree");
     }
 
@@ -1233,6 +1275,17 @@ describe("layout", () => {
     expect(hitTest(identity, hitX, equipmentCard.y + depthStep / 2, cards)).toBe(equipment.id);
     expect(hitTest(identity, hitX, shieldCard.y + depthStep / 2, cards)).toBe(shield.id);
     expect(hitTest(identity, hitX, rootCard.y + rootCard.h * 0.1, cards)).toBe(root.id);
+    const mirroredDepthStep = mirroredRootCard.h * 0.2;
+    const mirroredHitX = mirroredRootCard.x + mirroredRootCard.w / 2;
+    expect(mirroredEquipmentCard.y).toBe(mirroredRootCard.y + mirroredDepthStep);
+    expect(mirroredAuraCard.y).toBe(mirroredRootCard.y + 2 * mirroredDepthStep);
+    expect(
+      hitTest(identity, mirroredHitX, mirroredRootCard.y + mirroredRootCard.h + mirroredDepthStep / 2, cards),
+    ).toBe(mirroredEquipment.id);
+    expect(
+      hitTest(identity, mirroredHitX, mirroredRootCard.y + mirroredRootCard.h + 1.5 * mirroredDepthStep, cards),
+    ).toBe(mirroredAura.id);
+    expect(hitTest(identity, mirroredHitX, mirroredRootCard.y + mirroredRootCard.h * 0.9, cards)).toBe(mirroredRoot.id);
     expect(cards.find((card) => card.id === cycleA.id)).toMatchObject({ w: CARD_W, h: CARD_H });
     expect(cards.find((card) => card.id === cycleB.id)).toMatchObject({ w: CARD_W, h: CARD_H });
   });
