@@ -1,107 +1,126 @@
 # AGENTS.md
 
-Project instructions for AI coding agents working in this repository.
+Project instructions for AI coding agents. Direct user instructions win; otherwise follow this file, then the linked source documents and applicable skills.
 
-## What this is
+## Mission and task routing
 
-A browser-based 4-player Commander (MTG) game for playing with friends. The **north star is to support *any* card, built faithfully** — no card is out of scope in principle. This is a design posture, not a completeness claim: the scripts in `crates/cards/data/` cover a fraction of Magic, many with `approximates` / `# ponytail:` gaps, and the engine is not rules-complete.
+Build a browser-based four-player Commander game whose north star is **any card, built faithfully**. This is a direction, not a completeness claim: the engine and `crates/cards/data/` remain partial.
 
-Grow the engine and DSL *from real cards*, TDD, smallest-increment-first, and **flag-don't-force**: when a card needs something the DSL can't yet express, surface it in that deck's `docs/fidelity/<slug>-increments.md` rather than contort the card. Decks are taken to faithful one at a time — `docs/fidelity/` is the record of which have been ground and where each stands. Each is a proving ground, not the terminal scope.
+- Grow the engine and DSL from real cards, TDD, smallest increment first.
+- **Flag, do not force:** record missing expressiveness in `docs/fidelity/<slug>-increments.md`; never contort a card around the current DSL. Take decks faithful one at a time; `docs/fidelity/` records what was ground and its status. Each deck proves the general system, not its terminal scope.
+- Prefer compositions of existing effects (`sequence`, filters, modes, amounts) over card-specific leaves.
+- Card work: use `.agents/skills/card-dsl/`; deck intake-to-PR: `.agents/skills/fidelity-grind/`; tricky rules: use `forge` against `.repos/forge` (`just forge` refreshes it).
+- Read requirements first in `openspec/specs/`. Use `docs/AGENT_NAVIGATION.md` for engine/CR navigation and `docs/CLIENT_CANVAS_MAP.md` for board paint, hits, flights, and overlays.
+- Use `ast-grep` (not `sg`) for AST-shaped Rust/TypeScript searches; use `rg` for text, CR cites, and comments.
 
-Card authoring: `.agents/skills/card-dsl/`. Deck-to-faithful pipeline (Archidekt link in, per-deck fidelity report + increments backlog, grind waves, client catch-up, PR out): `.agents/skills/fidelity-grind/`. For tricky rules interactions, use the `forge` skill (vendored sparse tree at `.repos/forge`, refresh with `just forge`) — [Card-Forge/forge](https://github.com/Card-Forge/forge) card/token scripts are the reference. **Prefer composable effects** — reuse and combine existing DSL leaves (`sequence`, filters, shared modes, amounts) rather than minting a one-off effect per card; grow the vocabulary only when a real card cannot be expressed from what already exists.
+## Prime Agent delegation and token budget
+
+**Default to inline work.** A child has its own full prompt/context cost; delegate only independent, context-heavy work whose saved parent context exceeds coordination cost. Do not delegate a single lookup, small edit, sequential dependency, or work that needs the parent's evolving context.
+
+### Model and effort routing
+
+The only optional `rlm()` spawn arguments are `name` and `model`; a child otherwise inherits the parent model. Before overriding it, discover active authenticated models and use an **exact returned selector**:
+
+```python
+models = await rlm.find_models("fast economical coding", limit=8)
+[(m.selector, m.name) for m in models]  # inspect; search order is not price order
+# Then spawn with model="<exact inspected provider/model selector>".
+```
+
+Never invent or blindly take the first selector. If discovery is empty, inherit the parent rather than repeatedly searching. Requested models fail closed when unavailable; do not silently substitute another model.
+
+**Effort is not configurable per child:** `effort=` is unsupported and will fail. Children inherit the parent's current `/effort` setting. `/effort` is a user/session control, so recommend changing it only before a homogeneous batch; do not claim mixed-effort concurrent children.
+
+| Work | Model policy | Recommended parent `/effort` before a homogeneous batch |
+|---|---|---|
+| File inventory, bounded search, mechanical checks, isolated test execution | Choose an inspected economy/fast model from discovery | `low` |
+| Focused implementation, ordinary debugging, code review | Inherit parent or choose an inspected proven coding model | `medium` |
+| Architecture, ambiguous root cause, Magic rules semantics, security/privacy, final adversarial review | Inherit the strongest appropriate parent or use an inspected reasoning model | `high`; `max` only when justified |
+
+Prefer a cheaper capable model over excessive reasoning for bounded tasks. Spawn with a self-contained prompt, stable name, and selected model, for example:
+
+```python
+child = await rlm(
+    "Bounded task with paths, constraints, deliverable, verification, and: "
+    "reply concisely via agent_message.send(..., receiver_role='parent').",
+    name="stable-purpose-name",
+    model="<exact inspected provider/model selector>",
+)
+```
+
+### Delegation discipline
+
+- Give each child one non-overlapping deliverable, exact paths, constraints, verification, and output format. Ask for a concise answer or file artifact, not a narrative transcript.
+- Parallelize only truly independent work. Stop when fan-out/merge cost exceeds expected savings.
+- Children return answers only through `agent_message` or files; `rlm()` returns admission metadata, never the answer. End the turn instead of polling.
+- Use stable unique names. Recover children with `rlm.list_subagents()`, follow up through `agent_message`, and delete completed/unneeded children with `rlm.delete_subagent()`.
+- Use subagents for context isolation, not as a substitute for reading their evidence or verifying their result.
+
+## Engineering workflow
+
+1. **Creative or behavior-changing work:** run the Superpowers `brainstorming` workflow first, then planning/execution/TDD skills. Local design and plan files under `docs/superpowers/` are gitignored input, not the living contract.
+2. **Implement with TDD:** red → green → review. Every bug fix needs a regression test at the lowest layer that catches it. Use `systematic-debugging` when the cause is unclear.
+3. **Document shipped behavior:** update the matching consolidated OpenSpec capability at the end, preferably through an OpenSpec change workflow. Capabilities are `engine`, `card-dsl`, `wire-protocol`, `accounts-and-catalog`, `lobby-and-live-game`, `client-shell`, `deck-builder`, `game-board`, and `production-and-ops`—not one spec per UI surface. Cite the relevant capability rather than inventing requirements. Specs describe current behavior: no TBDs, migration history, or sprint narrative.
+4. **Review gate:** every review must check OpenSpec compliance. Missing/conflicting/stale requirements, or shipped behavior documented only in a `*-design.md`, block merge.
+5. **Verify before completion:** use `verification-before-completion`; use `.agents/skills/verify/` for live-game/UI work. Exercise changed surfaces through cold load and route entry, not only unit tests.
+
+Project skills live in `.agents/skills/`; discover them there. Superpowers workflow skills come from the Cursor plugin configured in `.cursor/settings.json`; do not vendor them into `.agents/skills/`.
+
+## Coding and test rules
+
+- Optimize for readability and maintainability; use guard-return-first style (`return`, `?`, or `continue`).
+- Use Magic terminology from `CONTEXT.md`. Mark genuine rules simplifications with a `ponytail:` comment naming the approximation.
+- Every user-visible client surface needs `data-testid` Scene coverage in the corresponding suite—shell routes in `client/app/shell/surfaces.test.ts`, board overlays in `client/app/board/html/surfaces.test.ts`—plus focused tests, in the same change.
+- Interaction changes (pointer, keyboard, hover, drag, Mount hosts, lobby/host flow, BFF defaults) must assert user-visible outcomes, not presence or “parity.” Check the UI PR box and run `.agents/skills/verify/SKILL.md`'s Interaction checklist.
+- For interactive Tailwind chrome, expose stable boolean `data-*` attributes and named groups; style with `data-`/`group-data-` variants instead of JS class ternaries. Keep non-selection playable/zone aura helpers. Assert attributes and variant tokens in tests. See `client/app/board/html/hand.ts` and the `game-board` spec.
+
+## Architecture invariants
+
+Do not relitigate these without evidence:
+
+- **Engine:** pure deterministic Rust sequential state machine implementing stack/priority—not a game loop. No I/O, networking, wall clock, or uninjected randomness.
+- **State:** intents produce events; events mutate board facts. Priority/pass and pending choices are submit-path orchestration; preserve replay determinism.
+- **Boundaries:** `cards` owns DSL vocabulary/data; `engine` implements/re-exports rules; `server` owns tonic game/auth/decks/catalog/seed gRPC plus Axum health; `schema` owns projection DTOs and proto-edge mapping. Client code splits into `client/app/` UI, `client/app/domain/` shared wire/domain helpers, `client/server/` BFF, and `client/styles/` tokens.
+- **Server/data:** server-authoritative games are in memory. Postgres `mtgfr` stores users/sessions/decks; Nitro BFF and `table_routes` use `mtgfr_web`. BFF routes table ID to pod DNS gRPC; seeds use newest `edh-api`. Argo owns deployments; SIGTERM drains rolls.
+- **Privacy/telemetry:** server-side per-player visibility filtering is mandatory. Never emit hands, libraries, or intent payloads to LGTM/Faro/OTEL. Exporters no-op locally unless their upstream environment is configured.
+- **Client:** Foldkit SPA on Nitro/Vite; one `Model`/`update`/`view` reactor; Effect owns async boundaries. Same-origin Effect RPC `/api/rpc` reaches the Nitro BFF, which dials tonic. Board is canvas/Mount with thin HTML overlays. Camera transform is the pan/zoom source of truth; hit testing converts screen→world.
+- **Client packages:** pin exact versions of `effect`, all `@effect/*`, `foldkit`, and `@foldkit/ui`; move the set together. Styled components live in `client/app/domain/ui/`; BFF Drizzle uses `drizzle-orm/effect-postgres` + `@effect/sql-pg`, never pg-proxy.
+- **Wire:** `.proto` is the sole contract. Regenerate both server and gitignored Effect-gRPC clients after changes; see `docs/WIRE_COMPAT.md`.
+- **Routing:** required IDs are path params; query params are optional filters, paging, redirects, or preselection.
+- **Design/crawl:** `design.tokens.json` is DTCG source for generated Tailwind/canvas tokens. `robots.txt` disallows all crawlers; no sitemap/marketing SEO without revisiting that posture.
 
 ## Commands
 
-```
-cargo build
-cargo nextest run --profile ci           # all tests (via `just server-test`)
-cargo nextest run --profile ci <name>    # tests whose name matches <name>
-cargo nextest run --profile ci --nocapture  # show println! output from tests
-cargo clippy --all-targets -- -D warnings  # lint — treat warnings as failures (`just server-lint`)
-cargo fmt                       # format before committing
-just check                      # format + lint + typecheck + test (both sides)
-just format                     # server-format + client-format
-just lint                       # server-lint + client-lint
-just proto-check                # buf STANDARD lint + WIRE breaking vs origin/main
-just openspec-check             # openspec validate --all --strict (living specs + active changes)
-just forge                      # sync vendored Card-Forge/forge → .repos/forge (commit the diff)
-just typecheck                  # client-typecheck
-just test                       # server-test + client-test
-just migrate                    # apply Toasty migrations (Postgres)
-just --group server --list      # server-* recipes only
-just --group client --list      # client-* recipes only
-just engine-cr-index            # regenerate docs/CR_INDEX.md from engine CR citations
-just engine-cr-index-check      # fail if docs/CR_INDEX.md is stale
-just client-migrate             # Drizzle migrations for mtgfr_web (WEB_DATABASE_URL)
-just dev                        # tmux: bacon server + Foldkit/Vite client
-ast-grep --help                 # structural search/rewrite (prefer over text grep for AST-shaped queries)
-ast-grep run -l rust -p '<pattern>' crates/engine
-ast-grep run -l typescript -p '<pattern>' client/app
+```text
+just check                     format + lint + typecheck + tests, both sides
+just server-check              server-only check
+just client-check              client-only check
+just test | just lint          both-side focused gates
+just openspec-check            strict living-spec validation
+just proto-check               buf STANDARD + wire break check vs origin/main
+just engine-cr-index[-check]   regenerate/check CR citations
+just migrate                   Toasty migrations for mtgfr
+just client-migrate            Drizzle migrations for mtgfr_web
+just forge                     refresh vendored Forge scripts; commit diff
+just dev                       tmux bacon server + Foldkit/Vite client
+cargo nextest run --profile ci [filter] [--nocapture]
+cargo clippy --all-targets -- -D warnings
+cargo fmt
+just --group server --list | just --group client --list
 ```
 
-Prefer **`ast-grep`** (`ast-grep`, not deprecated `sg`) when the question is structural — match/call/import shapes in Rust or TypeScript — and **`rg`** for plain text, CR cites, and comments. See [`docs/AGENT_NAVIGATION.md`](docs/AGENT_NAVIGATION.md).
+Run generated code after proto changes with `just server-codegen` / `bun run gen`. Format before committing.
 
-## Commits & releases
+## Commits and releases
 
-Commits on `main`/`master` follow the [Angular commit message guidelines](https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md) (`feat:`, `fix:`, `build:`, `ci:`, `docs:`, `perf:`, `refactor:`, `test`, …; breaking changes via a `BREAKING CHANGE:` footer). [commitlint](https://github.com/conventional-changelog/commitlint) with `@commitlint/config-angular` enforces this on Husky `commit-msg`. In Cursor Cloud, root `npm clean-install` plus `.cursor/scripts/wire-cloud-git-hooks.sh` keep that hook chained through the agent hooks dispatcher. PR CI lint-checks the **PR title** only (squash subject for semantic-release), not every branch commit. [semantic-release](https://semantic-release.org/) is the **only** writer of `v*` tags and GitHub Releases — do not create or push version tags by hand. Repo secret `RELEASE_TOKEN` (PAT with `contents` + `workflow`) is required so that tag push can trigger `docker.yml` (default `GITHUB_TOKEN` cannot cascade workflows). See [production-and-ops](openspec/specs/production-and-ops/spec.md).
+- Use Angular conventional commits (`feat:`, `fix:`, `docs:`, etc.; breaking changes use a `BREAKING CHANGE:` footer). Commitlint enforces Husky `commit-msg`.
+- PRs squash-merge; PR CI lint-checks the **PR title only**, not branch commits, and that title becomes the analyzed `main` subject. Use `feat:`/`fix:` (or breaking footer) for a release; `build:`/`ci:`/`docs:`/`refactor:`/`test:`/`style:`/`perf:` alone skip versioning.
+- Semantic-release alone writes `v*` tags/releases—never create or push them manually. Cascading `docker.yml` requires `RELEASE_TOKEN` with `contents` + `workflow`; default `GITHUB_TOKEN` cannot trigger it. See `production-and-ops`.
+- Cursor Cloud hook setup requires root `npm clean-install` plus `.cursor/scripts/wire-cloud-git-hooks.sh`.
 
-**PRs are squash-merged.** The squash commit message on `main` is the **PR title** (plus `(#N)`), not the branch's individual commits. semantic-release analyzes that squash line only — title PRs with `feat:` / `fix:` (or a `BREAKING CHANGE:` footer) when the merge should cut a release; `build:` / `ci:` / `docs:` / `refactor:` / `test:` / `style:` / `perf:` alone will verify green and skip a version bump.
+## Cursor Cloud
 
-## Architecture commitments (do not relitigate without reason)
-
-- **Engine:** Pure Rust, deterministic, **sequential state machine** — the stack/priority model, *not* a game-loop. Runs authoritatively on the server. No I/O, no networking, no wall-clock or randomness that isn't injected.
-- **Event-sourced state:** every intent produces events; events mutate board facts. Priority/pass bookkeeping and pending choices are orchestration state in the submit path — preserve intent-replay determinism.
-- **Server:** tonic gRPC (game/auth/decks/catalog/seed) + Axum HTTP health only. Live games are in-memory only; Postgres `mtgfr` holds users, sessions, decks. Pre-game lobby + `table_routes` live on the Foldkit SPA's Nitro BFF on Postgres `mtgfr_web` (Drizzle). BFF routes in-game by table id → pod DNS gRPC; seeds hit Service `edh-api` (newest instance only). API/web Deployments are Argo-owned; rolls drain on SIGTERM. Server-side per-player visibility filtering is a hard rule (hands/libraries are private).
-- **Client:** Foldkit SPA on Nitro (Vite; single event-reactor `Model`/`update`/`view` in `client/app/`) — hybrid canvas + Mount bitmap board with thin HTML overlays; same-origin Effect RPC (`/api/rpc`) to the BFF, which dials tonic. **Camera transform** (single source of truth for pan/zoom) and **screen→world hit-testing** are foundations everything downstream assumes. Design tokens live in `design.tokens.json` (DTCG); Tailwind `@theme` and canvas TS outputs are generated — see [`DESIGN.md`](DESIGN.md).
-- **Client state is Effect-first Foldkit.** Async work — wire calls, streams, polling — stays in Effect services/streams at runtime boundaries; Foldkit `Model`/`update`/`view` owns UI state and dispatches messages. Keep `effect`, every `@effect/*`, `foldkit`, and `@foldkit/ui` pinned to exact versions that move as one set — `@foldkit/ui` peer-requires a specific `effect` beta, so bump the whole set together or not at all (`client/package.json` holds the current pins). Styled components live in `client/app/domain/ui/`. BFF Drizzle is Effect-native via `drizzle-orm/effect-postgres` + `@effect/sql-pg` (no pg-proxy).
-- **Observability:** self-hosted LGTM + Faro + OTEL. Exporters no-op locally unless `OTEL_EXPORTER_OTLP_ENDPOINT` / Faro upstream is set; never put hand/library contents or intent payloads in telemetry.
-- **Card pool is data-driven scripts.** `cards` defines the vocabulary (the enums); `engine` implements the rules around it. Let the scripting DSL grow from real cards — resist generalizing it prematurely. Author cards by composing that vocabulary; do not add a bespoke effect leaf for a single card when sequence/conditional/filters/amounts already cover it.
-- **Wire types:** `.proto` is the sole contract → prost/tonic (`build.rs` → `OUT_DIR`) + Effect-gRPC clients (`just server-codegen` / `bun run gen` → gitignored `client/app/domain/wire/generated/`). Run codegen after proto changes. See [docs/WIRE_COMPAT.md](docs/WIRE_COMPAT.md).
-- **Routing:** Required identifiers belong in **path params** (server: Axum `Path`, client: Foldkit route path segments). **Query params are optional** — filters, paging, redirect targets (`?next=`), and preselection (`?deck=`). Never put a required resource id in a query string.
-- **Public crawl posture:** `client/public/robots.txt` disallows all crawlers; do not add sitemaps or marketing SEO without revisiting that choice.
-
-**Crate split:** `cards` (the card DSL — `CardDef` / `Effect` / filters / triggers, the TOML surface, and the scripts in `data/`) / `engine` (pure, no I/O; the rules logic over that vocabulary, which it re-exports) / `server` (tonic + health Axum) / `schema` (projection DTOs; mapped to/from native proto at the gRPC edge). **Client split:** `client/app/` (Foldkit UI), `client/app/domain/` (shared wire/domain helpers), `client/server/` (Nitro BFF routes/plugins), `client/styles/` (Tailwind/design tokens).
-
-**Where to start reading:** [`openspec/specs/`](openspec/specs/) for current system requirements (OpenSpec — source of truth) · [`docs/AGENT_NAVIGATION.md`](docs/AGENT_NAVIGATION.md) for the engine module map and CR lookup (`docs/CR_INDEX.md`, regenerate with `just engine-cr-index`) · [`docs/CLIENT_CANVAS_MAP.md`](docs/CLIENT_CANVAS_MAP.md) for the canvas board (paint vs hits vs flights vs DOM overlays).
-
-## Feature specs (OpenSpec)
-
-Living requirements live under [`openspec/specs/<capability>/spec.md`](openspec/specs/). Capabilities are consolidated (engine, card-dsl, wire-protocol, accounts-and-catalog, lobby-and-live-game, client-shell, deck-builder, game-board, production-and-ops) — **not** one file per UI surface. Document what exists today: no TBD, no migration history, no sprint narrative. Cite the relevant capability instead of inventing requirements.
-
-### New behavior workflow
-
-1. **Brainstorm first** — use the Superpowers `brainstorming` skill for any creative / behavior-changing work. Design input may still be written under local `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` (and plans under `docs/superpowers/plans/`). That whole tree is **gitignored** — design input only, not the living contract.
-2. **Implement** — Superpowers `writing-plans` / `executing-plans` / `test-driven-development` (and related process skills) as usual. Do not vendor or fork Cursor `superpowers` plugin skill files into `.agents/skills/`.
-3. **Document in OpenSpec at the end** — before claiming done, update the matching OpenSpec capability so main specs describe what shipped. Prefer an OpenSpec change (`/opsx-propose` → apply → `/opsx-archive` or `/opsx-sync`) so deltas merge into `openspec/specs/`. Do **not** leave shipped behavior only in a Superpowers `*-design.md`.
-
-OpenSpec CLI context and per-artifact rules: [`openspec/config.yaml`](openspec/config.yaml). Skills: `.cursor/skills/openspec-*`; commands: `.cursor/commands/opsx-*`.
-
-**Review gate:** Every code review (including autonomous continuous-loop reviews via `requesting-code-review`) must check OpenSpec compliance on the diff. Violations — shipped behavior missing from the matching capability, conflicting requirements across capabilities, requirements that describe abandoned behavior, or a new `*-design.md` without a corresponding OpenSpec update when behavior shipped — are **merge-blocking**.
-
-## Coding standards (project-specific — enforce these)
-
-- **Readability and maintainability are the top priority**, above cleverness or brevity.
-- **Guard-return-first (early return) style.** Handle error/edge/invalid cases up front and `return` (or `?` / `continue`) immediately.
-- **TDD is the default workflow.** Use the `test-driven-development` skill. Red → green → review. The engine is testable via direct API calls with no UI or network.
-- **Every bug fix gets a regression test.** When you find a bug, add a test that fails on the broken behavior and passes with the fix — in the same change if you can. Place it at the lowest layer that catches the failure (engine unit test, schema projection test, client mapping test, HTTP integration test). Use `systematic-debugging` when the cause is unclear.
-- **Client UI: every surface gets a Scene test.** Shell routes and board overlays must be covered by `data-testid` Scene assertions in `client/app/shell/surfaces.test.ts` and `client/app/board/html/surfaces.test.ts` (plus focused tests). Do not ship a user-visible panel that only has update/logic tests. When adding a surface, add or extend those suites in the same change.
-- **Client interaction: assert outcomes, not only presence.** When changing pointer, keyboard, hover, drag, Mount hosts, lobby/host flow, or BFF env defaults, add or extend a unit/Scene test for the user-visible result (pin set, tile hidden, selected deck matches, art URL swapped, default URL works). Do not frame tests as migration/"parity" checks — name the product behavior. See OpenSpec [`client-shell`](openspec/specs/client-shell/spec.md) (Client Interaction Testing).
-- **Interaction / UI PRs.** Check the PR template box when the change touches those surfaces. Before claiming done, run the Interaction checklist in `.agents/skills/verify/SKILL.md` (in addition to `verification-before-completion`).
-- **Verify before claiming done.** Use `verification-before-completion` (and the project `verify` skill for live games). Live or Scene checks must exercise the surfaces you changed (cold load, route entry), not only unit green.
-- **Use Magic terminology and semantics wherever possible.** The ubiquitous language lives in `CONTEXT.md`; keep code and glossary aligned. When rules and simplicity genuinely conflict, name the rule approximated in a `ponytail:` comment.
-- **Client Tailwind: prefer `data-*` + named `group` over JS class ternaries for interactive chrome.** When a tile/button has selected / selectable / pressed / hover-linked styles (raise, ring, hit height, brightness), put stable boolean attrs on the interactive root (`data-selected="true"|"false"`, `data-selectable="true"`, …) and a named group (`group/hand-tile`, `group/pile-card`, …). Encode the look with Tailwind variants — `group-hover/…`, `group-data-[selected=true]/…`, `data-[selected=true]:…` — so JS only sets attributes. Keep playable / zone aura helpers when they are not selection state. Assert the data attrs (and the variant class tokens) in Scene/unit tests rather than reconstructing which ring class a ternary would have emitted. Reference: hand-bar pick chrome in `client/app/board/html/hand.ts` and OpenSpec [`game-board`](openspec/specs/game-board/spec.md).
-
-## Agent skills
-
-Project skills live in `.agents/skills/` — `card-dsl`, `fidelity-grind`, and `forge` for card work, `verify` for the live-game and interaction checklists, plus Foldkit and Effect helpers. Root `skills-lock.json` tracks the GitHub-installed ones. `ls .agents/skills/` for the current set.
-
-Workflow skills (`brainstorming`, `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `requesting-code-review`, `writing-plans`, `executing-plans`, `using-git-worktrees`, and the rest) come from the Cursor **`superpowers`** plugin, enabled in `.cursor/settings.json`. Do not vendor or fork them into `.agents/skills/`.
-
-## Cursor Cloud specific instructions
-
-Cloud Agents build from [`.cursor/Dockerfile`](.cursor/Dockerfile) via [`.cursor/environment.json`](.cursor/environment.json) — read those for the installed toolchain and the `install` / `start` steps. Do **not** use interactive dashboard "Set up agent" / snapshot setup for this repo; that mode ignores the Dockerfile. If a saved Cloud environment snapshot exists for the repo, delete it so Dockerfile builds win.
-
-- Postgres `mtgfr` / `mtgfr_web` are seeded and `DATABASE_URL` / `WEB_DATABASE_URL` are set. Before DB-touching work: `just migrate` (Toasty / `mtgfr`) and/or `just client-migrate` (Drizzle / `mtgfr_web`).
-- Prefer `just server-check` / `just client-check` (or `just check`) for verification.
-- Put secrets in the Cursor Cloud Agents Secrets UI — do not bake credentials into the image or commit `.env` files.
-- Foldkit DevTools MCP uses Vite relay port `9988`; `foldkit_list_runtimes` only sees a runtime while a browser tab has the app open (`devTools: { Message }` in `client/app/entry.ts`).
+- Build through `.cursor/Dockerfile` + `.cursor/environment.json`; read them for `install`/`start` steps. Never use dashboard snapshot setup. Delete saved snapshots so the Dockerfile wins.
+- Databases and URLs are seeded. Before DB work run `just migrate` and/or `just client-migrate`.
+- Keep secrets in the Cloud Agents Secrets UI; never commit `.env` or bake credentials into images.
+- Foldkit DevTools uses Vite relay `9988`; `foldkit_list_runtimes` needs an open app tab with `devTools: { Message }`.
