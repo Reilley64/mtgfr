@@ -57,7 +57,7 @@ function stubCanvas() {
 }
 
 describe("CardFaceCache", () => {
-  it("serves the drawn face and notifies subscribers when it is ready", () => {
+  it("serves a synchronously drawn warm face without asking subscribers to repaint", () => {
     const { make } = stubCanvas();
     const cache = new CardFaceCache(readyImages(), make);
     const listener = vi.fn();
@@ -67,7 +67,7 @@ describe("CardFaceCache", () => {
     cache.request(face(), "permanent");
 
     expect(cache.get(face(), "permanent")).toBeDefined();
-    expect(listener).toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
   });
 
   it("draws a face once however many times it is requested", () => {
@@ -93,6 +93,25 @@ describe("CardFaceCache", () => {
     const last = faces.at(-1);
     if (last == null) throw new Error("expected a final face fixture");
     expect(cache.get(last, "full")).toBeDefined();
+  });
+
+  it("paints a warm working set larger than the bitmap budget without recursive subscriber repaint", () => {
+    const cache = new CardFaceCache(readyImages(), stubCanvas().make);
+    const visible = Array.from({ length: 33 }, (_, index) =>
+      face({ print: `visible-${index}`, name: `Visible ${index}` }),
+    );
+    let painted = 0;
+    const render = () => {
+      for (const card of visible) {
+        cache.request(card, "full");
+        if (cache.get(card, "full") != null) painted += 1;
+      }
+    };
+    cache.subscribe(render);
+
+    render();
+
+    expect(painted).toBe(visible.length);
   });
 
   it("keeps a busy four-seat board of permanent faces inside the bitmap budget", () => {

@@ -79,7 +79,10 @@ export class CardFaceCache {
     // One call: `preload` takes an iterable, and a bare string is an iterable of *characters*.
     this.images.preload([urls.frame, urls.pt, urls.crown, artUrl].filter((url) => url != null));
 
-    this.drawReady();
+    // A warm request is synchronous: the caller reads the face immediately after this returns, so
+    // notifying here would recursively repaint. Image-arrival callbacks still notify because their
+    // original caller has already returned.
+    this.drawReady(false);
   }
 
   /**
@@ -91,7 +94,7 @@ export class CardFaceCache {
    * frame is a local asset and always wins that race, so without the redraw every cold-loaded card
    * would keep the art-less face forever.
    */
-  private drawReady(): void {
+  private drawReady(notifyListeners = true): void {
     let drew = false;
     for (const [key, { face, variant }] of [...this.pending]) {
       const urls = faceAssetUrls(face);
@@ -140,7 +143,7 @@ export class CardFaceCache {
       this.evict();
       drew = true;
     }
-    if (drew) for (const listener of this.listeners) listener();
+    if (drew && notifyListeners) for (const listener of this.listeners) listener();
   }
 
   // ponytail: insertion-order eviction, not true LRU — a Map's oldest entry is the oldest *drawn*

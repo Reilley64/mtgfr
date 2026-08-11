@@ -61,6 +61,8 @@ export function paintFlightCard(
 function renderedFace(face: FaceData, faces: FaceSource | undefined): CanvasImageSource | undefined {
   if (faces == null) return undefined;
   const drawn = faces.get(face, "full");
-  if (drawn == null) faces.request(face, "full");
-  return drawn;
+  if (drawn != null) return drawn;
+
+  faces.request(face, "full");
+  return faces.get(face, "full");
 }
