@@ -5,10 +5,6 @@ import { HAND_FACE_W, handMetrics, handUiScale, type ViewportSize } from "./hand
 export { TARGET_COLOR } from "../action/targeting";
 
 export const STACK_COMPACT_VISIBLE = 4;
-/** Compatibility name for the first count that offers expansion. */
-export const STACK_EXPAND_COUNT = STACK_COMPACT_VISIBLE + 1;
-/** Base card width retained for the current DOM presenter until it adopts `stackFanLayout`. */
-export const STACK_CARD_W = HAND_FACE_W;
 export const STACK_OVERLAY_RIGHT = 16;
 const STACK_FAN_STRIDE_RATIO = 0.28;
 const STACK_FAN_MAX_ROTATION = 6;
@@ -20,8 +16,6 @@ export const STACK_PEEK = 34;
 export const STACK_STRIP_MIN_PEEK = 20;
 /** Design-space horizontal inset when measuring strip/full width. */
 export const STACK_HORIZONTAL_MARGIN = 48;
-/** Compatibility reserve for the current DOM presenter. */
-export const STACK_VERTICAL_RESERVED = 120;
 /** Server base hold + max dwell extension (ms) — bar denominator cap. */
 export const STACK_HOLD_MAX_MS = 5000;
 
@@ -38,19 +32,6 @@ export type StackFanLayout = {
   left: number;
   top: number;
 };
-
-export function stackCardH(cardW = STACK_CARD_W): number {
-  return cardW / 0.716;
-}
-
-/** Compatibility vertical pile peek for the current DOM presenter. */
-export function stackPeekFor(count: number, viewportH: number, reserved = STACK_VERTICAL_RESERVED): number {
-  const n = Math.max(1, count);
-  if (n <= 1) return STACK_PEEK;
-  const cardH = stackCardH();
-  const maxPileH = Math.max(cardH, viewportH - reserved);
-  return Math.min(STACK_PEEK, Math.max(0, (maxPileH - cardH) / (n - 1)));
-}
 
 export function stackActionLane(viewport: ViewportSize): number {
   return Math.round((STACK_ACTION_LANE_BASE + STACK_ACTION_GAP_BASE) * handUiScale(viewport));
@@ -102,8 +83,8 @@ export function stackFanPlacement(
   };
 }
 
-/** Magnifier / expand control: compact mode already exposes the newest four objects. */
-export function stackExpandAvailable(count: number, _peek?: number): boolean {
+/** Overflow expansion is available once compact mode hides an older object. */
+export function stackExpandAvailable(count: number): boolean {
   return count > STACK_COMPACT_VISIBLE;
 }
 
@@ -120,30 +101,22 @@ export function shouldAutoCollapseStackExpand(opts: {
   return !stackExpandAvailable(opts.count);
 }
 
-function stackViewport(viewport: ViewportSize | number): ViewportSize {
-  return typeof viewport === "number" ? { width: viewport, height: 900 } : viewport;
-}
-
 /** Whether a horizontal strip of `count` cards fits at the responsive minimum peek. */
-export function stackStripFits(count: number, viewportInput: ViewportSize | number, cardW?: number): boolean {
-  const viewport = stackViewport(viewportInput);
-  const faceW = cardW ?? (typeof viewportInput === "number" ? STACK_CARD_W : handMetrics(viewport).cardW);
+export function stackStripFits(count: number, viewport: ViewportSize, cardW = handMetrics(viewport).cardW): boolean {
   if (count <= 1) return true;
-  const scale = typeof viewportInput === "number" ? 1 : handUiScale(viewport);
+  const scale = handUiScale(viewport);
   const minPeek = STACK_STRIP_MIN_PEEK * scale;
   const margin = STACK_HORIZONTAL_MARGIN * scale;
-  return faceW + (count - 1) * minPeek <= viewport.width - margin;
+  return cardW + (count - 1) * minPeek <= viewport.width - margin;
 }
 
 /** Horizontal peek for the expanded strip (compresses to fit; caller escalates if below min). */
-export function stackStripPeek(count: number, viewportInput: ViewportSize | number, cardW?: number): number {
-  const viewport = stackViewport(viewportInput);
-  const faceW = cardW ?? (typeof viewportInput === "number" ? STACK_CARD_W : handMetrics(viewport).cardW);
-  const scale = typeof viewportInput === "number" ? 1 : handUiScale(viewport);
+export function stackStripPeek(count: number, viewport: ViewportSize, cardW = handMetrics(viewport).cardW): number {
+  const scale = handUiScale(viewport);
   const comfortablePeek = STACK_PEEK * scale;
   if (count <= 1) return comfortablePeek;
   const margin = STACK_HORIZONTAL_MARGIN * scale;
-  const budget = viewport.width - margin - faceW;
+  const budget = viewport.width - margin - cardW;
   return Math.min(comfortablePeek, Math.max(0, budget / (count - 1)));
 }
 
@@ -161,13 +134,11 @@ export function stackPresentation(opts: {
 }
 
 /** Max cards per row in full view at responsive minimum horizontal peek (wrap capacity). */
-export function stackFullPerRow(viewportInput: ViewportSize | number, cardW?: number): number {
-  const viewport = stackViewport(viewportInput);
-  const faceW = cardW ?? (typeof viewportInput === "number" ? STACK_CARD_W : handMetrics(viewport).cardW);
-  const scale = typeof viewportInput === "number" ? 1 : handUiScale(viewport);
+export function stackFullPerRow(viewport: ViewportSize, cardW = handMetrics(viewport).cardW): number {
+  const scale = handUiScale(viewport);
   const minPeek = STACK_STRIP_MIN_PEEK * scale;
   const margin = STACK_HORIZONTAL_MARGIN * scale;
-  return Math.max(1, Math.floor((viewport.width - margin - faceW) / minPeek) + 1);
+  return Math.max(1, Math.floor((viewport.width - margin - cardW) / minPeek) + 1);
 }
 
 /** Screen-space center of stack face at `row` (0 = bottom) for the active presentation. */
@@ -183,9 +154,15 @@ export function stackFaceScreenOrigin(opts: {
     const layout = stackFanLayout(opts.viewport, n);
     const placement = stackFanPlacement(layout, row) ?? stackFanPlacement(layout, layout.visibleFrom);
     if (placement == null) {
-      return { x: layout.left + layout.cardW / 2, y: layout.top + layout.cardH / 2 };
+      return {
+        x: layout.left + layout.cardW / 2,
+        y: layout.top + layout.cardH / 2,
+      };
     }
-    return { x: placement.x + layout.cardW / 2, y: placement.y + layout.cardH / 2 };
+    return {
+      x: placement.x + layout.cardW / 2,
+      y: placement.y + layout.cardH / 2,
+    };
   }
 
   const metrics = handMetrics(opts.viewport);

@@ -1,4 +1,4 @@
-// Stack overlay: right-edge card pile with staged ghost, dwell, hold timer, and expand.
+// Stack overlay: right-edge compact fan with staged ghost, dwell, hold timer, and expansion.
 //
 // Legal stack targets are clickable while arrow-aiming (Counterspell-style). Hovering the overlay
 // emits `StackDwellChanged` when the player has priority (dwell-suppresses helpless auto-resolve).
@@ -14,15 +14,13 @@ import { cardFace } from "~/ui/card-face";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { aimingObjectIds, pendingStackGhost, stagedPickTargets } from "../action/targeting";
+import { handUiScale } from "../geometry/handMetrics";
 import {
-  STACK_CARD_W,
   STACK_HORIZONTAL_MARGIN,
   STACK_STRIP_MIN_PEEK,
-  STACK_VERTICAL_RESERVED,
-  stackCardH,
-  stackExpandAvailable,
+  stackFanLayout,
+  stackFanPlacement,
   stackFullPerRow,
-  stackPeekFor,
   stackPresentation,
   stackStripPeek,
 } from "../geometry/stackLayout";
@@ -69,7 +67,12 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
   const withText = (face: FaceData, cardId: string | undefined, print: string): FaceData => {
     const text = cardTextFor(board.cardText, cardId, print);
     if (text == null) return face;
-    return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };
+    return {
+      ...face,
+      typeLine: text.type_line,
+      oracle: text.oracle,
+      flavor: text.flavor,
+    };
   };
   const faceOf = (view: ObjectView): FaceData => withText(faceDataFrom(view), view.card_id, view.print ?? "");
 
@@ -163,8 +166,10 @@ function stackFace(
     isTop: boolean;
     staged?: boolean;
     legalTarget?: boolean;
+    expandOnActivate?: boolean;
+    cardW: number;
     cardH: number;
-    /** Caller-specific placement utilities reading the CSS vars in `style` (`--b`/`--x`/`--y`/`--z`). */
+    /** Caller-specific placement utilities reading the CSS vars in `style` (`--x`/`--y`/`--rotation`/`--z`). */
     positionClass: string;
     /** Placement data only (CSS variables); sizes come from `--stack-w`/`--card-h` on the container. */
     style: Record<string, string>;
@@ -172,7 +177,7 @@ function stackFace(
   h: HtmlBuilder<Message>,
 ): Html {
   const faceClass = [
-    "group/stack-face absolute w-(--stack-w) rounded-game shadow-hand",
+    "group/stack-face pointer-events-auto absolute w-(--stack-w) rounded-game shadow-hand",
     "data-[legal-target=true]:cursor-pointer data-[legal-target=true]:ring-2 data-[legal-target=true]:ring-island-blue",
     "data-[staged=true]:ring-2 data-[staged=true]:ring-island-blue",
     opts.isTop ? "group-hover/stack:shadow-[0_0_16px_rgba(255,215,106,0.4)]" : "",
@@ -186,7 +191,7 @@ function stackFace(
   const cardBody = cardFace(h, {
     face: opts.face,
     accessibleDescription: opts.accessibleDescription,
-    width: STACK_CARD_W,
+    width: opts.cardW,
     height: opts.cardH,
     className: "block h-(--card-h) w-(--stack-w) rounded-game",
   });
@@ -202,7 +207,7 @@ function stackFace(
   }
   if (opts.legalTarget) {
     faceAttrs.push(h.DataAttribute("legal-target", "true"));
-    // Legal targets are real controls: click AND keyboard pick the target.
+    // Legal targeting takes precedence over compact-fan expansion for both pointer and keyboard.
     faceAttrs.push(h.Role("button"));
     faceAttrs.push(h.Tabindex(0));
     faceAttrs.push(h.Attribute("aria-label", `Target: ${opts.imageName ?? opts.label}`));
@@ -211,6 +216,17 @@ function stackFace(
       h.OnKeyDownPreventDefault((key) => {
         if (key !== "Enter" && key !== " ") return Option.none();
         return Option.some(TargetChosen({ target: { kind: "object", id: opts.source } }));
+      }),
+    );
+  } else if (opts.expandOnActivate) {
+    faceAttrs.push(h.Role("button"));
+    faceAttrs.push(h.Tabindex(0));
+    faceAttrs.push(h.Attribute("aria-label", `Show older stack objects from ${opts.imageName ?? opts.label}`));
+    faceAttrs.push(h.OnClick(StackExpandClicked()));
+    faceAttrs.push(
+      h.OnKeyDownPreventDefault((key) => {
+        if (key !== "Enter" && key !== " ") return Option.none();
+        return Option.some(StackExpandClicked());
       }),
     );
   }
@@ -276,26 +292,26 @@ function pileCaption(state: VisibleState, showStaged: boolean, h: HtmlBuilder<Me
   );
 }
 
-function pileView(
+function compactFanView(
   board: BoardModel,
   state: VisibleState,
   items: StackItem[],
-  peek: number,
-  cardH: number,
   showStaged: boolean,
   allowDwell: boolean,
   legalTargets: ReadonlySet<number>,
   h: HtmlBuilder<Message>,
 ): Html {
-  const pileH = cardH + Math.max(0, items.length - 1) * peek;
+  const layout = stackFanLayout(board.viewport, items.length);
+  const visibleItems = items.slice(layout.visibleFrom);
   const holdMs = state.stack_hold_remaining_ms ?? 0;
   const holdPeak = board.stackHoldPeak;
   const showHold = holdMs > 0 && !showStaged;
 
-  const faces = items
+  const faces = visibleItems
     .filter((item) => !hideStackRestingFace(board, item))
     .map((item) => {
-      const isTop = item.row === items.length - 1;
+      const placement = stackFanPlacement(layout, item.row);
+      if (placement == null) return null;
       return stackFace(
         {
           row: item.row,
@@ -306,59 +322,68 @@ function pileView(
           label: item.label,
           face: item.face,
           accessibleDescription: item.accessibleDescription,
-          isTop,
+          isTop: item.row === items.length - 1,
           staged: item.staged,
           legalTarget: !item.staged && legalTargets.has(item.source),
-          cardH,
-          positionClass: "bottom-(--b) left-0 z-(--z)",
+          expandOnActivate: layout.hiddenCount > 0,
+          cardW: layout.cardW,
+          cardH: layout.cardH,
+          positionClass: "top-0 left-0 z-(--z) translate-x-(--x) translate-y-(--y) rotate-(--rotation)",
           style: {
-            "--b": `${item.row * peek}px`,
+            "--x": `${placement.x}px`,
+            "--y": `${placement.y}px`,
+            "--rotation": `${placement.rotation}deg`,
             "--z": String(item.row),
           },
         },
         h,
       );
-    });
+    })
+    .filter((face): face is Html => face !== null);
 
-  const showMagnifier = stackExpandAvailable(items.length, peek);
-
-  const pileAttrs: Attribute<Message>[] = [
+  const fanAttrs: Attribute<Message>[] = [
     h.DataAttribute("testid", "stack-overlay"),
-    h.Class("group/stack pointer-events-auto fixed top-1/2 right-4 z-20 h-(--pile-h) w-(--stack-w) -translate-y-1/2"),
+    h.DataAttribute("presentation", "compact"),
+    h.Class("group/stack pointer-events-none fixed inset-0 z-20"),
     h.Style({
-      "--stack-w": `${STACK_CARD_W}px`,
-      "--card-h": `${cardH}px`,
-      "--pile-h": `${pileH}px`,
+      "--stack-w": `${layout.cardW}px`,
+      "--card-h": `${layout.cardH}px`,
+      "--fan-w": `${layout.fanW}px`,
+      "--fan-left": `${layout.left}px`,
+      "--fan-top": `${layout.top}px`,
+      "--fan-bottom": `${layout.top + layout.cardH}px`,
     }),
   ];
   if (allowDwell) {
-    pileAttrs.push(h.OnMouseEnter(StackDwellChanged({ dwelling: true })));
-    pileAttrs.push(h.OnMouseLeave(StackDwellChanged({ dwelling: false })));
+    fanAttrs.push(h.OnMouseEnter(StackDwellChanged({ dwelling: true })));
+    fanAttrs.push(h.OnMouseLeave(StackDwellChanged({ dwelling: false })));
   }
 
-  return h.div(pileAttrs, [
+  return h.div(fanAttrs, [
+    ...faces,
+    layout.hiddenCount > 0
+      ? button(
+          h,
+          {
+            testId: "stack-expand",
+            onClick: StackExpandClicked(),
+            variant: "ghost",
+            class:
+              "pointer-events-auto fixed top-(--fan-top) left-(--fan-left) -translate-y-full px-2 py-1 text-chip text-seafoam",
+            ariaLabel: `Show ${layout.hiddenCount} older stack objects`,
+          },
+          [`+${layout.hiddenCount}`],
+        )
+      : null,
     h.div(
-      [h.Class("relative h-full w-full")],
       [
-        ...faces,
-        showMagnifier
-          ? button(
-              h,
-              {
-                testId: "stack-expand",
-                onClick: StackExpandClicked(),
-                variant: "ghost",
-                class: "absolute -top-9 right-0 flex items-center gap-1 px-2 py-1 text-chip text-seafoam",
-                ariaLabel: `Expand stack (${items.length} objects)`,
-              },
-              [`Expand · ${items.length}`],
-            )
-          : null,
+        h.Class(
+          "pointer-events-none fixed top-(--fan-bottom) left-(--fan-left) mt-sm flex w-(--fan-w) flex-col items-center gap-sm",
+        ),
       ],
-    ),
-    h.div(
-      [h.Class("absolute top-full right-0 left-0 mt-sm flex flex-col items-center gap-sm")],
-      [holdBar(holdMs, holdPeak, showHold, h), pileCaption(state, showStaged, h)].filter((v): v is Html => v !== null),
+      [holdBar(holdMs, holdPeak, showHold, h), pileCaption(state, showStaged, h)].filter(
+        (value): value is Html => value !== null,
+      ),
     ),
   ]);
 }
@@ -375,12 +400,15 @@ function stripView(
 ): Html {
   const viewportW = board.viewport.width;
   const n = items.length;
-  const hPeek = mode === "full" ? STACK_STRIP_MIN_PEEK : Math.max(STACK_STRIP_MIN_PEEK, stackStripPeek(n, viewportW));
-  const perRow = mode === "full" ? stackFullPerRow(viewportW) : n;
+  const layout = stackFanLayout(board.viewport, n);
+  const scale = handUiScale(board.viewport);
+  const minPeek = STACK_STRIP_MIN_PEEK * scale;
+  const hPeek = mode === "full" ? minPeek : Math.max(minPeek, stackStripPeek(n, board.viewport, layout.cardW));
+  const perRow = mode === "full" ? stackFullPerRow(board.viewport, layout.cardW) : n;
   const rows = Math.ceil(n / perRow);
-  const cardH = stackCardH();
+  const cardH = layout.cardH;
   const cols = Math.min(n, perRow);
-  const stripW = STACK_CARD_W + Math.max(0, cols - 1) * hPeek;
+  const stripW = layout.cardW + Math.max(0, cols - 1) * hPeek;
   const stripH = cardH + Math.max(0, rows - 1) * (cardH * 0.35);
   const holdMs = state.stack_hold_remaining_ms ?? 0;
   const holdPeak = board.stackHoldPeak;
@@ -405,6 +433,7 @@ function stripView(
           isTop,
           staged: item.staged,
           legalTarget: !item.staged && legalTargets.has(item.source),
+          cardW: layout.cardW,
           cardH,
           positionClass: "top-(--y) left-(--x) z-(--z)",
           style: {
@@ -426,10 +455,10 @@ function stripView(
       `group/stack pointer-events-auto fixed z-20 flex w-(--strip-cap) max-w-(--strip-max) flex-col items-center gap-sm ${positionClass}`,
     ),
     h.Style({
-      "--stack-w": `${STACK_CARD_W}px`,
+      "--stack-w": `${layout.cardW}px`,
       "--card-h": `${cardH}px`,
-      "--strip-cap": `${Math.min(viewportW - STACK_HORIZONTAL_MARGIN, stripW)}px`,
-      "--strip-max": `${viewportW - STACK_HORIZONTAL_MARGIN}px`,
+      "--strip-cap": `${Math.min(viewportW - STACK_HORIZONTAL_MARGIN * scale, stripW)}px`,
+      "--strip-max": `${viewportW - STACK_HORIZONTAL_MARGIN * scale}px`,
     }),
   ];
   if (allowDwell) {
@@ -485,7 +514,6 @@ export function stackView(board: BoardModel, state: VisibleState, h: HtmlBuilder
   const items = stackItems(board, state, showStaged);
   if (items.length === 0) return null;
 
-  const peek = stackPeekFor(items.length, board.viewport.height, STACK_VERTICAL_RESERVED);
   const presentation = stackPresentation({
     count: items.length,
     expandedOpen: board.stackExpand,
@@ -493,11 +521,10 @@ export function stackView(board: BoardModel, state: VisibleState, h: HtmlBuilder
     viewportH: board.viewport.height,
   });
   const allowDwell = shouldEmitDwell(board, state);
-  const cardH = stackCardH();
   const legalTargets = aimingObjectIds(board.staged, state.pending_choice, state);
 
   if (presentation === "pile") {
-    return pileView(board, state, items, peek, cardH, showStaged, allowDwell, legalTargets, h);
+    return compactFanView(board, state, items, showStaged, allowDwell, legalTargets, h);
   }
   return stripView(board, state, items, presentation, showStaged, allowDwell, legalTargets, h);
 }

@@ -14,8 +14,8 @@ import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
 import { emptyCostPicks } from "../action/execution";
 import { ZONE } from "../geometry/layout";
-import { STACK_EXPAND_COUNT } from "../geometry/stackLayout";
-import { type Message, StackCollapseClicked, TargetChosen } from "../messages";
+import { STACK_COMPACT_VISIBLE, stackFanLayout, stackFanPlacement } from "../geometry/stackLayout";
+import { KeyboardEscape, type Message, StackCollapseClicked, StackExpandClicked, TargetChosen } from "../messages";
 import { spawnFlight } from "../motion/flights";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
@@ -47,7 +47,13 @@ function gameState(over: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
     can_act: true,
-    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [], blocked_attackers: [] },
+    combat: {
+      attackers: [],
+      blocks: [],
+      attackers_declared: false,
+      blockers_declared: [],
+      blocked_attackers: [],
+    },
     objects: [],
     pending_choice: null,
     players: [player(), { ...player(), player: 1, username: "Bob" }],
@@ -76,7 +82,14 @@ function gameFold(state: VisibleState): GameFoldState {
       stackEntrances: new Map(),
       priorStackObjectIds: new Set(),
     },
-    tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
+    tableFeel: {
+      land: false,
+      stack: false,
+      resolve: false,
+      damage: false,
+      destroy: false,
+      exile: false,
+    },
   };
 }
 
@@ -108,7 +121,100 @@ function spellOnStack(
   };
   return {
     objects: [spell],
-    stack: [{ controller: 0, kind: "spell", label: testMessageRef(label), source: sourceId }],
+    stack: [
+      {
+        controller: 0,
+        kind: "spell",
+        label: testMessageRef(label),
+        source: sourceId,
+      },
+    ],
+  };
+}
+
+function stackedSpells(count: number): {
+  stack: VisibleState["stack"];
+  objects: ObjectView[];
+} {
+  const objects: ObjectView[] = [];
+  const stack: VisibleState["stack"] = [];
+  for (let row = 0; row < count; row++) {
+    const id = 100 + row;
+    objects.push({
+      controller: 0,
+      has_haste: false,
+      id,
+      is_commander: false,
+      is_token: false,
+      legendary: false,
+      kind: { kind: "instant" },
+      mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+      marked_damage: 0,
+      name: `Spell ${row}`,
+      needs_target: false,
+      owner: 0,
+      plus_counters: 0,
+      power: 0,
+      print: `print-${row}`,
+      summoning_sick: false,
+      tapped: false,
+      toughness: 0,
+      zone: ZONE.Stack,
+    });
+    stack.push({
+      controller: 0,
+      kind: "spell",
+      label: testMessageRef(`Spell ${row}`),
+      source: id,
+    });
+  }
+  return { objects, stack };
+}
+
+function stackSceneModel(count: number, board: BoardModel = initialBoardModel()): ViewModel {
+  const { objects, stack } = stackedSpells(count);
+  return {
+    board,
+    fold: gameFold(gameState({ objects, stack })),
+    tableId: "T1",
+  };
+}
+
+function targetingStackModel(count: number): ViewModel {
+  const { objects, stack } = stackedSpells(count);
+  const target = objects[count - 1];
+  if (target == null) throw new Error("targeting stack needs an object");
+  const counter: ObjectView = {
+    ...target,
+    id: 7,
+    name: "Counterspell",
+    print: "counter-print",
+    needs_target: true,
+    zone: ZONE.Hand,
+  };
+  const action: ActionView = {
+    id: 3,
+    kind: "cast",
+    label: testMessageRef("Cast Counterspell"),
+    needs_target: true,
+    object: counter.id,
+    section: "hand",
+    targets: [{ kind: "object", id: target.id }],
+  };
+  return {
+    board: {
+      ...initialBoardModel(),
+      staged: {
+        card: counter,
+        action,
+        picks: emptyCostPicks(),
+        preferPick: false,
+        playOrigin: { x: 0, y: 0 },
+        playOriginScreen: { x: 0, y: 0 },
+      },
+    },
+    fold: gameFold(gameState({ objects: [...objects, counter], stack })),
+    tableId: "T1",
   };
 }
 
@@ -126,7 +232,7 @@ test("stack overlay renders the drawn card face for spells on the stack", () => 
     resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toExist(),
   );
 });
 
@@ -143,27 +249,35 @@ test("stack face draws the whole printed card, with the catalog's words on it", 
     flavor: "",
   };
   const model: ViewModel = {
-    board: { ...initialBoardModel(), cardText: new Map([[cardTextKey("bolt", "bolt-print"), text]]) },
+    board: {
+      ...initialBoardModel(),
+      cardText: new Map([[cardTextKey("bolt", "bolt-print"), text]]),
+    },
     fold: gameFold(gameState({ objects: [bolt], stack })),
     tableId: "T1",
   };
-  const face = JSON.stringify({ ...faceDataFrom(bolt), typeLine: "Instant", oracle: text.oracle, flavor: "" });
+  const face = JSON.stringify({
+    ...faceDataFrom(bolt),
+    typeLine: "Instant",
+    oracle: text.oracle,
+    flavor: "",
+  });
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
     resolveBoardCardFaceMounts(),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr(
-      "data-face-variant",
-      "full",
-    ),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr("data-face", face),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr("data-face-variant", "full"),
   );
 });
 
 test("a prepared spell stack face prefers the active back-face words", () => {
   const { objects } = spellOnStack(42, "Pack a Punch", "kirol-print");
-  const spell: ObjectView = { ...(objects[0] as ObjectView), card_id: "kirol-history-buff" };
+  const spell: ObjectView = {
+    ...(objects[0] as ObjectView),
+    card_id: "kirol-history-buff",
+  };
   const front = {
     card_id: "kirol-history-buff",
     print: "kirol-print",
@@ -207,7 +321,7 @@ test("a prepared spell stack face prefers the active back-face words", () => {
     Scene.given(model),
     resolveBoardOverlayMounts(),
     resolveBoardCardFaceMounts(),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr("data-face", face),
   );
 });
 
@@ -215,7 +329,11 @@ test("an ability's stack face shows only the sentence that prints it", () => {
   // An ability waiting to resolve is one printed sentence, not its source permanent's whole text
   // box — and the flavor is the card's, not the ability's, so it goes with the rest.
   const { objects } = spellOnStack(42, "Phyrexian Arena", "arena-print");
-  const arena: ObjectView = { ...(objects[0] as ObjectView), card_id: "arena", kind: { kind: "enchantment" } };
+  const arena: ObjectView = {
+    ...(objects[0] as ObjectView),
+    card_id: "arena",
+    kind: { kind: "enchantment" },
+  };
   const sentence = "At the beginning of your upkeep, you draw a card and you lose 1 life.";
   const text = {
     card_id: "arena",
@@ -225,7 +343,10 @@ test("an ability's stack face shows only the sentence that prints it", () => {
     flavor: "The Rathi cabal exacts a heavy toll.",
   };
   const model: ViewModel = {
-    board: { ...initialBoardModel(), cardText: new Map([[cardTextKey("arena", "arena-print"), text]]) },
+    board: {
+      ...initialBoardModel(),
+      cardText: new Map([[cardTextKey("arena", "arena-print"), text]]),
+    },
     fold: gameFold(
       gameState({
         objects: [arena],
@@ -242,14 +363,19 @@ test("an ability's stack face shows only the sentence that prints it", () => {
     ),
     tableId: "T1",
   };
-  const face = JSON.stringify({ ...faceDataFrom(arena), typeLine: "Enchantment", oracle: sentence, flavor: "" });
+  const face = JSON.stringify({
+    ...faceDataFrom(arena),
+    typeLine: "Enchantment",
+    oracle: sentence,
+    flavor: "",
+  });
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
     resolveBoardCardFaceMounts(),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr(
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr("data-face", face),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr(
       "data-face-alt",
       `Phyrexian Arena: ${sentence}`,
     ),
@@ -258,7 +384,11 @@ test("an ability's stack face shows only the sentence that prints it", () => {
 
 test("an ability without a recorded sentence uses its label and clears the source flavor", () => {
   const { objects } = spellOnStack(42, "Phyrexian Arena", "arena-print");
-  const arena: ObjectView = { ...(objects[0] as ObjectView), card_id: "arena", kind: { kind: "enchantment" } };
+  const arena: ObjectView = {
+    ...(objects[0] as ObjectView),
+    card_id: "arena",
+    kind: { kind: "enchantment" },
+  };
   const text = {
     card_id: "arena",
     print: "arena-print",
@@ -267,7 +397,10 @@ test("an ability without a recorded sentence uses its label and clears the sourc
     flavor: "The Rathi cabal exacts a heavy toll.",
   };
   const model: ViewModel = {
-    board: { ...initialBoardModel(), cardText: new Map([[cardTextKey("arena", "arena-print"), text]]) },
+    board: {
+      ...initialBoardModel(),
+      cardText: new Map([[cardTextKey("arena", "arena-print"), text]]),
+    },
     fold: gameFold(
       gameState({
         objects: [arena],
@@ -283,13 +416,18 @@ test("an ability without a recorded sentence uses its label and clears the sourc
     ),
     tableId: "T1",
   };
-  const face = JSON.stringify({ ...faceDataFrom(arena), typeLine: "Enchantment", oracle: "Draw a card", flavor: "" });
+  const face = JSON.stringify({
+    ...faceDataFrom(arena),
+    typeLine: "Enchantment",
+    oracle: "Draw a card",
+    flavor: "",
+  });
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
     resolveBoardCardFaceMounts(),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr("data-face", face),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr("data-face", face),
     Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
 });
@@ -385,7 +523,12 @@ test("every triggered ability keeps its face while its source spell is flying on
     fromCardId: 7,
   });
   const stack: VisibleState["stack"] = [
-    { controller: 0, kind: "spell", label: testMessageRef("Source Spell"), source: 42 },
+    {
+      controller: 0,
+      kind: "spell",
+      label: testMessageRef("Source Spell"),
+      source: 42,
+    },
     {
       ability_oracle: "Whenever you cast this spell, draw a card.",
       controller: 0,
@@ -494,7 +637,7 @@ test("ability stack face keeps card art while its source permanent is mid-battle
     resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toExist(),
     Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
 });
@@ -535,7 +678,7 @@ test("ability stack face uses entry print when the source id is no longer in obj
     resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr(
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr(
       "data-face",
       JSON.stringify({
         print: "evolving-wilds-print",
@@ -593,7 +736,7 @@ test("an older server tombstone without source face still renders its ability ca
       resolveBoardOverlayMounts(),
       resolveBoardCardFaceMounts(),
       Scene.expect(Scene.testId("stack-face-0")).toExist(),
-      Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toHaveAttr(
+      Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr(
         "data-face",
         JSON.stringify({
           print: "evolving-wilds-print",
@@ -659,7 +802,7 @@ test("ability stack face keeps card art while its source permanent is mid from-s
     resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toExist(),
     Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
 });
@@ -793,7 +936,7 @@ test("staged ghost appears on the stack during arrow targeting", () => {
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toExist(),
   );
 });
 
@@ -869,7 +1012,11 @@ test("legal stack face is highlighted and click submits take_action", () => {
 });
 
 test("stack overlay hidden when stack is empty and nothing is staged", () => {
-  const model: ViewModel = { board: initialBoardModel(), fold: gameFold(gameState()), tableId: "T1" };
+  const model: ViewModel = {
+    board: initialBoardModel(),
+    fold: gameFold(gameState()),
+    tableId: "T1",
+  };
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
@@ -951,7 +1098,7 @@ test("pending choose_target shows source card art on the stack while aiming (Inn
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toExist(),
   );
 });
 
@@ -1024,7 +1171,7 @@ test("pending proliferate shows source card art on the stack after the ability l
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
-    Scene.expect(Scene.selector(String.raw`[data-testid="stack-face-0"] [data-face]`)).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toExist(),
   );
 });
 
@@ -1164,7 +1311,14 @@ test("a second trigger from one permanent gets its own top face while aiming", (
     fold: gameFold(
       gameState({
         objects: [veyran, bear],
-        stack: [{ controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: veyran.id }],
+        stack: [
+          {
+            controller: 0,
+            kind: "ability",
+            label: testMessageRef("Draw a card"),
+            source: veyran.id,
+          },
+        ],
         pending_choice: {
           kind: "choose_target",
           label: testMessageRef("Target creature gets +1/+1"),
@@ -1189,60 +1343,143 @@ test("a second trigger from one permanent gets its own top face while aiming", (
   );
 });
 
-test("expand button appears for a tall stack and opens strip view", () => {
-  const objects: ObjectView[] = [];
-  const stack: VisibleState["stack"] = [];
-  for (let i = 0; i < STACK_EXPAND_COUNT; i++) {
-    const id = 100 + i;
-    objects.push({
-      controller: 0,
-      has_haste: false,
-      id,
-      is_commander: false,
-      is_token: false,
-      legendary: false,
-      kind: { kind: "instant" },
-      mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
-      marked_damage: 0,
-      name: `Spell ${i}`,
-      needs_target: false,
-      owner: 0,
-      plus_counters: 0,
-      power: 0,
-      print: `print-${i}`,
-      summoning_sick: false,
-      tapped: false,
-      toughness: 0,
-      zone: ZONE.Stack,
-    });
-    stack.push({ controller: 0, kind: "spell", label: testMessageRef(`Spell ${i}`), source: id });
-  }
-  const model: ViewModel = {
-    board: initialBoardModel(),
-    fold: gameFold(gameState({ objects, stack })),
-    tableId: "T1",
-  };
+test("compact stack shows only the newest four faces and the exact older count", () => {
+  const model = stackSceneModel(7);
+  const layout = stackFanLayout(model.board.viewport, 7);
+  const placementExpectations = [3, 4, 5, 6].flatMap((row) => {
+    const placement = stackFanPlacement(layout, row);
+    if (placement == null) throw new Error(`missing placement for visible row ${row}`);
+    const face = Scene.testId(`stack-face-${row}`);
+    const body = Scene.selector(`[data-testid="stack-face-${row}"] [data-face]`);
+    return [
+      Scene.expect(face).toHaveStyle("--x", `${placement.x}px`),
+      Scene.expect(face).toHaveStyle("--y", `${placement.y}px`),
+      Scene.expect(face).toHaveStyle("--rotation", `${placement.rotation}deg`),
+      Scene.expect(body).toHaveAttr("data-face-w", String(layout.cardW)),
+      Scene.expect(body).toHaveAttr("data-face-h", String(layout.cardH)),
+    ];
+  });
+
   Scene.scene(
-    {
-      update: (m, msg: Message) => {
-        const [board] = updateBoard(m.board, msg, m.fold, m.tableId);
-        return [{ ...m, board }, []];
-      },
-      view: overlayView,
-    },
+    { update: (m) => [m, []], view: overlayView },
     Scene.given(model),
     resolveBoardOverlayMounts(),
-    resolveBoardCardFaceMounts(STACK_EXPAND_COUNT),
-    Scene.expect(Scene.testId("stack-expand")).toExist(),
+    resolveBoardCardFaceMounts(STACK_COMPACT_VISIBLE),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveAttr("data-presentation", "compact"),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--stack-w", `${layout.cardW}px`),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--card-h", `${layout.cardH}px`),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--fan-w", `${layout.fanW}px`),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--fan-left", `${layout.left}px`),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--fan-top", `${layout.top}px`),
+    Scene.expect(Scene.testId("stack-face-0")).toBeAbsent(),
+    Scene.expect(Scene.testId("stack-face-2")).toBeAbsent(),
+    Scene.expect(Scene.testId("stack-face-3")).toExist(),
+    Scene.expect(Scene.testId("stack-face-6")).toExist(),
+    ...placementExpectations,
+    Scene.expect(Scene.testId("stack-expand")).toContainText("+3"),
+    Scene.expect(Scene.testId("stack-expand")).toHaveAccessibleName("Show 3 older stack objects"),
+  );
+});
+
+test.each([1, 2, 3, STACK_COMPACT_VISIBLE])("a compact stack of %s objects has no overflow control", (count) => {
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(stackSceneModel(count)),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(count),
+    Scene.expect(Scene.testId("stack-expand")).toBeAbsent(),
+  );
+});
+
+function interactiveStackProgram() {
+  return {
+    update: (m: ViewModel, msg: Message) => {
+      const [board] = updateBoard(m.board, msg, m.fold, m.tableId);
+      return [{ ...m, board }, []] as const;
+    },
+    view: overlayView,
+  };
+}
+
+test("the compact overflow button expands the stack", () => {
+  Scene.scene(
+    interactiveStackProgram(),
+    Scene.given(stackSceneModel(7)),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(STACK_COMPACT_VISIBLE),
     Scene.click(Scene.testId("stack-expand")),
+    resolveBoardCardFaceMounts(3),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
+  );
+  expect(updateBoard(initialBoardModel(), StackExpandClicked(), gameFold(gameState()), "T1")[0].stackExpand).toBe(true);
+});
+
+test.each(["Enter", " "])("%s on a non-target compact face expands hidden stack objects", (key) => {
+  Scene.scene(
+    interactiveStackProgram(),
+    Scene.given(stackSceneModel(7)),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(STACK_COMPACT_VISIBLE),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveAttr("role", "button"),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveAttr("tabIndex", "0"),
+    Scene.keydown(Scene.testId("stack-face-6"), key),
+    resolveBoardCardFaceMounts(3),
     Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
   );
 });
 
-test("StackCollapseClicked collapses expanded stack", () => {
-  const board = { ...initialBoardModel(), stackExpand: true };
-  const next = updateBoard(board, StackCollapseClicked(), gameFold(gameState()), "T1")[0];
-  expect(next.stackExpand).toBe(false);
+test.each(["click", "Enter"])("a legal compact face uses %s to choose the target instead of expanding", (input) => {
+  const interaction =
+    input === "click"
+      ? Scene.click(Scene.testId("stack-face-6"))
+      : Scene.keydown(Scene.testId("stack-face-6"), "Enter");
+  Scene.scene(
+    interactiveStackProgram(),
+    Scene.given(targetingStackModel(7)),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(5),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveAttr("data-legal-target", "true"),
+    interaction,
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toBeAbsent(),
+    Scene.expect(Scene.selector('[data-legal-target="true"]')).toBeAbsent(),
+  );
+});
+
+test("expanded stack renders every row with responsive card dimensions", () => {
+  const model = stackSceneModel(7, {
+    ...initialBoardModel(),
+    stackExpand: true,
+  });
+  const layout = stackFanLayout(model.board.viewport, 7);
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(7),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expect(Scene.testId("stack-face-6")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr(
+      "data-face-w",
+      String(layout.cardW),
+    ),
+    Scene.expect(Scene.selector('[data-testid="stack-face-6"] [data-face]')).toHaveAttr(
+      "data-face-h",
+      String(layout.cardH),
+    ),
+  );
+});
+
+test("explicit collapse and Escape close the stack without cancelling a staged action", () => {
+  const model = targetingStackModel(7);
+  const expanded = { ...model.board, stackExpand: true };
+  const afterClick = updateBoard(expanded, StackCollapseClicked(), model.fold, model.tableId)[0];
+  expect(afterClick.stackExpand).toBe(false);
+  expect(afterClick.staged).toBe(expanded.staged);
+
+  const afterEscape = updateBoard(expanded, KeyboardEscape(), model.fold, model.tableId)[0];
+  expect(afterEscape.stackExpand).toBe(false);
+  expect(afterEscape.staged).toBe(expanded.staged);
 });
 
 test("hold bar renders when stack_hold_remaining_ms is positive", () => {
