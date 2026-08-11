@@ -1,95 +1,107 @@
 import { describe, expect, it } from "vitest";
+import { handMetrics } from "./handMetrics";
 import {
-  STACK_CARD_W,
-  STACK_EXPAND_COUNT,
+  STACK_COMPACT_VISIBLE,
   STACK_PEEK,
   STACK_STRIP_MIN_PEEK,
   shouldAutoCollapseStackExpand,
-  stackCardH,
+  stackActionLane,
   stackExpandAvailable,
   stackFaceScreenOrigin,
-  stackPeekFor,
+  stackFanLayout,
+  stackFanPlacement,
+  stackFullPerRow,
   stackPresentation,
   stackStripFits,
   stackStripPeek,
 } from "./stackLayout";
 
-describe("stackPeekFor", () => {
-  it("keeps full peek when the pile fits the usable band", () => {
-    expect(stackPeekFor(3, 900, 120)).toBe(STACK_PEEK);
+describe("stackFanLayout", () => {
+  it.each([
+    [{ width: 1280, height: 720 }, 166, 232],
+    [{ width: 1440, height: 900 }, 208, 291],
+    [{ width: 2560, height: 1440 }, 312, 436],
+  ] as const)("matches hand cards at $0", (viewport, cardW, cardH) => {
+    expect(stackFanLayout(viewport, 4)).toMatchObject({ cardW, cardH });
   });
 
-  it("compresses peek so the pile stays inside the usable band", () => {
-    const n = 20;
-    const viewportH = 600;
-    const reserved = 120;
-    const peek = stackPeekFor(n, viewportH, reserved);
-    expect(peek).toBeLessThan(STACK_PEEK);
-    expect(peek).toBeGreaterThanOrEqual(0);
-    const pileH = stackCardH() + (n - 1) * peek;
-    expect(pileH).toBeLessThanOrEqual(viewportH - reserved + 0.5);
+  it("shows the newest four rows and counts hidden objects", () => {
+    expect(stackFanLayout({ width: 1440, height: 900 }, 7)).toMatchObject({
+      visibleFrom: 3,
+      visibleCount: 4,
+      hiddenCount: 3,
+    });
   });
 
-  it("returns full peek for a single card", () => {
-    expect(stackPeekFor(1, 400, 120)).toBe(STACK_PEEK);
+  it("returns no placement for hidden rows", () => {
+    const layout = stackFanLayout({ width: 1440, height: 900 }, 7);
+    expect(stackFanPlacement(layout, 2)).toBeNull();
+    expect(stackFanPlacement(layout, 3)).not.toBeNull();
+  });
+
+  it("orders compact origins left to right and keeps the top object rightmost", () => {
+    const viewport = { width: 1440, height: 900 };
+    const origins = [3, 4, 5, 6].map((row) => stackFaceScreenOrigin({ presentation: "pile", viewport, count: 7, row }));
+    expect(origins.map(({ x }) => x)).toEqual([...origins.map(({ x }) => x)].sort((a, b) => a - b));
+  });
+
+  it("keeps the compact fan above the hand and reserved primary-action lane", () => {
+    const viewport = { width: 1280, height: 720 };
+    const layout = stackFanLayout(viewport, 4);
+    expect(layout.top + layout.cardH).toBeLessThanOrEqual(
+      viewport.height - handMetrics(viewport).barH - stackActionLane(viewport),
+    );
   });
 });
 
 describe("stackExpandAvailable", () => {
-  it("opens at the reading count threshold even at full peek", () => {
-    expect(stackExpandAvailable(STACK_EXPAND_COUNT, STACK_PEEK)).toBe(true);
-    expect(stackExpandAvailable(STACK_EXPAND_COUNT - 1, STACK_PEEK)).toBe(false);
-  });
-
-  it("opens once peek compression has started", () => {
-    expect(stackExpandAvailable(3, STACK_PEEK - 1)).toBe(true);
+  it("opens only beyond the compact visible count", () => {
+    expect(stackExpandAvailable(STACK_COMPACT_VISIBLE + 1)).toBe(true);
+    expect(stackExpandAvailable(STACK_COMPACT_VISIBLE)).toBe(false);
   });
 });
 
 describe("stackStripFits / stackStripPeek", () => {
-  it("fits a short strip at comfortable peek", () => {
-    expect(stackStripFits(4, 1200)).toBe(true);
-    expect(stackStripPeek(4, 1200)).toBeGreaterThanOrEqual(STACK_STRIP_MIN_PEEK);
+  const viewport = { width: 1200, height: 900 };
+
+  it("uses responsive card width for a short strip", () => {
+    expect(stackStripFits(4, viewport)).toBe(true);
+    const cardW = handMetrics(viewport).cardW;
+    const peek = stackStripPeek(4, viewport, cardW);
+    expect(cardW).toBe(handMetrics(viewport).cardW);
+    expect(peek).toBeGreaterThanOrEqual(STACK_STRIP_MIN_PEEK * handMetrics(viewport).scale);
   });
 
   it("rejects a strip that cannot fit even at min peek", () => {
-    const n = 40;
-    expect(stackStripFits(n, 800)).toBe(false);
+    expect(stackStripFits(50, { width: 800, height: 600 })).toBe(false);
   });
 
   it("compresses horizontal peek before overflowing", () => {
-    const peek = stackStripPeek(12, 900);
-    expect(peek).toBeLessThanOrEqual(STACK_PEEK);
-    const width = STACK_CARD_W + 11 * peek;
-    expect(width).toBeLessThanOrEqual(900 - 48 + 0.5);
+    const compact = { width: 900, height: 600 };
+    const cardW = handMetrics(compact).cardW;
+    const peek = stackStripPeek(12, compact, cardW);
+    expect(peek).toBeLessThanOrEqual(STACK_PEEK * handMetrics(compact).scale);
+    expect(cardW + 11 * peek).toBeLessThanOrEqual(compact.width - 48 * handMetrics(compact).scale + 0.5);
+  });
+
+  it("derives full-grid capacity from responsive card width", () => {
+    const metrics = handMetrics(viewport);
+    expect(stackFullPerRow(viewport, metrics.cardW)).toBeGreaterThan(1);
+    expect(metrics.cardW).toBe(handMetrics(viewport).cardW);
   });
 });
 
 describe("shouldAutoCollapseStackExpand", () => {
   it("collapses when the stack empties", () => {
-    expect(shouldAutoCollapseStackExpand({ expanded: true, count: 0, peek: STACK_PEEK, staged: false })).toBe(true);
+    expect(shouldAutoCollapseStackExpand({ expanded: true, count: 0, staged: false })).toBe(true);
   });
 
-  it("collapses when both expand thresholds clear", () => {
-    expect(
-      shouldAutoCollapseStackExpand({
-        expanded: true,
-        count: STACK_EXPAND_COUNT - 1,
-        peek: STACK_PEEK,
-        staged: false,
-      }),
-    ).toBe(true);
+  it("collapses when only the compact rows remain", () => {
+    expect(shouldAutoCollapseStackExpand({ expanded: true, count: STACK_COMPACT_VISIBLE, staged: false })).toBe(true);
   });
 
   it("stays open while staged", () => {
-    expect(
-      shouldAutoCollapseStackExpand({
-        expanded: true,
-        count: STACK_EXPAND_COUNT,
-        peek: STACK_PEEK - 5,
-        staged: true,
-      }),
-    ).toBe(false);
+    expect(shouldAutoCollapseStackExpand({ expanded: true, count: STACK_COMPACT_VISIBLE, staged: true })).toBe(false);
   });
 });
 
@@ -99,26 +111,15 @@ describe("stackPresentation", () => {
   });
 
   it("uses expanded strip when cards fit horizontally", () => {
-    expect(stackPresentation({ count: 4, expandedOpen: true, viewportW: 1200, viewportH: 900 })).toBe("expanded");
+    expect(stackPresentation({ count: 5, expandedOpen: true, viewportW: 1200, viewportH: 900 })).toBe("expanded");
   });
 });
 
 describe("stackFaceScreenOrigin", () => {
-  it("spreads expanded faces horizontally unlike the pile", () => {
-    const left = stackFaceScreenOrigin({
-      presentation: "expanded",
-      viewportW: 1440,
-      viewportH: 900,
-      count: 3,
-      row: 0,
-    });
-    const right = stackFaceScreenOrigin({
-      presentation: "expanded",
-      viewportW: 1440,
-      viewportH: 900,
-      count: 3,
-      row: 2,
-    });
+  it("spreads expanded faces horizontally unlike the compact fan", () => {
+    const viewport = { width: 1440, height: 900 };
+    const left = stackFaceScreenOrigin({ presentation: "expanded", viewport, count: 3, row: 0 });
+    const right = stackFaceScreenOrigin({ presentation: "expanded", viewport, count: 3, row: 2 });
     expect(left.x).toBeLessThan(right.x);
   });
 });

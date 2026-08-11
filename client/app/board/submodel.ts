@@ -140,10 +140,9 @@ import {
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
-  STACK_VERTICAL_RESERVED,
   shouldAutoCollapseStackExpand,
   stackFaceScreenOrigin,
-  stackPeekFor,
+  stackFanLayout,
   stackPresentation,
 } from "./geometry/stackLayout";
 import { modesForObject } from "./html/actions";
@@ -498,11 +497,9 @@ function syncStackChrome(model: BoardModel, fold: BoardFold): BoardModel {
   const showStaged =
     (model.staged != null && stagedPickTargets(model.staged, state) === null) || pendingStackGhost(state) != null;
   const visualCount = state.stack.length + (showStaged ? 1 : 0);
-  const peek = stackPeekFor(visualCount, model.viewport.height, STACK_VERTICAL_RESERVED);
   const stackExpand = shouldAutoCollapseStackExpand({
     expanded: model.stackExpand,
     count: visualCount,
-    peek,
     staged: showStaged,
   })
     ? false
@@ -623,15 +620,14 @@ function stackFlightAim(
     viewportW: model.viewport.width,
     viewportH: model.viewport.height,
   });
+  const stackLayout = stackFanLayout(model.viewport, count);
   const origin = stackFaceScreenOrigin({
     presentation,
-    viewportW: model.viewport.width,
-    viewportH: model.viewport.height,
+    viewport: model.viewport,
     count,
     row,
-    peek: presentation === "pile" ? stackPeekFor(count, model.viewport.height) : undefined,
   });
-  return { x: origin.x, y: origin.y, scale: stackFlightScale(model.camera.zoom) };
+  return { x: origin.x, y: origin.y, scale: stackFlightScale(model.camera.zoom, stackLayout.cardW) };
 }
 
 function stackFlightAimForSource(

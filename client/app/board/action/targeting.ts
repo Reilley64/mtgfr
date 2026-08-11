@@ -13,6 +13,7 @@ import { colors } from "~/design-tokens.generated";
 import type { ActionView, ObjectView, PendingChoiceView, VisibleState, WireTarget } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { ZONE } from "../geometry/layout";
+import { stackFaceScreenOrigin } from "../geometry/stackLayout";
 import type { StagedAction } from "./execution";
 
 /** Shared target-arrow / staged-preview accent (canvas stroke + DOM ring). */
@@ -27,25 +28,14 @@ export type StagingOverlay = {
   aimFrom: Vec | null;
 };
 
-// Stack overlay geometry — one source for the DOM overlay and the canvas aim origin.
-const STACK_CARD_W = 180;
-const STACK_OVERLAY_RIGHT = 16;
-const STACK_PEEK = 34;
-const STACK_ANCHOR_FROM_RIGHT = STACK_OVERLAY_RIGHT + STACK_CARD_W / 2;
-
-function stackCardH(cardW = STACK_CARD_W): number {
-  return cardW / 0.716;
-}
-
-/** Screen-space center of the top card in a right-edge pile of `count` cards. */
-export function stackAimOrigin(viewportW: number, viewportH: number, count: number, peek = STACK_PEEK): Vec {
-  const n = Math.max(1, count);
-  const cardH = stackCardH();
-  const pileH = cardH + (n - 1) * peek;
-  return {
-    x: viewportW - STACK_ANCHOR_FROM_RIGHT,
-    y: viewportH / 2 + pileH / 2 - (n - 1) * peek - cardH / 2,
-  };
+// Preserve the public wrapper while sharing the exact compact top-face geometry.
+export function stackAimOrigin(viewportW: number, viewportH: number, count: number): Vec {
+  return stackFaceScreenOrigin({
+    presentation: "pile",
+    viewport: { width: viewportW, height: viewportH },
+    count: Math.max(1, count),
+    row: Math.max(0, count - 1),
+  });
 }
 
 export function stagingOverlay(

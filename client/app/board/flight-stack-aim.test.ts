@@ -3,8 +3,9 @@ import { cardTextKey } from "~/cardText";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
+import { handMetrics } from "./geometry/handMetrics";
 import { FLIGHT_CARD_W, ZONE } from "./geometry/layout";
-import { STACK_CARD_W, stackFaceScreenOrigin, stackPeekFor, stackPresentation } from "./geometry/stackLayout";
+import { stackFaceScreenOrigin, stackPresentation } from "./geometry/stackLayout";
 import { FlightsSynced, HandActionActivated, KeyboardEscape } from "./messages";
 import { handFlightScale, spawnFlight, stackFlightScale, stepFlights } from "./motion/flights";
 import { BOARD_VIEWPORT, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
@@ -94,19 +95,22 @@ function restingStackFace(model: ReturnType<typeof initialBoardModel>, count: nu
   });
   return stackFaceScreenOrigin({
     presentation,
-    viewportW: model.viewport.width,
-    viewportH: model.viewport.height,
+    viewport: model.viewport,
     count,
     row,
-    peek: presentation === "pile" ? stackPeekFor(count, model.viewport.height) : undefined,
   });
+}
+function restingStackScale(model: ReturnType<typeof initialBoardModel>): number {
+  return stackFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW);
 }
 
 describe("stack flight settle handoff", () => {
   it("sizes stack flights to the resting HTML stack face width", () => {
-    const zoom = 1;
-    expect(stackFlightScale(zoom)).toBe(STACK_CARD_W / (FLIGHT_CARD_W * zoom));
-    expect(STACK_CARD_W).toBe(180);
+    const board0 = initialBoardModel();
+    const metrics = handMetrics(board0.viewport);
+    expect(stackFlightScale(board0.camera.zoom, metrics.cardW)).toBe(
+      metrics.cardW / (FLIGHT_CARD_W * board0.camera.zoom),
+    );
   });
 
   it("retargets stack entrance flights to the resting stack face center", () => {
@@ -169,7 +173,7 @@ describe("stack flight settle handoff", () => {
     const face = restingStackFace(after, 1, 0);
     expect(flight?.targetX).toBe(face.x);
     expect(flight?.targetY).toBe(face.y);
-    expect(flight?.targetScale).toBe(stackFlightScale(after.camera.zoom));
+    expect(flight?.targetScale).toBe(stackFlightScale(after.camera.zoom, handMetrics(after.viewport).cardW));
     expect(flight?.print).toBe("Lightning Bolt-print");
     expect(flight?.name).toBe("Lightning Bolt");
     expect(flight?.face).toMatchObject({
@@ -355,7 +359,7 @@ describe("stack flight settle handoff", () => {
       scale: 2,
       targetX: face.x,
       targetY: face.y,
-      targetScale: stackFlightScale(board0.camera.zoom),
+      targetScale: restingStackScale(board0),
       kind: "stack",
       fromCardId: handId,
       hold: true,
@@ -415,7 +419,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 0 };
     const face = restingStackFace(board0, 1, 0);
-    const targetScale = stackFlightScale(board0.camera.zoom);
+    const targetScale = restingStackScale(board0);
     const parked = {
       ...spawnFlight({
         id: handId,
@@ -506,10 +510,10 @@ describe("stack flight settle handoff", () => {
         name: bolt.name,
         x: face.x,
         y: face.y + 17,
-        scale: stackFlightScale(board0.camera.zoom),
+        scale: restingStackScale(board0),
         targetX: face.x,
         targetY: face.y + 17,
-        targetScale: stackFlightScale(board0.camera.zoom),
+        targetScale: restingStackScale(board0),
         kind: "stack",
         fromCardId: handId,
         hold: true,
@@ -643,7 +647,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     // Still flying, ~40px shy of the face — classic "full animation then a short one" setup.
     const nearEnd = spawnFlight({
       id: handId,
@@ -691,7 +695,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     // Pose is near the real stack face, but target still points at a wrong seed aim.
     // Continuing that glide then retargeting is the double animation.
     const nearFaceStaleAim = spawnFlight({
@@ -738,7 +742,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const far = spawnFlight({
       id: handId,
       print: bolt.print ?? "",
@@ -888,7 +892,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const parked = {
       ...spawnFlight({
         id: spellId,
@@ -933,7 +937,7 @@ describe("stack flight settle handoff", () => {
     const handId = 7;
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const parked = {
       ...spawnFlight({
         id: handId,
@@ -1009,7 +1013,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const parked = {
       ...spawnFlight({
         id: handId,
@@ -1054,7 +1058,7 @@ describe("stack flight settle handoff", () => {
     const inHand: ObjectView = { ...spell(handId, "Lightning Bolt"), zone: ZONE.Hand };
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const seeded = spawnFlight({
       id: handId,
       print: inHand.print ?? "",

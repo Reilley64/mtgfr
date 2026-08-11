@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
+import { stackFaceScreenOrigin } from "../geometry/stackLayout";
 import type { StagedAction } from "./execution";
 import { emptyCostPicks } from "./execution";
 import {
@@ -202,10 +203,11 @@ describe("stagedPickTargets", () => {
 });
 
 describe("stackAimOrigin", () => {
-  it("anchors the staged spell ghost at the right-edge stack pile center", () => {
-    const origin = stackAimOrigin(1440, 900, 2);
-    expect(origin.x).toBe(1440 - 16 - 180 / 2);
-    expect(origin.y).toBeCloseTo(900 / 2 - 34 / 2);
+  it("uses the exact top visible compact face origin", () => {
+    const viewport = { width: 1440, height: 900 };
+    expect(stackAimOrigin(viewport.width, viewport.height, 7)).toEqual(
+      stackFaceScreenOrigin({ presentation: "pile", viewport, count: 7, row: 6 }),
+    );
   });
 });
 

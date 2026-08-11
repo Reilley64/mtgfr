@@ -4,7 +4,13 @@ import { testMessageRef } from "~/i18n/testMessageRef";
 import { BLANK_FACE } from "../../domain/card-render/frame";
 import { TARGET_COLOR } from "../action/targeting";
 import type { RenderCard } from "../geometry/layout";
-import { aimArrowShapes, arrowShapes, combatDragArrowShapes, stackTargetArrowShapes } from "./arrows";
+import {
+  aimArrowShapes,
+  arrowShapes,
+  combatDragArrowShapes,
+  stackTargetArrowEndpoints,
+  stackTargetArrowShapes,
+} from "./arrows";
 
 function card(id: number, over: Partial<RenderCard> = {}): RenderCard {
   return {
@@ -142,6 +148,31 @@ describe("stackTargetArrowShapes", () => {
     });
     expect(pile).not.toEqual(expanded);
     expect(expanded.length).toBe(pile.length);
+  });
+  it("uses visible compact face origins and proxies hidden rows to the overflow edge", () => {
+    const stack = Array.from({ length: 7 }, (_, row) => ({
+      controller: 0,
+      kind: "spell" as const,
+      label: testMessageRef(`Spell ${row}`),
+      source: row + 1,
+      target: { kind: "player" as const, player: 1 },
+    }));
+    const common = {
+      viewport: { width: 1440, height: 900 },
+      stack,
+      cards: [] as RenderCard[],
+      avatars: { 1: { x: 720, y: 80 } },
+      camera: { panX: 0, panY: 0, zoom: 1 },
+    };
+
+    const compact = stackTargetArrowEndpoints({ ...common, presentation: "pile" });
+    expect(compact.slice(0, 3).map(({ from }) => from)).toEqual([compact[0]?.from, compact[0]?.from, compact[0]?.from]);
+    const visibleX = compact.slice(3).map(({ from }) => from.x);
+    expect(visibleX).toEqual([...visibleX].sort((a, b) => a - b));
+    expect(new Set(visibleX).size).toBe(4);
+
+    const expanded = stackTargetArrowEndpoints({ ...common, presentation: "expanded" });
+    expect(new Set(expanded.map(({ from }) => `${from.x}:${from.y}`)).size).toBe(7);
   });
 });
 

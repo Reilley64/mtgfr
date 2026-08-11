@@ -1,10 +1,9 @@
 import type { FaceData } from "../../domain/card-render/frame";
 import { HAND_FACE_W } from "../geometry/handMetrics";
 import { FLIGHT_CARD_W } from "../geometry/layout";
-import { STACK_CARD_W } from "../geometry/stackLayout";
 
 /** Re-export resting stack face width so flight scale stays coupled to the HTML stack. */
-export { HAND_FACE_W, STACK_CARD_W };
+export { HAND_FACE_W };
 
 const TAU_MS = 75;
 const EPSILON_PX = 0.5;
@@ -92,8 +91,9 @@ export function handFlightScale(zoom: number, faceW: number = HAND_FACE_W): numb
   return faceW / (FLIGHT_CARD_W * Math.max(zoom, 0.01));
 }
 
-export function stackFlightScale(zoom: number): number {
-  return STACK_CARD_W / (FLIGHT_CARD_W * Math.max(zoom, 0.01));
+/** `faceW` is the live stack-face width in CSS px — it shares responsive hand metrics. */
+export function stackFlightScale(zoom: number, faceW: number): number {
+  return faceW / (FLIGHT_CARD_W * Math.max(zoom, 0.01));
 }
 
 export function stepFlights(
