@@ -4,6 +4,7 @@ import { testMessageRef } from "~/i18n/testMessageRef";
 import { BLANK_FACE } from "../../domain/card-render/frame";
 import { TARGET_COLOR } from "../action/targeting";
 import type { RenderCard } from "../geometry/layout";
+import { stackFaceScreenOrigin, stackFanLayout } from "../geometry/stackLayout";
 import {
   aimArrowShapes,
   arrowShapes,
@@ -166,13 +167,33 @@ describe("stackTargetArrowShapes", () => {
     };
 
     const compact = stackTargetArrowEndpoints({ ...common, presentation: "pile" });
-    expect(compact.slice(0, 3).map(({ from }) => from)).toEqual([compact[0]?.from, compact[0]?.from, compact[0]?.from]);
-    const visibleX = compact.slice(3).map(({ from }) => from.x);
-    expect(visibleX).toEqual([...visibleX].sort((a, b) => a - b));
-    expect(new Set(visibleX).size).toBe(4);
+    const layout = stackFanLayout(common.viewport, stack.length);
+    const overflowProxy = { x: layout.left, y: layout.top + layout.cardH / 2 };
+    expect(compact.slice(0, layout.hiddenCount).map(({ from }) => from)).toEqual(
+      Array.from({ length: layout.hiddenCount }, () => overflowProxy),
+    );
+    expect(compact.slice(layout.visibleFrom).map(({ from }) => from)).toEqual(
+      Array.from({ length: layout.visibleCount }, (_, index) =>
+        stackFaceScreenOrigin({
+          presentation: "pile",
+          viewport: common.viewport,
+          count: stack.length,
+          row: layout.visibleFrom + index,
+        }),
+      ),
+    );
 
     const expanded = stackTargetArrowEndpoints({ ...common, presentation: "expanded" });
-    expect(new Set(expanded.map(({ from }) => `${from.x}:${from.y}`)).size).toBe(7);
+    expect(expanded.map(({ from }) => from)).toEqual(
+      stack.map((_, row) =>
+        stackFaceScreenOrigin({
+          presentation: "expanded",
+          viewport: common.viewport,
+          count: stack.length,
+          row,
+        }),
+      ),
+    );
   });
 });
 

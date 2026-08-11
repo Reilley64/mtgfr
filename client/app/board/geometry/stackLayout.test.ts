@@ -45,12 +45,23 @@ describe("stackFanLayout", () => {
     expect(origins.map(({ x }) => x)).toEqual([...origins.map(({ x }) => x)].sort((a, b) => a - b));
   });
 
-  it("keeps the compact fan above the hand and reserved primary-action lane", () => {
-    const viewport = { width: 1280, height: 720 };
-    const layout = stackFanLayout(viewport, 4);
-    expect(layout.top + layout.cardH).toBeLessThanOrEqual(
-      viewport.height - handMetrics(viewport).barH - stackActionLane(viewport),
-    );
+  it.each([
+    { width: 1280, height: 720 },
+    { width: 1440, height: 900 },
+    { width: 2560, height: 1440 },
+  ] as const)("keeps every rotated compact face above the primary-action lane at $width×$height", (viewport) => {
+    const layout = stackFanLayout(viewport, STACK_COMPACT_VISIBLE);
+    const laneTop = viewport.height - handMetrics(viewport).barH - stackActionLane(viewport);
+
+    for (let row = 0; row < STACK_COMPACT_VISIBLE; row++) {
+      const placement = stackFanPlacement(layout, row);
+      expect(placement).not.toBeNull();
+      if (placement == null) continue;
+      const radians = (Math.abs(placement.rotation) * Math.PI) / 180;
+      const rotatedHeight = layout.cardW * Math.sin(radians) + layout.cardH * Math.cos(radians);
+      const visualBottom = placement.y + layout.cardH / 2 + rotatedHeight / 2;
+      expect(visualBottom).toBeLessThanOrEqual(laneTop);
+    }
   });
 });
 

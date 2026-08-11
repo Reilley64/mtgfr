@@ -56,6 +56,11 @@ export function stackActionLane(viewport: ViewportSize): number {
   return Math.round((STACK_ACTION_LANE_BASE + STACK_ACTION_GAP_BASE) * handUiScale(viewport));
 }
 
+function rotatedCardHeight(cardW: number, cardH: number, degrees: number): number {
+  const radians = (Math.abs(degrees) * Math.PI) / 180;
+  return cardW * Math.sin(radians) + cardH * Math.cos(radians);
+}
+
 export function stackFanLayout(viewport: ViewportSize, count: number): StackFanLayout {
   const metrics = handMetrics(viewport);
   const visibleCount = Math.min(Math.max(0, count), STACK_COMPACT_VISIBLE);
@@ -63,7 +68,9 @@ export function stackFanLayout(viewport: ViewportSize, count: number): StackFanL
   const stride = Math.round(metrics.cardW * STACK_FAN_STRIDE_RATIO);
   const fanW = metrics.cardW + Math.max(0, visibleCount - 1) * stride;
   const naturalTop = (viewport.height - metrics.cardH) / 2;
-  const maxTop = viewport.height - metrics.barH - stackActionLane(viewport) - metrics.cardH;
+  const rotatedHeight = rotatedCardHeight(metrics.cardW, metrics.cardH, STACK_FAN_MAX_ROTATION);
+  const rotationOverflow = Math.ceil((rotatedHeight - metrics.cardH) / 2);
+  const maxTop = viewport.height - metrics.barH - stackActionLane(viewport) - metrics.cardH - rotationOverflow;
   return {
     cardW: metrics.cardW,
     cardH: metrics.cardH,
