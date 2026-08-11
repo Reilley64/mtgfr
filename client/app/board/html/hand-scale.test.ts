@@ -4,7 +4,7 @@
  * (clamped) instead of being a constant.
  */
 import { describe, expect, it } from "vitest";
-import { HAND_DESIGN_VIEWPORT, handMetrics, handUiScale } from "./hand";
+import { HAND_DESIGN_VIEWPORT, handMetrics, handUiScale } from "../geometry/handMetrics";
 
 describe("hand bar scale", () => {
   it("keeps the design sizes at the design window", () => {
@@ -13,6 +13,12 @@ describe("hand bar scale", () => {
     expect(m.cardW).toBe(208);
     expect(m.visibleH).toBe(178);
     expect(m.barH).toBe(218);
+  });
+
+  it("derives the physical card dimensions shared by every full face", () => {
+    expect(handMetrics({ width: 1440, height: 900 })).toMatchObject({ cardW: 208, cardH: 291 });
+    expect(handMetrics({ width: 1280, height: 720 })).toMatchObject({ cardW: 166, cardH: 232 });
+    expect(handMetrics({ width: 2560, height: 1440 })).toMatchObject({ cardW: 312, cardH: 436 });
   });
 
   it("grows the faces on a 2560x1440 desktop", () => {

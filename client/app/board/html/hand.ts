@@ -15,80 +15,32 @@ import { cardFace } from "~/ui/card-face";
 import type { ActionView, CardTextView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "../geometry/handBarHit";
+import {
+  HAND_BAR_H,
+  HAND_BASE_METRICS,
+  HAND_DESIGN_VIEWPORT,
+  HAND_VISIBLE_H,
+  type HandMetrics,
+  handMetrics,
+  handUiScale,
+} from "../geometry/handMetrics";
 import { ZONE } from "../geometry/layout";
 import { DiscardChosen, HandActionActivated, InspectAuxHovered, type Message } from "../messages";
-import { HAND_FACE_W } from "../motion/flights";
 import type { HandDragState } from "../submodel";
 import { barZoneAura, byObject, bySection, handTileCaption, modesForObject } from "./actions";
 import { MountHandBarDrag } from "./hand-drag-mount";
 import { pipChip } from "./pip-chip";
 
 export const HAND_CARD_PEEK = HAND_BAR_PEEK;
-export const HAND_VISIBLE_H = 178;
-/** Room above each face for cast-cost pips (reserved band outside the card). */
-const HAND_PIP_ROW_H = 24;
-/** Window the bar constants above were drawn against. */
-export const HAND_DESIGN_VIEWPORT = { width: 1440, height: 900 } as const;
-
-/**
- * The bar is a constant fraction of the window, not a fixed pixel size. A 208px face that reads
- * well on a 1440x900 laptop is a thumbnail on a 27" 2560x1440 desktop viewed from arm's length,
- * and it swallows a small laptop. Clamped so neither extreme distorts the layout.
- */
-export function handUiScale(viewport: { width: number; height: number }): number {
-  const raw = Math.min(viewport.width / HAND_DESIGN_VIEWPORT.width, viewport.height / HAND_DESIGN_VIEWPORT.height);
-  if (!(raw > 0)) return 1;
-  return Math.max(0.75, Math.min(1.5, raw));
-}
-
-export type HandMetrics = {
-  scale: number;
-  cardW: number;
-  cardH: number;
-  peek: number;
-  overlap: number;
-  visibleH: number;
-  pipRowH: number;
-  pipSize: number;
-  /** Height of the bottom action bar — tuck + pip row + padding. */
-  barH: number;
-  /**
-   * From the viewport bottom: band where sticky Alt-inspect hand hover stays latched after leaving
-   * the peek hit strip (raised faces extend above `barH` into the board).
-   */
-  stickyBand: number;
-  /** How far into the hand bar a release may still count as play (px). */
-  playSlack: number;
+export {
+  HAND_BAR_H,
+  HAND_BASE_METRICS,
+  HAND_DESIGN_VIEWPORT,
+  HAND_VISIBLE_H,
+  type HandMetrics,
+  handMetrics,
+  handUiScale,
 };
-
-/** Every hand-bar length in CSS px for this window. Rounded so inline styles stay on whole pixels. */
-export function handMetrics(viewport: { width: number; height: number }): HandMetrics {
-  const scale = handUiScale(viewport);
-  const cardW = Math.round(HAND_FACE_W * scale);
-  const cardH = Math.round(cardW / 0.716);
-  const peek = Math.round(HAND_CARD_PEEK * scale);
-  const visibleH = Math.round(HAND_VISIBLE_H * scale);
-  const pipRowH = Math.round(HAND_PIP_ROW_H * scale);
-  const barH = visibleH + pipRowH + Math.round(16 * scale);
-  return {
-    scale,
-    cardW,
-    cardH,
-    peek,
-    overlap: cardW - peek,
-    visibleH,
-    pipRowH,
-    pipSize: Math.round(14 * scale),
-    barH,
-    stickyBand: barH - visibleH + cardH,
-    playSlack: Math.round(96 * scale),
-  };
-}
-
-/** The bar at its design size — for callers with no window to measure (tests, SSR). */
-export const HAND_BASE_METRICS = handMetrics(HAND_DESIGN_VIEWPORT);
-/** Bar height at the design window. Live boards must use `handMetrics(viewport).barH`. */
-export const HAND_BAR_H = HAND_BASE_METRICS.barH;
 
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
 

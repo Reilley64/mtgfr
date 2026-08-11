@@ -112,6 +112,7 @@ import {
   stagedAttackersForDisplay,
   stagedBands,
 } from "./geometry/combat-staging";
+import { HAND_BAR_H, handMetrics } from "./geometry/handMetrics";
 import { hitAvatar, hitTest } from "./geometry/hit-test";
 import {
   canSelectPermanent,
@@ -148,7 +149,6 @@ import {
 import { modesForObject } from "./html/actions";
 import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
-import { HAND_BAR_H, handMetrics } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
 import {
   CombatCancelAttacker,

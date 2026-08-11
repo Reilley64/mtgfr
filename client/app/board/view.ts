@@ -20,12 +20,12 @@ import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap
 import { sceneShapes } from "./canvas/scene";
 import { engagedIds } from "./engagement";
 import { worldToScreen } from "./geometry/camera";
+import { handMetrics } from "./geometry/handMetrics";
 import { layoutBoard, STEP } from "./geometry/layout";
 import { stackPresentation } from "./geometry/stackLayout";
 import { autoTapPreviewIds, paymentPreviewAction } from "./html/actions";
 import { MountBoardAudio, MountHintAutoHide } from "./html/audio-mount";
 import { MountBoardCameraGesture } from "./html/camera-gesture-mount";
-import { handMetrics } from "./html/hand";
 import { MountBoardKeyboard } from "./html/keyboard-mount";
 import { manaTrayView } from "./html/mana-tray";
 import { boardOverlays } from "./html/overlays";

@@ -1,10 +1,10 @@
 import type { FaceData } from "../../domain/card-render/frame";
+import { HAND_FACE_W } from "../geometry/handMetrics";
 import { FLIGHT_CARD_W } from "../geometry/layout";
 import { STACK_CARD_W } from "../geometry/stackLayout";
 
-export const HAND_FACE_W = 208;
 /** Re-export resting stack face width so flight scale stays coupled to the HTML stack. */
-export { STACK_CARD_W };
+export { HAND_FACE_W, STACK_CARD_W };
 
 const TAU_MS = 75;
 const EPSILON_PX = 0.5;
