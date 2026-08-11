@@ -12,17 +12,20 @@ import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { testHtml } from "~/test-html";
+import { BindCardFace } from "~/ui/card-face";
 import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } from "../action/execution";
 import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
 import { STEP, ZONE } from "../geometry/layout";
-import type { Message } from "../messages";
-import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
+import { KeyboardEscape, type Message } from "../messages";
+import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID, updateBoard } from "../submodel";
 import { type BoardViewModel, view as boardView, type ViewMessage } from "../view";
 import { handMetrics } from "./hand";
+import { MountBoardKeyboard } from "./keyboard-mount";
 import { boardOverlays } from "./overlays";
+import { priorityBarBottom } from "./priority-bar";
 import {
   resolveBoardCardArtMounts,
   resolveBoardCardFaceMounts,
@@ -128,6 +131,14 @@ const overlayView = Submodel.defineView<OverlayModel, Message>((model) => {
   return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h);
 });
 
+const keyboardOverlayView = Submodel.defineView<OverlayModel, Message>((model) => {
+  if (model.fold.state == null) return h.div([], []);
+  return h.div(
+    [h.OnMount(MountBoardKeyboard())],
+    [boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h)],
+  );
+});
+
 const fullBoardView = boardView;
 
 function player(
@@ -191,6 +202,24 @@ function card(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
   };
 }
 
+function stackObjects(count: number): Pick<VisibleState, "objects" | "stack"> {
+  return {
+    objects: Array.from({ length: count }, (_, row) =>
+      card(100 + row, {
+        name: `Spell ${row}`,
+        print: `print-${row}`,
+        zone: ZONE.Stack,
+      }),
+    ),
+    stack: Array.from({ length: count }, (_, row) => ({
+      controller: 0,
+      kind: "spell" as const,
+      label: testMessageRef(`Spell ${row}`),
+      source: 100 + row,
+    })),
+  };
+}
+
 function gameState(overrides: Partial<VisibleState> = {}): VisibleState {
   return {
     active_player: 0,
@@ -206,6 +235,32 @@ function gameState(overrides: Partial<VisibleState> = {}): VisibleState {
     ...overrides,
   };
 }
+
+test("priority bar reserves the stack action lane", () => {
+  expect(priorityBarBottom(0)).toBe("calc(var(--hand-bar-h) + 10px)");
+  expect(priorityBarBottom(1)).toBe("calc(var(--hand-bar-h) + 2px)");
+});
+
+test("priority bar exposes stack presence and uses the reserved offset", () => {
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState()),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveAttr("data-stack-present", "false"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--b", "calc(var(--hand-bar-h) + 10px)"),
+  );
+
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
+      }),
+    ),
+    resolveBoardCardFaceMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveAttr("data-stack-present", "true"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--b", "calc(var(--hand-bar-h) + 2px)"),
+  );
+});
 
 function gameFold(state: VisibleState | null = gameState(), log: ReadonlyArray<LogLine> = []): GameFoldState {
   return {
@@ -389,6 +444,52 @@ test("turn chrome drives phase and label chrome from data attributes", () => {
       "data-[phase-state=now]:data-[your-turn=true]:border-phase-mint",
     ),
     Scene.expect(Scene.selector('[data-phase-state="future"]')).toHaveClass("bg-tapped-out/60"),
+  );
+});
+
+test("stack fan expands older faces and Escape restores its four-face compact state", () => {
+  const state = gameState(stackObjects(7));
+  const model = overlayModel(initialBoardModel(), state);
+
+  Scene.scene<OverlayModel, Message>(
+    {
+      update: (current, message) => {
+        const [board] = updateBoard(current.board, message, current.fold, current.tableId);
+        return [{ ...current, board }, []];
+      },
+      view: overlayView,
+    },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(4),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expectAll(Scene.all.selector('[data-testid^="stack-face-"]')).toHaveCount(4),
+    Scene.expect(Scene.testId("stack-expand")).toHaveText("+3"),
+    Scene.expect(Scene.testId("stack-expand")).toHaveAccessibleName("Show 3 older stack objects"),
+    Scene.click(Scene.testId("stack-expand")),
+    resolveBoardCardFaceMounts(3),
+    Scene.expect(Scene.testId("stack-overlay")).toBeAbsent(),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
+    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+  );
+
+  Scene.scene<OverlayModel, Message>(
+    {
+      update: (current, message) => {
+        const [board] = updateBoard(current.board, message, current.fold, current.tableId);
+        return [{ ...current, board }, []];
+      },
+      view: keyboardOverlayView,
+    },
+    Scene.given({ ...model, board: { ...model.board, stackExpand: true } }),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(7),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
+    Scene.Mount.resolve(MountBoardKeyboard(), KeyboardEscape()),
+    Scene.Mount.expectEnded(BindCardFace, BindCardFace, BindCardFace),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toBeAbsent(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expectAll(Scene.all.selector('[data-testid^="stack-face-"]')).toHaveCount(4),
   );
 });
 
@@ -2729,6 +2830,7 @@ test("simple prompt primary bar stacks above pile and prompt modal backdrops", (
     zone: ZONE.Exile,
     kind: { kind: "instant" },
   });
+  const waitingStack = stackObjects(1);
   overlayScene(
     overlayModel(
       {
@@ -2737,7 +2839,8 @@ test("simple prompt primary bar stacks above pile and prompt modal backdrops", (
         promptDraft: { kind: "card-pick", picked: [] },
       },
       gameState({
-        objects: [a, b],
+        objects: [a, b, ...waitingStack.objects],
+        stack: waitingStack.stack,
         pending_choice: {
           kind: "choose_exiled_to_cast_free",
           player: 0,
@@ -2750,10 +2853,13 @@ test("simple prompt primary bar stacks above pile and prompt modal backdrops", (
         },
       }),
     ),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("pile-overlay")).toExist(),
     Scene.expect(Scene.testId("pile-overlay")).toHaveClass("z-29"),
     Scene.expect(Scene.testId("pending-exile-aim")).toExist(),
     Scene.expect(Scene.testId("priority-context-bar")).toHaveClass("z-45"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveAttr("data-stack-present", "true"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--b", "calc(var(--hand-bar-h) + 2px)"),
     Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toBeEnabled(),
     Scene.expect(Scene.testId("pending-exile-count")).toContainText("0 / up to 2"),
     Scene.tap((sim) => {

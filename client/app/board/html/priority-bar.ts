@@ -98,6 +98,10 @@ function bandPanelView(
   );
 }
 
+export function priorityBarBottom(stackCount: number): string {
+  return `calc(var(--hand-bar-h) + ${stackCount > 0 ? 2 : 10}px)`;
+}
+
 function canResolveCard(state: VisibleState): boolean {
   return state.stack.length > 0 && state.can_act && state.priority === state.viewer;
 }
@@ -163,9 +167,10 @@ export function priorityBarView(
     return h.div(
       [
         h.DataAttribute("testid", "priority-context-bar"),
+        h.DataAttribute("stack-present", state.stack.length > 0 ? "true" : "false"),
         // Above pile (z-29) and prompt-modal (z-40) backdrops so Choose / Confirm stay clickable.
         h.Class("pointer-events-auto fixed bottom-(--b) right-md z-45 flex flex-col items-end gap-sm"),
-        h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
+        h.Style({ "--b": priorityBarBottom(state.stack.length) }),
       ],
       [simpleActions, board.reject != null ? rejectView(board.reject, h) : null].filter((v): v is Html => v !== null),
     );
@@ -252,8 +257,9 @@ export function priorityBarView(
   return h.div(
     [
       h.DataAttribute("testid", "priority-context-bar"),
+      h.DataAttribute("stack-present", state.stack.length > 0 ? "true" : "false"),
       h.Class("pointer-events-auto fixed bottom-(--b) right-md z-25 flex flex-col items-end gap-sm"),
-      h.Style({ "--b": `calc(var(--hand-bar-h) + 10px)` }),
+      h.Style({ "--b": priorityBarBottom(state.stack.length) }),
     ],
     [
       bandPanelView(board, state, attackers, h),
