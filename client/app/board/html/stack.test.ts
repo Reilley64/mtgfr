@@ -1343,6 +1343,34 @@ test("a second trigger from one permanent gets its own top face while aiming", (
   );
 });
 
+test("short-landscape compact stack exposes its responsive fallback geometry", () => {
+  const viewport = { width: 844, height: 390 };
+  const model = stackSceneModel(1, { ...initialBoardModel(), viewport });
+  const layout = stackFanLayout(viewport, 1);
+  const placement = stackFanPlacement(layout, 0);
+  if (placement == null) throw new Error("missing short-landscape placement");
+
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveAttr("data-presentation", "compact"),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--fan-left", `${layout.left}px`),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--fan-top", `${layout.top}px`),
+    Scene.expect(Scene.testId("stack-face-0")).toHaveStyle("--x", `${placement.x}px`),
+    Scene.expect(Scene.testId("stack-face-0")).toHaveStyle("--y", `${placement.y}px`),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr(
+      "data-face-w",
+      String(layout.cardW),
+    ),
+    Scene.expect(Scene.selector('[data-testid="stack-face-0"] [data-face]')).toHaveAttr(
+      "data-face-h",
+      String(layout.cardH),
+    ),
+  );
+});
+
 test("compact stack shows only the newest four faces and the exact older count", () => {
   const model = stackSceneModel(7);
   const layout = stackFanLayout(model.board.viewport, 7);

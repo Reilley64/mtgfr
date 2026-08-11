@@ -10,6 +10,10 @@ const STACK_FAN_STRIDE_RATIO = 0.28;
 const STACK_FAN_MAX_ROTATION = 6;
 const STACK_ACTION_LANE_BASE = 120;
 const STACK_ACTION_GAP_BASE = 12;
+/** Expanded rocker label + track + padding in unscaled CSS pixels. */
+const STACK_ACTION_COLUMN_WIDTH = 220;
+/** `right-md` from the action bar's layout token. */
+const STACK_ACTION_RIGHT = 10;
 /** Comfortable design-space horizontal peek for expanded stack cards. */
 export const STACK_PEEK = 34;
 /** Tightest design-space horizontal peek before escalating to full stack view. */
@@ -20,6 +24,13 @@ export const STACK_HORIZONTAL_MARGIN = 48;
 export const STACK_HOLD_MAX_MS = 5000;
 
 export type StackPresentation = "pile" | "expanded" | "full";
+
+export type ScreenRect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
 
 export type StackFanLayout = {
   cardW: number;
@@ -37,6 +48,24 @@ export function stackActionLane(viewport: ViewportSize): number {
   return Math.round((STACK_ACTION_LANE_BASE + STACK_ACTION_GAP_BASE) * handUiScale(viewport));
 }
 
+/** Conservative right-side rectangle reserved for primary actions and the fully opened rocker. */
+export function stackReservedActionRect(viewport: ViewportSize): ScreenRect {
+  const metrics = handMetrics(viewport);
+  const right = viewport.width - STACK_ACTION_RIGHT;
+  const bottom = viewport.height - metrics.barH;
+  return {
+    left: right - STACK_ACTION_COLUMN_WIDTH,
+    top: bottom - stackActionLane(viewport),
+    right,
+    bottom,
+  };
+}
+
+function rotatedCardWidth(cardW: number, cardH: number, degrees: number): number {
+  const radians = (Math.abs(degrees) * Math.PI) / 180;
+  return cardW * Math.cos(radians) + cardH * Math.sin(radians);
+}
+
 function rotatedCardHeight(cardW: number, cardH: number, degrees: number): number {
   const radians = (Math.abs(degrees) * Math.PI) / 180;
   return cardW * Math.sin(radians) + cardH * Math.cos(radians);
@@ -49,9 +78,23 @@ export function stackFanLayout(viewport: ViewportSize, count: number): StackFanL
   const stride = Math.round(metrics.cardW * STACK_FAN_STRIDE_RATIO);
   const fanW = metrics.cardW + Math.max(0, visibleCount - 1) * stride;
   const naturalTop = (viewport.height - metrics.cardH) / 2;
-  const rotatedHeight = rotatedCardHeight(metrics.cardW, metrics.cardH, STACK_FAN_MAX_ROTATION);
+  const maxRotation = visibleCount <= 1 ? 0 : STACK_FAN_MAX_ROTATION;
+  const rotatedHeight = rotatedCardHeight(metrics.cardW, metrics.cardH, maxRotation);
   const rotationOverflow = Math.ceil((rotatedHeight - metrics.cardH) / 2);
   const maxTop = viewport.height - metrics.barH - stackActionLane(viewport) - metrics.cardH - rotationOverflow;
+  const normalMinTop = Math.round(16 * metrics.scale);
+  const verticalClearanceImpossible = maxTop < normalMinTop;
+  const top = verticalClearanceImpossible ? rotationOverflow : Math.max(normalMinTop, Math.min(naturalTop, maxTop));
+
+  const normalLeft = viewport.width - STACK_OVERLAY_RIGHT - fanW;
+  const rotatedWidth = rotatedCardWidth(metrics.cardW, metrics.cardH, maxRotation);
+  const horizontalOverflow = Math.ceil((rotatedWidth - metrics.cardW) / 2);
+  const actionLeft = stackReservedActionRect(viewport).left;
+  const fallbackLeft = actionLeft - STACK_ACTION_GAP_BASE * metrics.scale - fanW - horizontalOverflow;
+  const left = verticalClearanceImpossible
+    ? Math.max(horizontalOverflow, Math.min(normalLeft, fallbackLeft))
+    : normalLeft;
+
   return {
     cardW: metrics.cardW,
     cardH: metrics.cardH,
@@ -60,8 +103,8 @@ export function stackFanLayout(viewport: ViewportSize, count: number): StackFanL
     visibleCount,
     hiddenCount: visibleFrom,
     fanW,
-    left: viewport.width - STACK_OVERLAY_RIGHT - fanW,
-    top: Math.max(Math.round(16 * metrics.scale), Math.min(naturalTop, maxTop)),
+    left,
+    top,
   };
 }
 
@@ -80,6 +123,22 @@ export function stackFanPlacement(
     x: layout.left + index * layout.stride,
     y: layout.top - rise,
     rotation: -STACK_FAN_MAX_ROTATION + progress * STACK_FAN_MAX_ROTATION * 2,
+  };
+}
+
+/** Axis-aligned screen bounds after applying the compact face's center-origin rotation. */
+export function stackFanVisualBounds(layout: StackFanLayout, row: number): ScreenRect | null {
+  const placement = stackFanPlacement(layout, row);
+  if (placement == null) return null;
+  const width = rotatedCardWidth(layout.cardW, layout.cardH, placement.rotation);
+  const height = rotatedCardHeight(layout.cardW, layout.cardH, placement.rotation);
+  const centerX = placement.x + layout.cardW / 2;
+  const centerY = placement.y + layout.cardH / 2;
+  return {
+    left: centerX - width / 2,
+    top: centerY - height / 2,
+    right: centerX + width / 2,
+    bottom: centerY + height / 2,
   };
 }
 

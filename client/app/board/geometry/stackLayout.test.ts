@@ -10,8 +10,10 @@ import {
   stackFaceScreenOrigin,
   stackFanLayout,
   stackFanPlacement,
+  stackFanVisualBounds,
   stackFullPerRow,
   stackPresentation,
+  stackReservedActionRect,
   stackStripFits,
   stackStripPeek,
 } from "./stackLayout";
@@ -62,6 +64,57 @@ describe("stackFanLayout", () => {
       const visualBottom = placement.y + layout.cardH / 2 + rotatedHeight / 2;
       expect(visualBottom).toBeLessThanOrEqual(laneTop);
     }
+  });
+
+  it("keeps a short-landscape compact face clear of the hand", () => {
+    const viewport = { width: 844, height: 390 };
+    const layout = stackFanLayout(viewport, 1);
+    const bounds = stackFanVisualBounds(layout, 0);
+    expect(bounds).not.toBeNull();
+    if (bounds == null) return;
+
+    const handTop = viewport.height - handMetrics(viewport).barH;
+    expect(bounds.bottom).toBeLessThanOrEqual(handTop);
+  });
+
+  it("reserves the action column at its CSS width instead of shrinking it with hand cards", () => {
+    const viewport = { width: 844, height: 390 };
+    expect(stackReservedActionRect(viewport).left).toBe(614);
+  });
+
+  it("keeps a short-landscape compact face clear of the reserved action column", () => {
+    const viewport = { width: 844, height: 390 };
+    const layout = stackFanLayout(viewport, 1);
+    const bounds = stackFanVisualBounds(layout, 0);
+    expect(bounds).not.toBeNull();
+    if (bounds == null) return;
+
+    const action = stackReservedActionRect(viewport);
+    expect(bounds.right).toBeLessThanOrEqual(action.left);
+  });
+
+  it("keeps every transformed compact face onscreen in short landscape", () => {
+    const viewport = { width: 844, height: 390 };
+    const layout = stackFanLayout(viewport, STACK_COMPACT_VISIBLE);
+
+    for (let row = 0; row < STACK_COMPACT_VISIBLE; row++) {
+      const bounds = stackFanVisualBounds(layout, row);
+      expect(bounds).not.toBeNull();
+      if (bounds == null) continue;
+      expect(bounds.left).toBeGreaterThanOrEqual(0);
+      expect(bounds.top).toBeGreaterThanOrEqual(0);
+      expect(bounds.right).toBeLessThanOrEqual(viewport.width);
+      expect(bounds.bottom).toBeLessThanOrEqual(viewport.height);
+    }
+  });
+
+  it.each([
+    { width: 1280, height: 720 },
+    { width: 1440, height: 900 },
+    { width: 2560, height: 1440 },
+  ] as const)("keeps the normal compact fan right-aligned at $width×$height", (viewport) => {
+    const layout = stackFanLayout(viewport, STACK_COMPACT_VISIBLE);
+    expect(layout.left + layout.fanW).toBe(viewport.width - 16);
   });
 });
 
