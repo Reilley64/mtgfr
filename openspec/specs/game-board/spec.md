@@ -184,7 +184,7 @@ Active seated players SHALL see a bottom DOM bar in Arena order: command, hand, 
 
 ### Requirement: Stack Overlay
 
-The compact stack SHALL be a right-center horizontal fan whose cards use the same responsive dimensions as hand cards. It SHALL show the newest four objects from older-left to newest-right; older objects SHALL be represented by a keyboard-focusable `+N` control. Expansion SHALL be explicit by pointer or keyboard and SHALL reveal every object in the responsive strip/full-grid presentation; hover SHALL NOT expand it. Labels SHALL format wire `MessageRef`s. Declared targets SHALL paint one Island Blue arrow per resolvable destination on the Mount layer. Legal aim faces SHALL set `data-legal-target` and submit on click/keyboard. Priority holders hovering a non-empty stack SHALL emit `SetStackDwell`. Resting stack faces SHALL hide only for `kind: "stack"` flights. Pending board-aim without a stack entry for the source SHALL show a source-art ghost; spell sources already on the stack SHALL NOT duplicate.
+The compact stack SHALL be a right-center horizontal fan whose cards use the same responsive dimensions as hand cards. It SHALL show the newest four objects from older-left to newest-right; older objects SHALL be represented by a visible, keyboard-focusable `+N` control whose placement remains inside the viewport. Expansion SHALL be explicit by pointer or keyboard and SHALL reveal every object in the responsive strip/full-grid presentation; hover SHALL NOT expand it. Collapse SHALL be explicit by its Collapse control or Escape; Escape SHALL preserve any unrelated staged game action. At supported short-landscape sizes, stack faces SHALL retain the exact hand-card dimensions, flatten their rotation and rise when transformed faces cannot fit, and shift left of an enforced shared action column; primary actions SHALL wrap within that column so the stack fan, action chrome, and hand bar do not overlap. Labels SHALL format wire `MessageRef`s. Declared targets SHALL paint one Island Blue arrow per resolvable destination on the Mount layer. Legal aim faces SHALL set `data-legal-target` and submit on click/keyboard. Priority holders hovering a non-empty stack SHALL emit `SetStackDwell`. Resting stack faces SHALL hide only for `kind: "stack"` flights. Pending board-aim without a stack entry for the source SHALL show a source-art ghost; spell sources already on the stack SHALL NOT duplicate.
 
 Each stack face SHALL be the whole rendered card face — the same one the hand bar draws, sharing its cache entry — since the stack is where a player reads what is about to resolve. An entry whose source object has already left the snapshot SHALL draw its face from the printing, name and last-known renderer characteristics the entry carries, retaining the source's land/colour frame, legend crown and printed corner badge. An ability entry SHALL draw its own printed sentence in the text box, or its generated label when no sentence is recorded, in place of the source card's text and flavor, because an ability on the stack is not its whole source card.
 
@@ -313,6 +313,16 @@ Alt/Option SHALL pin a face-up hand, stack, or battlefield card into the topmost
 #### Scenario: On-board damage assign
 - **WHEN** every `assign_combat_damage` blocker is on the battlefield
 - **THEN** clicks move 1 damage onto blockers and Assign confirms from the primary bar
+
+#### Scenario: Expanded stack collapses without cancelling staged play
+
+- **WHEN** a player activates Collapse or presses Escape while an unrelated game action is staged
+- **THEN** the stack returns to its compact four-face fan and the staged action remains active
+
+#### Scenario: Short-landscape stack preserves readable cards and actions
+
+- **WHEN** rotated hand-size stack faces cannot fit above the hand at a supported short-landscape viewport
+- **THEN** the fan uses exact hand-size cards with flattened transforms, sits left of the shared action column, and wrapped actions remain non-overlapping
 
 ### Requirement: Turn and Priority Chrome
 
