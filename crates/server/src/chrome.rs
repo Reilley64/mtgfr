@@ -59,6 +59,16 @@ impl ChromeState {
         self.stack_dwell = [false; 4];
     }
 
+    /// Clear all transient priority chrome after an authoritative debug candidate passes every
+    /// precommit gate. Detached hold timers become stale when the table sequence advances.
+    #[cfg(debug_assertions)]
+    #[allow(dead_code)]
+    pub(crate) fn clear_for_debug_commit(&mut self) {
+        self.yields = [false; 4];
+        self.turn_yields = [false; 4];
+        self.clear_hold();
+    }
+
     /// Clear hold only when it still matches `seq` (stale timer eviction).
     pub(crate) fn clear_hold_if_seq(&mut self, seq: u64) {
         if self.stack_hold.is_some_and(|(s, _)| s == seq) {

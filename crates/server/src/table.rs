@@ -12,6 +12,8 @@ use schema::SeedSeat;
 use tokio::sync::broadcast;
 
 use crate::chrome::ChromeState;
+#[cfg(debug_assertions)]
+use crate::debug::TableDebugState;
 use crate::session::{Broadcast, PublishedState, PublishedUpdate};
 
 /// One seated player: the user who owns the seat and their public display chrome.
@@ -47,6 +49,9 @@ pub struct Table {
     pub tx: broadcast::Sender<Broadcast>,
     /// Auto-pass / stack-hold / dwell policy — see [`crate::chrome::ChromeState`].
     pub chrome: ChromeState,
+    /// Debug-only revision and provenance; omitted from release builds.
+    #[cfg(debug_assertions)]
+    pub debug: TableDebugState,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
     /// When `Game.Stream` last went quiet (`None` = has/had listeners, grace not armed).
@@ -75,6 +80,8 @@ impl Table {
             broadcast_seq: 0,
             tx,
             chrome: ChromeState::default(),
+            #[cfg(debug_assertions)]
+            debug: TableDebugState::default(),
             prints: Default::default(),
             quiet_since: Some(Instant::now()),
         }
@@ -178,6 +185,20 @@ impl Registry {
     /// [`Table::seeded`] — so this is simply how many tables are registered).
     pub fn active_table_count(&self) -> usize {
         self.tables.values().filter(|t| t.game.is_some()).count()
+    }
+
+    /// Active table IDs and their debug/table revisions, ordered for stable operator output.
+    #[cfg(debug_assertions)]
+    #[allow(dead_code)]
+    pub(crate) fn debug_table_summaries(&self) -> Vec<(String, u64, u64)> {
+        let mut summaries: Vec<_> = self
+            .tables
+            .iter()
+            .filter(|(_, table)| table.game.is_some())
+            .map(|(table_id, table)| (table_id.clone(), table.debug.revision, table.seq))
+            .collect();
+        summaries.sort_unstable_by(|left, right| left.0.cmp(&right.0));
+        summaries
     }
 
     /// Drop started tables that have had no stream subscribers for at least `grace`.
