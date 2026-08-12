@@ -623,6 +623,136 @@ async fn game_stream_emits_snapshot_then_a_delta_on_intent() {
     );
 }
 
+/// An already-connected authenticated gRPC stream receives an authoritative replacement as a
+/// snapshot and maps it with the publication's current seats and print preferences.
+#[tokio::test]
+async fn grpc_stream_delivers_midstream_snapshot() {
+    use crate::session::{PublishedState, PublishedUpdate};
+    use http::uri::PathAndQuery;
+
+    let state = test_state().await;
+    let (_host_id, host_token) = seed_two_player_table(&state, "midstream-tbl").await;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("ephemeral port");
+    let addr = listener.local_addr().expect("listener address");
+    drop(listener);
+
+    let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
+    let server_state = state.clone();
+    let server = tokio::spawn(async move {
+        super::serve(addr, server_state, async move {
+            let _ = shutdown_rx.changed().await;
+        })
+        .await
+    });
+
+    let endpoint =
+        tonic::transport::Endpoint::from_shared(format!("http://{addr}")).expect("valid endpoint");
+    let channel = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        loop {
+            match endpoint.connect().await {
+                Ok(channel) => return channel,
+                Err(_) => tokio::time::sleep(std::time::Duration::from_millis(20)).await,
+            }
+        }
+    })
+    .await
+    .expect("server accepts a gRPC connection");
+    let mut grpc = tonic::client::Grpc::new(channel);
+    grpc.ready().await.expect("gRPC client becomes ready");
+    let mut request = authed(
+        pb::StreamRequest {
+            table_id: "midstream-tbl".into(),
+        },
+        &host_token,
+    );
+    request
+        .extensions_mut()
+        .insert(tonic::GrpcMethod::new("mtgfr.v1.GameService", "Stream"));
+    let response: tonic::Response<tonic::Streaming<pb::StreamResponse>> = grpc
+        .server_streaming(
+            request,
+            PathAndQuery::from_static("/mtgfr.v1.GameService/Stream"),
+            tonic::codec::ProstCodec::default(),
+        )
+        .await
+        .expect("stream opens over the bound gRPC server");
+    let mut stream = response.into_inner();
+    let opening = stream
+        .message()
+        .await
+        .expect("opening frame decodes")
+        .expect("opening frame exists")
+        .frame
+        .expect("opening frame payload");
+    assert!(matches!(opening, pb::stream_response::Frame::Snapshot(_)));
+
+    let (publication, hand_card) = {
+        let mut reg = crate::lock(&state.reg);
+        let table = reg.get_mut("midstream-tbl").expect("seeded table");
+        table.seq += 1;
+        table.broadcast_seq += 1;
+        table.seats[0].username = Some("fresh-alice".into());
+        let game = table.game.as_ref().expect("running game");
+        let hand_card = game.hand(engine::PlayerId(0))[0];
+        let card_id = game.def_of(hand_card).id.to_string();
+        table.prints[0].insert(card_id, "fresh-print".into());
+        (
+            PublishedState {
+                seq: table.seq,
+                broadcast_seq: table.broadcast_seq,
+                game: game.clone(),
+                yields: *table.chrome.yields(),
+                turn_yields: *table.chrome.turn_yields(),
+                stack_hold_remaining_ms: table.stack_hold_remaining_ms(),
+                seats: table.seats.clone(),
+                prints: table.prints.clone(),
+            },
+            hand_card,
+        )
+    };
+    let expected_seq = publication.seq;
+    {
+        let reg = crate::lock(&state.reg);
+        let table = reg.get("midstream-tbl").expect("seeded table");
+        assert!(
+            table
+                .tx
+                .send(std::sync::Arc::new(PublishedUpdate::Snapshot(publication)))
+                .is_ok(),
+            "connected stream receives publication",
+        );
+    }
+
+    let replacement = tokio::time::timeout(std::time::Duration::from_secs(5), stream.message())
+        .await
+        .expect("midstream frame arrives")
+        .expect("midstream frame decodes")
+        .expect("midstream frame exists")
+        .frame
+        .expect("midstream frame payload");
+    let pb::stream_response::Frame::Snapshot(snapshot) = replacement else {
+        panic!("authoritative replacement must not be encoded as a delta");
+    };
+    assert_eq!(snapshot.seq, expected_seq);
+    let view = snapshot.state.expect("snapshot state");
+    assert_eq!(view.players[0].username, "fresh-alice");
+    let visible_hand = view
+        .objects
+        .iter()
+        .find(|object| object.id == hand_card)
+        .expect("the authenticated owner sees their hand card");
+    assert_eq!(visible_hand.print, "fresh-print");
+
+    drop(stream);
+    drop(grpc);
+    let _ = shutdown_tx.send(true);
+    tokio::time::timeout(std::time::Duration::from_secs(5), server)
+        .await
+        .expect("server shuts down promptly")
+        .expect("server task does not panic")
+        .expect("server exits cleanly");
+}
+
 /// A quiet game (no intents) still proves the connection alive with a periodic `Heartbeat`
 /// frame — mirrors the removed HTTP integration test. `start_paused` advances virtual time to
 /// the heartbeat interval automatically once the task parks, so this is deterministic and fast.

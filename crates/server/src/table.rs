@@ -12,7 +12,7 @@ use schema::SeedSeat;
 use tokio::sync::broadcast;
 
 use crate::chrome::ChromeState;
-use crate::session::{Broadcast, PublishedDelta};
+use crate::session::{Broadcast, PublishedState, PublishedUpdate};
 
 /// One seated player: the user who owns the seat and their public display chrome.
 #[derive(Debug, Clone, Default)]
@@ -38,7 +38,7 @@ pub struct Table {
     pub seed: [u8; 32],
     /// Drand round used to derive [`Self::seed`]; `0` means `MTGFR_MASTER_SEED`/test override.
     pub beacon_round: u64,
-    /// Monotonic delta sequence number; the snapshot watermark for resume.
+    /// Monotonic authoritative game-state sequence; the snapshot watermark for resume.
     pub seq: u64,
     /// Monotonic publish id for the stream fan-out (gRPC broadcast). Advances on every
     /// broadcast, including hold-only ticks that keep game `seq` unchanged (dwell must not kill
@@ -109,15 +109,20 @@ impl Table {
             return;
         };
         self.broadcast_seq += 1;
-        let _ = self.tx.send(std::sync::Arc::new(PublishedDelta {
+        let state = PublishedState {
             seq: self.seq,
             broadcast_seq: self.broadcast_seq,
-            events: vec![],
             game: game.clone(),
-            auto_actions: vec![],
             yields: *self.chrome.yields(),
             turn_yields: *self.chrome.turn_yields(),
             stack_hold_remaining_ms: self.stack_hold_remaining_ms(),
+            seats: self.seats.clone(),
+            prints: self.prints.clone(),
+        };
+        let _ = self.tx.send(std::sync::Arc::new(PublishedUpdate::Delta {
+            state,
+            events: vec![],
+            auto_actions: vec![],
         }));
     }
 

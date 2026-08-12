@@ -2,7 +2,7 @@
 //! auto-advance, stack-hold scheduling, and delta packaging. Chrome knobs live on
 //! [`crate::chrome::ChromeState`]; only [`TableSession`] mutates them. gRPC adapters call the
 //! chrome verbs and get [`ApplyResult`] / [`DwellResult`] — [`Disposition`] stays crate-private
-//! for the unlock-tail. `stream` projects `PublishedDelta` only.
+//! for the unlock-tail. `stream` projects viewer-specific frames from `PublishedUpdate`.
 
 use std::sync::Arc;
 
@@ -19,31 +19,50 @@ pub const STACK_HOLD: std::time::Duration = std::time::Duration::from_millis(200
 /// Extra time a helpless dwell may add on top of [`STACK_HOLD`] (hard cap = hold + this).
 pub const STACK_HOLD_DWELL_EXTRA: std::time::Duration = std::time::Duration::from_millis(3000);
 
-/// One applied intent's canonical events plus the full post-apply game, tagged with its seq,
-/// plus the human-readable labels of any forced choices `auto_advance` submitted along the way
-/// and the post-apply yield flags. Each subscriber builds its own frame purely (`redact` +
-/// `complete_visible` for its viewer) — no re-lock, no race.
+/// The authoritative state and presentation extras carried by every publication. Each subscriber
+/// builds its own frame purely (`redact` + `complete_visible` for its viewer) — no re-lock, no
+/// race, and no reuse of seats or print preferences captured when the stream opened.
 ///
-/// ponytail: clones the whole `Game` per intent — trivial at this scale; if it ever shows in a
-/// profile, carry a canonical full-info snapshot struct instead (see wire-protocol-and-visibility spec).
+/// ponytail: clones the whole `Game` per publication — trivial at this scale; if it ever shows in
+/// a profile, carry a canonical full-info snapshot struct instead (see
+/// wire-protocol-and-visibility spec).
 /// ponytail: `yielded` is stamped per-viewer via `complete_visible` + `ViewExtras` in
-/// `stream::frame_for` / the opening snapshot — can't stamp once at publish without knowing
-/// every viewer.
-pub struct PublishedDelta {
+/// `stream::frame_for_update` / the opening snapshot — it cannot be stamped once at publish
+/// without knowing every viewer.
+pub struct PublishedState {
     pub seq: u64,
     /// Advances on every fan-out, including same-`seq` hold ticks.
     pub broadcast_seq: u64,
-    pub events: Vec<Event>,
     pub game: Game,
-    pub auto_actions: Vec<MessageRef>,
     pub yields: [bool; 4],
     pub turn_yields: [bool; 4],
     /// Stack-hold countdown for clients (ms); `0` when no hold is active.
     pub stack_hold_remaining_ms: u32,
+    pub seats: [crate::Seat; 4],
+    pub prints: [std::collections::HashMap<String, String>; 4],
+}
+
+/// A normal intent/hold publication is a delta. Authoritative out-of-band replacement publishes
+/// a complete snapshot instead of manufacturing an empty delta.
+pub enum PublishedUpdate {
+    Delta {
+        state: PublishedState,
+        events: Vec<Event>,
+        auto_actions: Vec<MessageRef>,
+    },
+    Snapshot(PublishedState),
+}
+
+impl PublishedUpdate {
+    pub fn broadcast_seq(&self) -> u64 {
+        match self {
+            Self::Delta { state, .. } | Self::Snapshot(state) => state.broadcast_seq,
+        }
+    }
 }
 
 /// Fan-out payload: `Arc` so subscribers clone a pointer, not the payload.
-pub type Broadcast = Arc<PublishedDelta>;
+pub type Broadcast = Arc<PublishedUpdate>;
 
 struct RatingSnapshot {
     seats: Vec<crate::Seat>,
@@ -261,15 +280,20 @@ impl<'a> TableSession<'a> {
             self.table.stack_hold_remaining_ms()
         };
         // One clone: the broadcast owns a copy; ApplyResult keeps the original for the action log.
-        let _ = self.table.tx.send(Arc::new(PublishedDelta {
+        let state = PublishedState {
             seq,
             broadcast_seq: self.table.broadcast_seq,
-            events: events.clone(),
             game: game.clone(),
-            auto_actions: labels,
             yields: *self.table.chrome.yields(),
             turn_yields: *self.table.chrome.turn_yields(),
             stack_hold_remaining_ms: hold_ms,
+            seats: self.table.seats.clone(),
+            prints: self.table.prints.clone(),
+        };
+        let _ = self.table.tx.send(Arc::new(PublishedUpdate::Delta {
+            state,
+            events: events.clone(),
+            auto_actions: labels,
         }));
         // `outcome`, not `winner`: a draw (CR 104.4) ends the game with nobody winning.
         let disposition = if game.outcome().is_some() {
@@ -965,13 +989,19 @@ mod tests {
         assert!(result.accepted);
         assert!(held(disp));
         let broadcast = rx.try_recv().expect("the cast frame broadcasts");
-        assert!(broadcast.auto_actions.is_empty());
+        let PublishedUpdate::Delta { auto_actions, .. } = broadcast.as_ref() else {
+            panic!("ordinary casts publish deltas");
+        };
+        assert!(auto_actions.is_empty());
 
         let (_result, _disp) = fire_stack_hold(&mut table);
         let game = table.game.as_ref().unwrap();
         assert!(game.pending_choice().is_none());
         let broadcast = rx.try_recv().expect("the resolution frame broadcasts");
-        assert_eq!(broadcast.auto_actions[0].key, "auto.only_one_legal_target");
+        let PublishedUpdate::Delta { auto_actions, .. } = broadcast.as_ref() else {
+            panic!("ordinary resolutions publish deltas");
+        };
+        assert_eq!(auto_actions[0].key, "auto.only_one_legal_target");
         assert!(rx.try_recv().is_err());
     }
 
@@ -1015,7 +1045,10 @@ mod tests {
         ));
 
         let broadcast = rx.try_recv().expect("the resolution frame broadcasts");
-        assert!(broadcast.auto_actions.is_empty());
+        let PublishedUpdate::Delta { auto_actions, .. } = broadcast.as_ref() else {
+            panic!("ordinary resolutions publish deltas");
+        };
+        assert!(auto_actions.is_empty());
     }
 
     #[test]
@@ -1908,7 +1941,10 @@ mod tests {
         assert!(result.accepted);
         assert_eq!(table.seq, before + 1);
         let broadcast = rx.try_recv().expect("the flag change reached the stream");
-        assert!(broadcast.yields[1]);
+        let PublishedUpdate::Delta { state, .. } = broadcast.as_ref() else {
+            panic!("ordinary chrome changes publish deltas");
+        };
+        assert!(state.yields[1]);
     }
 
     #[test]
@@ -2056,9 +2092,12 @@ mod tests {
         assert_eq!(table.seq, seq_before);
         assert_eq!(table.broadcast_seq, bcast_before + 1);
         let tick = rx.try_recv().expect("hold tick fans out");
-        assert_eq!(tick.seq, seq_before);
-        assert!(tick.events.is_empty());
-        assert!(tick.stack_hold_remaining_ms > STACK_HOLD.as_millis() as u32);
+        let PublishedUpdate::Delta { state, events, .. } = tick.as_ref() else {
+            panic!("hold ticks remain ordinary deltas");
+        };
+        assert_eq!(state.seq, seq_before);
+        assert!(events.is_empty());
+        assert!(state.stack_hold_remaining_ms > STACK_HOLD.as_millis() as u32);
         assert_eq!(
             table.game.as_ref().unwrap().zone_of(bear),
             engine::Zone::Stack
@@ -2188,9 +2227,14 @@ mod tests {
         let (result, _) = TableSession::new(&mut table).set_yield(PlayerId(0), true);
         assert!(result.accepted);
         let delta = rx.try_recv().expect("drive-only apply publishes a delta");
-        assert_eq!(delta.seq, table.seq);
-        assert_eq!(delta.yields, *table.chrome.yields());
-        assert!(delta.game.player_count() > 0);
+        let PublishedUpdate::Delta { state, .. } = delta.as_ref() else {
+            panic!("ordinary drive-only applies publish deltas");
+        };
+        assert_eq!(state.seq, table.seq);
+        assert_eq!(state.yields, *table.chrome.yields());
+        assert!(state.game.player_count() > 0);
+        assert_eq!(state.seats[0].username, table.seats[0].username);
+        assert_eq!(state.prints, table.prints);
     }
 
     /// Mirrors the client Escape → Exile → target path for Sentinel's Eyes: TakeAction carries

@@ -1,4 +1,4 @@
-//! The pure core of the delta stream (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec): snapshot-then-delta framing, per-viewer
+//! The pure core of the game-state stream (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec): snapshot-first framing, later snapshots or deltas, and per-viewer
 //! redaction, and the seq-dedup boundary that prevents double delivery across the
 //! subscribe/snapshot gap. Pulled out of the `stream` handler in `lib.rs` so this logic has a
 //! test surface with no broadcast channel, keepalive timer, or `Body` involved — the handler
@@ -13,7 +13,7 @@ use schema::{
 use tokio::sync::broadcast;
 
 use crate::AppState;
-use crate::session::Broadcast;
+use crate::session::{Broadcast, PublishedUpdate};
 use crate::table::Seat;
 
 /// Map Table-owned policy into the schema DTO that finishes a [`schema::VisibleState`].
@@ -44,27 +44,25 @@ pub fn view_extras(
     }
 }
 
-/// A resolved subscription to one table's delta stream, ready for a transport (gRPC
+/// A resolved subscription to one table's game-state stream, ready for a transport (gRPC
 /// server-streaming; historically SSE) to pump: the opening snapshot plus everything the caller
-/// needs to keep building later delta frames. Built by [`subscribe`] under the registry lock; the
+/// needs to build later snapshot or delta frames. Built by [`subscribe`] under the registry lock; the
 /// transport shell owns the actual async loop over `rx`.
 pub struct TableSubscription {
     pub rx: broadcast::Receiver<Broadcast>,
     pub snapshot_seq: u64,
     pub snapshot: VisibleState,
     pub viewer: Option<PlayerId>,
-    pub seats: [Seat; 4],
-    pub prints: [std::collections::HashMap<String, String>; 4],
     /// The table's `broadcast_seq` at snapshot time — later messages at or below this are
     /// already reflected in the snapshot (see [`should_deliver`]).
     pub snapshot_broadcast_seq: u64,
 }
 
-/// Resolve `user_id`'s subscription to `table_id`'s delta stream: their own seat if they have
+/// Resolve `user_id`'s subscription to `table_id`'s game-state stream: their own seat if they have
 /// one, or the public spectator view otherwise (C1/6.3 — the viewer is resolved server-side,
 /// never from the client). `NOT_FOUND` if the table or its game doesn't exist. Subscribes to the
 /// broadcast channel *before* snapshotting, so nothing slips through the subscribe/snapshot gap
-/// (deltas already reflected in the snapshot are dropped later by [`should_deliver`]).
+/// (publications already reflected in the snapshot are dropped later by [`should_deliver`]).
 pub fn subscribe(
     state: &AppState,
     table_id: &str,
@@ -91,8 +89,6 @@ pub fn subscribe(
         snapshot_seq: table.seq,
         snapshot,
         viewer,
-        seats: table.seats.clone(),
-        prints: table.prints.clone(),
         snapshot_broadcast_seq: table.broadcast_seq,
     })
 }
@@ -116,6 +112,46 @@ pub fn table_view_extras(table: &crate::Table) -> ViewExtras {
 /// bumping game `seq`, so dwell updates still reach clients.
 pub fn should_deliver(broadcast_seq: u64, snapshot_broadcast_seq: u64) -> bool {
     broadcast_seq > snapshot_broadcast_seq
+}
+
+/// Build a viewer-specific frame from one self-contained publication. Snapshot replacements and
+/// ordinary deltas share the same production visibility projection and publication-carried
+/// presentation extras.
+pub fn frame_for_update(viewer: Option<PlayerId>, update: &PublishedUpdate) -> StreamFrame {
+    match update {
+        PublishedUpdate::Delta {
+            state,
+            events,
+            auto_actions,
+        } => frame_for(
+            viewer,
+            state.seq,
+            events,
+            &state.game,
+            auto_actions.clone(),
+            &view_extras(
+                &state.yields,
+                &state.turn_yields,
+                &state.seats,
+                state.stack_hold_remaining_ms,
+                &state.prints,
+            ),
+        ),
+        PublishedUpdate::Snapshot(state) => StreamFrame::Snapshot {
+            seq: state.seq,
+            state: complete_visible(
+                &state.game,
+                viewer,
+                &view_extras(
+                    &state.yields,
+                    &state.turn_yields,
+                    &state.seats,
+                    state.stack_hold_remaining_ms,
+                    &state.prints,
+                ),
+            ),
+        },
+    }
 }
 
 /// Build the redacted delta frame for one viewer. `viewer` is `None` for a spectator (6.3) —
@@ -147,6 +183,7 @@ pub fn frame_for(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::session::{PublishedState, PublishedUpdate};
     use schema::{DeltaEnvelope, VisibleEvent};
 
     fn def(name: &str) -> engine::CardDef {
@@ -256,6 +293,48 @@ mod tests {
         };
         assert!(!p1.yielded);
         assert!(p1.turn_yielded, "viewer P1's turn yield comes from extras");
+    }
+
+    #[test]
+    fn frame_for_update_maps_snapshot_without_delta_events() {
+        let mut game = Game::new();
+        let shock = def("Shock");
+        let shock_id = shock.id.to_string();
+        let hand_card = game.spawn_in_hand(PlayerId(0), shock);
+        let mut seats = std::array::from_fn(|_| Seat::default());
+        seats[0].username = Some("fresh-alice".into());
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(shock_id, "fresh-print".into());
+        let update = PublishedUpdate::Snapshot(PublishedState {
+            seq: 9,
+            broadcast_seq: 12,
+            game,
+            yields: [false; 4],
+            turn_yields: [false; 4],
+            stack_hold_remaining_ms: 0,
+            seats,
+            prints,
+        });
+
+        for viewer in [Some(PlayerId(0)), Some(PlayerId(1)), None] {
+            let StreamFrame::Snapshot { seq, state } = frame_for_update(viewer, &update) else {
+                panic!("an authoritative replacement is always a snapshot");
+            };
+            assert_eq!(seq, 9, "the snapshot carries the publication sequence");
+            assert_eq!(state.players[0].username, "fresh-alice");
+            assert_eq!(state.players[0].hand_count, 1);
+            let visible_hand = state.objects.iter().find(|object| object.id == hand_card);
+            if viewer == Some(PlayerId(0)) {
+                let visible_hand = visible_hand.expect("the owner sees their hand identity");
+                assert_eq!(visible_hand.name, "Shock");
+                assert_eq!(visible_hand.print, "fresh-print");
+            } else {
+                assert!(
+                    visible_hand.is_none(),
+                    "opponents and spectators see only the public hand count",
+                );
+            }
+        }
     }
 
     #[test]

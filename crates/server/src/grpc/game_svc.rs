@@ -87,8 +87,6 @@ impl pb::game_service_server::GameService for GameSvc {
             snapshot_seq,
             snapshot,
             viewer,
-            seats,
-            prints,
             snapshot_broadcast_seq,
         } = stream::subscribe(&self.state, &table_id, user.id)
             .map_err(|_| Status::not_found("unknown table or game not started"))?;
@@ -102,24 +100,10 @@ impl pb::game_service_server::GameService for GameSvc {
                 tokio::select! {
                     msg = rx.recv() => {
                         let Ok(msg) = msg else { break };
-                        if !stream::should_deliver(msg.broadcast_seq, snapshot_broadcast_seq) {
+                        if !stream::should_deliver(msg.broadcast_seq(), snapshot_broadcast_seq) {
                             continue;
                         }
-                        let extras = stream::view_extras(
-                            &msg.yields,
-                            &msg.turn_yields,
-                            &seats,
-                            msg.stack_hold_remaining_ms,
-                            &prints,
-                        );
-                        yield Ok(map::stream_frame_to_pb(stream::frame_for(
-                            viewer,
-                            msg.seq,
-                            &msg.events,
-                            &msg.game,
-                            msg.auto_actions.clone(),
-                            &extras,
-                        )));
+                        yield Ok(map::stream_frame_to_pb(stream::frame_for_update(viewer, &msg)));
                     }
                     _ = heartbeat.tick() => {
                         yield Ok(map::stream_frame_to_pb(StreamFrame::Heartbeat));
