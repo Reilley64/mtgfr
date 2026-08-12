@@ -65,6 +65,9 @@ pub use state::{ControlCondition, DyingCreatureStats};
 pub(crate) use state::{Modifier, ModifierDuration, ModifierKind};
 pub use types::*;
 
+#[cfg(debug_assertions)]
+pub mod debug;
+
 /// Keyword-trigger obligations queued outside ordinary triggered abilities and drained when the
 /// normal pending-trigger queue empties.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

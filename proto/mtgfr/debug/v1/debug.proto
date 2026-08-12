@@ -94,7 +94,7 @@ message StackInspection {
   uint32 position_from_bottom = 1;
   string kind = 2;
   optional uint32 source_object_id = 3;
-  uint32 controller = 4;
+  optional uint32 controller = 4;
   string label = 5;
 }
 

@@ -952,3 +952,12 @@ async fn serve_binds_and_accepts_a_connection() {
         .expect("server task did not panic")
         .expect("serve returns Ok on graceful shutdown");
 }
+
+#[test]
+fn debug_stack_controller_preserves_presence() {
+    let stack = super::debug_pb::StackInspection {
+        controller: None,
+        ..Default::default()
+    };
+    let _: Option<u32> = stack.controller;
+}
