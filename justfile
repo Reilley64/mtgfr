@@ -42,6 +42,21 @@ server-run: server-build-prod
     cargo run -p server --release -- serve
 
 [group('server')]
+[doc("List tables through the debug-only authoritative API")]
+debug-tables endpoint='':
+    endpoint={{quote(endpoint)}}; if [[ -n "$endpoint" ]]; then cargo run -p server --bin mtgfr-debug -- tables --endpoint "$endpoint"; else cargo run -p server --bin mtgfr-debug -- tables; fi
+
+[group('server')]
+[doc("Inspect one authoritative debug table")]
+debug-inspect table out='' endpoint='':
+    table={{quote(table)}}; out={{quote(out)}}; endpoint={{quote(endpoint)}}; args=(inspect "$table"); [[ -z "$out" ]] || args+=(--out "$out"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
+
+[group('server')]
+[doc("Apply one protobuf-JSON debug mutation batch")]
+debug-mutate request out='' endpoint='':
+    request={{quote(request)}}; out={{quote(out)}}; endpoint={{quote(endpoint)}}; args=(mutate "$request"); [[ -z "$out" ]] || args+=(--out "$out"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
+
+[group('server')]
 [doc("Regenerate Effect-gRPC clients from proto into gitignored client/lib/wire/generated (ADR 0032)")]
 server-codegen:
     cd client && bun run gen
@@ -66,8 +81,13 @@ debug-ts-exclusion:
     ./scripts/check_debug_ts_exclusion.sh
 
 [group('server')]
-[doc("proto-lint + proto-breaking + debug TypeScript exclusion")]
-proto-check: proto-lint proto-breaking debug-ts-exclusion
+[doc("Check debug CLI just recipes preserve arguments without shell evaluation")]
+debug-cli-check:
+    ./scripts/test_debug_just_recipes.sh
+
+[group('server')]
+[doc("proto-lint + proto-breaking + debug client and CLI checks")]
+proto-check: proto-lint proto-breaking debug-ts-exclusion debug-cli-check
 
 # ── Docs / OpenSpec ───────────────────────────────────────────────────────────────────
 
