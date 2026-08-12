@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root="$(cd "$(dirname "$0")/.." && pwd)"
-debug_target="$root/target/debug-service-presence"
-release_target="$root/target/debug-service-absence"
+script_path="$(python3 - "$0" <<'PY'
+import pathlib
+import sys
+
+print(pathlib.Path(sys.argv[1]).resolve())
+PY
+)"
+root="$(cd "$(dirname "$script_path")/.." && pwd)"
+mkdir -p "$root/target"
+run_target="$(mktemp -d "$root/target/debug-release-isolation.XXXXXX")"
+debug_target="$run_target/debug"
+release_target="$run_target/release"
+cleanup() {
+  rm -rf "$run_target"
+}
+trap cleanup EXIT
 debug_binary="$debug_target/debug/server"
 release_binary="$release_target/release/server"
 needles=(
@@ -51,8 +64,6 @@ reject_bytes() {
   fi
 }
 
-rm -rf "$debug_target" "$release_target"
-
 CARGO_TARGET_DIR="$debug_target" cargo build -p server --bin server
 for needle in "${needles[@]}"; do
   require_bytes "$debug_binary" "$needle"
@@ -71,11 +82,17 @@ if [[ -n "${MTGFR_EXTRA_RELEASE_BINARY:-}" ]]; then
   done
 fi
 
+descriptor_list="$run_target/production-descriptors"
+if ! find "$release_target/release/build" -type f -path '*/out/mtgfr_descriptor.bin' -print0 >"$descriptor_list"; then
+  printf 'failed to enumerate production descriptors under %s\n' "$release_target/release/build" >&2
+  exit 1
+fi
+
 descriptor_count=0
 while IFS= read -r -d '' descriptor; do
   descriptor_count=$((descriptor_count + 1))
   reject_bytes "$descriptor" 'production descriptor' 'mtgfr.debug.v1'
-done < <(find "$release_target/release/build" -type f -path '*/out/mtgfr_descriptor.bin' -print0)
+done <"$descriptor_list"
 
 if [[ "$descriptor_count" -ne 1 ]]; then
   printf 'expected exactly one production descriptor, inspected %d\n' "$descriptor_count" >&2

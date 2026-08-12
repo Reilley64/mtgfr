@@ -84,6 +84,7 @@ debug-ts-exclusion:
 [doc("Check debug CLI just recipes preserve arguments without shell evaluation")]
 debug-cli-check:
     ./scripts/test_debug_just_recipes.sh
+    ./scripts/test_debug_shell_gates.sh
 
 [group('server')]
 [doc("Build debug and release servers and prove the release omits the debug API")]
