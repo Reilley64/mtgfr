@@ -7,11 +7,13 @@ import {
   shouldAutoCollapseStackExpand,
   stackActionLane,
   stackExpandAvailable,
+  stackExpandedLayout,
   stackFaceScreenOrigin,
   stackFanLayout,
   stackFanPlacement,
   stackFanVisualBounds,
   stackFullPerRow,
+  stackOverflowBadgeLayout,
   stackPresentation,
   stackReservedActionRect,
   stackStripFits,
@@ -120,9 +122,30 @@ describe("stackFanLayout", () => {
     { width: 1280, height: 720 },
     { width: 1440, height: 900 },
     { width: 2560, height: 1440 },
-  ] as const)("keeps the normal compact fan right-aligned at $width×$height", (viewport) => {
-    const layout = stackFanLayout(viewport, STACK_COMPACT_VISIBLE);
-    expect(layout.left + layout.fanW).toBe(viewport.width - 16);
+  ] as const)("keeps every transformed edge onscreen for one through four faces at $width×$height", (viewport) => {
+    for (let count = 1; count <= STACK_COMPACT_VISIBLE; count++) {
+      const layout = stackFanLayout(viewport, count);
+      for (let row = 0; row < count; row++) {
+        const bounds = stackFanVisualBounds(layout, row);
+        expect(bounds, `missing row ${row} of ${count}`).not.toBeNull();
+        if (bounds == null) continue;
+        expect(bounds.left).toBeGreaterThanOrEqual(0);
+        expect(bounds.top).toBeGreaterThanOrEqual(0);
+        expect(bounds.right).toBeLessThanOrEqual(viewport.width);
+        expect(bounds.bottom).toBeLessThanOrEqual(viewport.height);
+      }
+    }
+  });
+
+  it("places the short-landscape overflow badge inside the viewport", () => {
+    const viewport = { width: 844, height: 390 };
+    const layout = stackFanLayout(viewport, 7);
+    const badge = stackOverflowBadgeLayout(layout);
+    expect(badge.placement).toBe("inside");
+    expect(badge.left).toBeGreaterThanOrEqual(0);
+    expect(badge.top).toBeGreaterThanOrEqual(0);
+    expect(badge.left + badge.width).toBeLessThanOrEqual(viewport.width);
+    expect(badge.top + badge.height).toBeLessThanOrEqual(viewport.height);
   });
 });
 
@@ -193,5 +216,25 @@ describe("stackFaceScreenOrigin", () => {
     const left = stackFaceScreenOrigin({ presentation: "expanded", viewport, count: 3, row: 0 });
     const right = stackFaceScreenOrigin({ presentation: "expanded", viewport, count: 3, row: 2 });
     expect(left.x).toBeLessThan(right.x);
+  });
+  it.each([
+    { width: 1280, height: 720 },
+    { width: 2560, height: 1440 },
+  ] as const)("matches expanded face origins to the shared mounted-layout inputs at $width×$height", (viewport) => {
+    const count = 7;
+    const layout = stackExpandedLayout({ presentation: "expanded", viewport, count });
+    expect(layout.right).toBe(16);
+    expect(layout.headerH).toBe(28);
+    expect(layout.gap).toBe(8);
+
+    for (let row = 0; row < count; row++) {
+      const col = row % layout.perRow;
+      const rowY = Math.floor(row / layout.perRow);
+      const mountedCenter = {
+        x: layout.left + col * layout.peek + layout.cardW / 2,
+        y: layout.top + layout.headerH + layout.gap + rowY * layout.rowStride + layout.cardH / 2,
+      };
+      expect(stackFaceScreenOrigin({ presentation: "expanded", viewport, count, row })).toEqual(mountedCenter);
+    }
   });
 });

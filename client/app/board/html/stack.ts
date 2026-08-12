@@ -14,15 +14,12 @@ import { cardFace } from "~/ui/card-face";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { aimingObjectIds, pendingStackGhost, stagedPickTargets } from "../action/targeting";
-import { handUiScale } from "../geometry/handMetrics";
 import {
-  STACK_HORIZONTAL_MARGIN,
-  STACK_STRIP_MIN_PEEK,
+  stackExpandedLayout,
   stackFanLayout,
   stackFanPlacement,
-  stackFullPerRow,
+  stackOverflowBadgeLayout,
   stackPresentation,
-  stackStripPeek,
 } from "../geometry/stackLayout";
 import { formatStackTargetSuffix, stackEntryTargets } from "../geometry/stackTargets";
 import {
@@ -303,6 +300,7 @@ function compactFanView(
 ): Html {
   const layout = stackFanLayout(board.viewport, items.length);
   const visibleItems = items.slice(layout.visibleFrom);
+  const overflowBadge = stackOverflowBadgeLayout(layout);
   const holdMs = state.stack_hold_remaining_ms ?? 0;
   const holdPeak = board.stackHoldPeak;
   const showHold = holdMs > 0 && !showStaged;
@@ -352,6 +350,10 @@ function compactFanView(
       "--fan-left": `${layout.left}px`,
       "--fan-top": `${layout.top}px`,
       "--fan-bottom": `${layout.top + layout.cardH}px`,
+      "--badge-left": `${overflowBadge.left}px`,
+      "--badge-top": `${overflowBadge.top}px`,
+      "--badge-w": `${overflowBadge.width}px`,
+      "--badge-h": `${overflowBadge.height}px`,
     }),
   ];
   if (allowDwell) {
@@ -369,7 +371,7 @@ function compactFanView(
             onClick: StackExpandClicked(),
             variant: "ghost",
             class:
-              "pointer-events-auto fixed top-(--fan-top) left-(--fan-left) -translate-y-full px-2 py-1 text-chip text-seafoam",
+              "pointer-events-auto fixed top-(--badge-top) left-(--badge-left) z-10 h-(--badge-h) w-(--badge-w) px-2 py-1 text-chip text-seafoam",
             ariaLabel: `Show ${layout.hiddenCount} older stack objects`,
           },
           [`+${layout.hiddenCount}`],
@@ -398,18 +400,8 @@ function stripView(
   legalTargets: ReadonlySet<number>,
   h: HtmlBuilder<Message>,
 ): Html {
-  const viewportW = board.viewport.width;
   const n = items.length;
-  const layout = stackFanLayout(board.viewport, n);
-  const scale = handUiScale(board.viewport);
-  const minPeek = STACK_STRIP_MIN_PEEK * scale;
-  const hPeek = mode === "full" ? minPeek : Math.max(minPeek, stackStripPeek(n, board.viewport, layout.cardW));
-  const perRow = mode === "full" ? stackFullPerRow(board.viewport, layout.cardW) : n;
-  const rows = Math.ceil(n / perRow);
-  const cardH = layout.cardH;
-  const cols = Math.min(n, perRow);
-  const stripW = layout.cardW + Math.max(0, cols - 1) * hPeek;
-  const stripH = cardH + Math.max(0, rows - 1) * (cardH * 0.35);
+  const layout = stackExpandedLayout({ presentation: mode, viewport: board.viewport, count: n });
   const holdMs = state.stack_hold_remaining_ms ?? 0;
   const holdPeak = board.stackHoldPeak;
   const showHold = holdMs > 0 && !showStaged;
@@ -417,8 +409,8 @@ function stripView(
   const faces = items
     .filter((item) => !hideStackRestingFace(board, item))
     .map((item) => {
-      const col = item.row % perRow;
-      const rowY = Math.floor(item.row / perRow);
+      const col = item.row % layout.perRow;
+      const rowY = Math.floor(item.row / layout.perRow);
       const isTop = item.row === n - 1;
       return stackFace(
         {
@@ -434,11 +426,11 @@ function stripView(
           staged: item.staged,
           legalTarget: !item.staged && legalTargets.has(item.source),
           cardW: layout.cardW,
-          cardH,
+          cardH: layout.cardH,
           positionClass: "top-(--y) left-(--x) z-(--z)",
           style: {
-            "--x": `${col * hPeek}px`,
-            "--y": `${rowY * cardH * 0.35}px`,
+            "--x": `${col * layout.peek}px`,
+            "--y": `${rowY * layout.rowStride}px`,
             "--z": String(item.row),
           },
         },
@@ -446,19 +438,22 @@ function stripView(
       );
     });
 
-  const positionClass =
-    mode === "full" ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" : "top-1/2 right-4 -translate-y-1/2";
-
   const stripAttrs: Attribute<Message>[] = [
     h.DataAttribute("testid", "stack-overlay-expanded"),
     h.Class(
-      `group/stack pointer-events-auto fixed z-20 flex w-(--strip-cap) max-w-(--strip-max) flex-col items-center gap-sm ${positionClass}`,
+      "group/stack pointer-events-auto fixed top-(--expanded-top) left-(--expanded-left) z-20 flex w-(--strip-w) flex-col items-center gap-(--expanded-gap)",
     ),
     h.Style({
       "--stack-w": `${layout.cardW}px`,
-      "--card-h": `${cardH}px`,
-      "--strip-cap": `${Math.min(viewportW - STACK_HORIZONTAL_MARGIN * scale, stripW)}px`,
-      "--strip-max": `${viewportW - STACK_HORIZONTAL_MARGIN * scale}px`,
+      "--card-h": `${layout.cardH}px`,
+      "--strip-w": `${layout.stripW}px`,
+      "--strip-h": `${layout.stripH}px`,
+      "--expanded-left": `${layout.left}px`,
+      "--expanded-top": `${layout.top}px`,
+      "--expanded-header-h": `${layout.headerH}px`,
+      "--expanded-gap": `${layout.gap}px`,
+      "--expanded-peek": `${layout.peek}px`,
+      "--expanded-row-stride": `${layout.rowStride}px`,
     }),
   ];
   if (allowDwell) {
@@ -468,7 +463,7 @@ function stripView(
 
   return h.div(stripAttrs, [
     h.div(
-      [h.Class("flex w-full items-center justify-between gap-sm")],
+      [h.Class("flex h-(--expanded-header-h) w-full items-center justify-between gap-sm")],
       [
         h.span([h.Class("text-chip text-seafoam")], [`Stack · ${n}${mode === "full" ? " · full" : ""}`]),
         button(
@@ -487,7 +482,7 @@ function stripView(
     h.div(
       [
         h.Class("relative h-(--strip-h) w-(--strip-w)"),
-        h.Style({ "--strip-w": `${stripW}px`, "--strip-h": `${stripH}px` }),
+        h.Style({ "--strip-w": `${layout.stripW}px`, "--strip-h": `${layout.stripH}px` }),
       ],
       faces,
     ),

@@ -5,7 +5,7 @@ import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { handMetrics } from "./geometry/handMetrics";
 import { FLIGHT_CARD_W, ZONE } from "./geometry/layout";
-import { stackFaceScreenOrigin, stackPresentation } from "./geometry/stackLayout";
+import { stackExpandedLayout, stackFaceScreenOrigin, stackPresentation } from "./geometry/stackLayout";
 import { FlightsSynced, HandActionActivated, KeyboardEscape } from "./messages";
 import { handFlightScale, spawnFlight, stackFlightScale, stepFlights } from "./motion/flights";
 import { BOARD_VIEWPORT, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
@@ -182,6 +182,54 @@ describe("stack flight settle handoff", () => {
       oracle: "Lightning Bolt deals 3 damage to any target.",
       flavor: "The sparkmage shrieked.",
     });
+  });
+
+  it.each([
+    { width: 1280, height: 720 },
+    { width: 2560, height: 1440 },
+  ] as const)("targets the expanded mounted top-face center at $width×$height", (viewport) => {
+    const count = 7;
+    const objects = Array.from({ length: count }, (_, index) => spell(index + 1, `Spell ${index + 1}`));
+    const stack = objects.map((object) => ({
+      controller: 0,
+      kind: "spell" as const,
+      label: testMessageRef(object.name),
+      source: object.id,
+    }));
+    const top = objects[count - 1];
+    const board = {
+      ...initialBoardModel(),
+      viewport,
+      stackExpand: true,
+      flights: new Map([
+        [
+          top.id,
+          spawnFlight({
+            id: top.id,
+            print: top.print ?? "",
+            name: top.name,
+            x: 20,
+            y: 20,
+            scale: 1,
+            targetX: 0,
+            targetY: 0,
+            targetScale: 1,
+            kind: "stack",
+            fromCardId: 99,
+          }),
+        ],
+      ]),
+    };
+    const after = syncBoardWithGame(
+      board,
+      gameFold(state({ objects, stack }), { stackEntrances: new Map([[top.id, { from: 99, controller: 0 }]]) }),
+    );
+    const layout = stackExpandedLayout({ presentation: "expanded", viewport, count });
+    const expected = {
+      x: layout.left + (count - 1) * layout.peek + layout.cardW / 2,
+      y: layout.top + layout.headerH + layout.gap + layout.cardH / 2,
+    };
+    expect(after.flights.get(top.id)).toMatchObject({ targetX: expected.x, targetY: expected.y });
   });
 
   it("refreshes a prepared stack flight with the active back-face words", () => {

@@ -14,7 +14,13 @@ import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
 import { emptyCostPicks } from "../action/execution";
 import { ZONE } from "../geometry/layout";
-import { STACK_COMPACT_VISIBLE, stackFanLayout, stackFanPlacement } from "../geometry/stackLayout";
+import {
+  STACK_COMPACT_VISIBLE,
+  stackExpandedLayout,
+  stackFanLayout,
+  stackFanPlacement,
+  stackOverflowBadgeLayout,
+} from "../geometry/stackLayout";
 import { KeyboardEscape, type Message, StackCollapseClicked, StackExpandClicked, TargetChosen } from "../messages";
 import { spawnFlight } from "../motion/flights";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
@@ -1371,6 +1377,38 @@ test("short-landscape compact stack exposes its responsive fallback geometry", (
   );
 });
 
+test("short-landscape overflow badge stays onscreen and expands by pointer and keyboard", () => {
+  const viewport = { width: 844, height: 390 };
+  const model = stackSceneModel(7, { ...initialBoardModel(), viewport });
+  const badge = stackOverflowBadgeLayout(stackFanLayout(viewport, 7));
+
+  Scene.scene(
+    interactiveStackProgram(),
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(STACK_COMPACT_VISIBLE),
+    Scene.expect(Scene.testId("stack-expand")).toContainText("+3"),
+    Scene.expect(Scene.testId("stack-expand")).toHaveAccessibleName("Show 3 older stack objects"),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--badge-left", `${badge.left}px`),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--badge-top", `${badge.top}px`),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--badge-w", `${badge.width}px`),
+    Scene.expect(Scene.testId("stack-overlay")).toHaveStyle("--badge-h", `${badge.height}px`),
+    Scene.click(Scene.testId("stack-expand")),
+    resolveBoardCardFaceMounts(3),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
+  );
+
+  Scene.scene(
+    interactiveStackProgram(),
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(STACK_COMPACT_VISIBLE),
+    Scene.keydown(Scene.testId("stack-face-6"), "Enter"),
+    resolveBoardCardFaceMounts(3),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
+  );
+});
+
 test("compact stack shows only the newest four faces and the exact older count", () => {
   const model = stackSceneModel(7);
   const layout = stackFanLayout(model.board.viewport, 7);
@@ -1495,6 +1533,28 @@ test("expanded stack renders every row with responsive card dimensions", () => {
       "data-face-h",
       String(layout.cardH),
     ),
+  );
+});
+
+test.each([
+  { width: 1280, height: 720 },
+  { width: 2560, height: 1440 },
+] as const)("expanded DOM publishes the shared face-placement inputs at $width×$height", (viewport) => {
+  const count = 7;
+  const model = stackSceneModel(count, { ...initialBoardModel(), viewport, stackExpand: true });
+  const layout = stackExpandedLayout({ presentation: "expanded", viewport, count });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(count),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toHaveStyle("--expanded-left", `${layout.left}px`),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toHaveStyle("--expanded-top", `${layout.top}px`),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toHaveStyle("--expanded-header-h", `${layout.headerH}px`),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toHaveStyle("--expanded-gap", `${layout.gap}px`),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toHaveStyle("--expanded-peek", `${layout.peek}px`),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveStyle("--x", `${6 * layout.peek}px`),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveStyle("--y", "0px"),
   );
 });
 

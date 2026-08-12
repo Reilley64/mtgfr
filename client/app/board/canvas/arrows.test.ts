@@ -4,7 +4,7 @@ import { testMessageRef } from "~/i18n/testMessageRef";
 import { BLANK_FACE } from "../../domain/card-render/frame";
 import { TARGET_COLOR } from "../action/targeting";
 import type { RenderCard } from "../geometry/layout";
-import { stackFaceScreenOrigin, stackFanLayout } from "../geometry/stackLayout";
+import { stackExpandedLayout, stackFaceScreenOrigin, stackFanLayout } from "../geometry/stackLayout";
 import {
   aimArrowShapes,
   arrowShapes,
@@ -150,6 +150,35 @@ describe("stackTargetArrowShapes", () => {
     expect(pile).not.toEqual(expanded);
     expect(expanded.length).toBe(pile.length);
   });
+  it.each([
+    { width: 1280, height: 720 },
+    { width: 2560, height: 1440 },
+  ] as const)("starts expanded target arrows at the mounted face center at $width×$height", (viewport) => {
+    const count = 7;
+    const stack = Array.from({ length: count }, (_, row) => ({
+      controller: 0,
+      kind: "spell" as const,
+      label: testMessageRef(`Spell ${row}`),
+      source: row + 1,
+      target: { kind: "player" as const, player: 1 },
+    }));
+    const layout = stackExpandedLayout({ presentation: "expanded", viewport, count });
+    const endpoints = stackTargetArrowEndpoints({
+      viewport,
+      stack,
+      cards: [],
+      avatars: { 1: { x: 100, y: 80 } },
+      camera: { panX: 0, panY: 0, zoom: 1 },
+      presentation: "expanded",
+    });
+    expect(endpoints.map(({ from }) => from)).toEqual(
+      stack.map((_, row) => ({
+        x: layout.left + row * layout.peek + layout.cardW / 2,
+        y: layout.top + layout.headerH + layout.gap + layout.cardH / 2,
+      })),
+    );
+  });
+
   it("uses visible compact face origins and proxies hidden rows to the overflow edge", () => {
     const stack = Array.from({ length: 7 }, (_, row) => ({
       controller: 0,

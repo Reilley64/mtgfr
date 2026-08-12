@@ -32,6 +32,14 @@ export type ScreenRect = {
   bottom: number;
 };
 
+export type StackOverflowBadgeLayout = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  placement: "above" | "inside";
+};
+
 export type StackFanLayout = {
   cardW: number;
   cardH: number;
@@ -93,9 +101,9 @@ export function stackFanLayout(viewport: ViewportSize, count: number): StackFanL
   const maxRise = verticalClearanceImpossible ? 0 : 8 * (metrics.cardW / HAND_FACE_W);
   const top = verticalClearanceImpossible ? 0 : Math.max(normalMinTop, Math.min(naturalTop, maxTop));
 
-  const normalLeft = viewport.width - STACK_OVERLAY_RIGHT - fanW;
   const rotatedWidth = rotatedCardWidth(metrics.cardW, metrics.cardH, maxRotation);
   const horizontalOverflow = Math.ceil((rotatedWidth - metrics.cardW) / 2);
+  const normalLeft = viewport.width - STACK_OVERLAY_RIGHT - horizontalOverflow - fanW;
   const actionLeft = stackReservedActionRect(viewport).left;
   const fallbackLeft = actionLeft - STACK_ACTION_GAP_BASE * metrics.scale - fanW - horizontalOverflow;
   const left = verticalClearanceImpossible
@@ -114,6 +122,31 @@ export function stackFanLayout(viewport: ViewportSize, count: number): StackFanL
     top,
     maxRotation,
     maxRise,
+  };
+}
+
+const STACK_OVERFLOW_BADGE_WIDTH = 48;
+const STACK_OVERFLOW_BADGE_HEIGHT = 28;
+const STACK_OVERFLOW_BADGE_INSET = 8;
+
+/** Viewport-safe overflow affordance placement shared by compact geometry and the DOM view. */
+export function stackOverflowBadgeLayout(layout: StackFanLayout): StackOverflowBadgeLayout {
+  if (layout.top >= STACK_OVERFLOW_BADGE_HEIGHT) {
+    return {
+      left: layout.left,
+      top: layout.top - STACK_OVERFLOW_BADGE_HEIGHT,
+      width: STACK_OVERFLOW_BADGE_WIDTH,
+      height: STACK_OVERFLOW_BADGE_HEIGHT,
+      placement: "above",
+    };
+  }
+
+  return {
+    left: layout.left + STACK_OVERFLOW_BADGE_INSET,
+    top: layout.top + STACK_OVERFLOW_BADGE_INSET,
+    width: STACK_OVERFLOW_BADGE_WIDTH,
+    height: STACK_OVERFLOW_BADGE_HEIGHT,
+    placement: "inside",
   };
 }
 
@@ -209,6 +242,69 @@ export function stackFullPerRow(viewport: ViewportSize, cardW = handMetrics(view
   return Math.max(1, Math.floor((viewport.width - margin - cardW) / minPeek) + 1);
 }
 
+export type StackExpandedLayout = {
+  presentation: "expanded" | "full";
+  cardW: number;
+  cardH: number;
+  stripW: number;
+  stripH: number;
+  left: number;
+  right: number;
+  top: number;
+  headerH: number;
+  gap: number;
+  peek: number;
+  rowStride: number;
+  perRow: number;
+  rows: number;
+};
+
+const STACK_EXPANDED_HEADER_H = 28;
+const STACK_EXPANDED_GAP = 8;
+
+/** Exact expanded/full presentation geometry consumed by both DOM placement and screen origins. */
+export function stackExpandedLayout(opts: {
+  presentation: "expanded" | "full";
+  viewport: ViewportSize;
+  count: number;
+}): StackExpandedLayout {
+  const metrics = handMetrics(opts.viewport);
+  const count = Math.max(1, opts.count);
+  const minPeek = STACK_STRIP_MIN_PEEK * metrics.scale;
+  const peek =
+    opts.presentation === "full" ? minPeek : Math.max(minPeek, stackStripPeek(count, opts.viewport, metrics.cardW));
+  const perRow = opts.presentation === "full" ? stackFullPerRow(opts.viewport, metrics.cardW) : count;
+  const cols = Math.min(count, perRow);
+  const rows = Math.ceil(count / perRow);
+  const maxW = opts.viewport.width - STACK_HORIZONTAL_MARGIN * metrics.scale;
+  const stripW = Math.min(maxW, metrics.cardW + Math.max(0, cols - 1) * peek);
+  const rowStride = metrics.cardH * 0.35;
+  const stripH = metrics.cardH + Math.max(0, rows - 1) * rowStride;
+  const headerH = STACK_EXPANDED_HEADER_H;
+  const gap = STACK_EXPANDED_GAP;
+  const top = opts.viewport.height / 2 - (headerH + gap + stripH) / 2;
+  const left =
+    opts.presentation === "full"
+      ? opts.viewport.width / 2 - stripW / 2
+      : opts.viewport.width - STACK_OVERLAY_RIGHT - stripW;
+  return {
+    presentation: opts.presentation,
+    cardW: metrics.cardW,
+    cardH: metrics.cardH,
+    stripW,
+    stripH,
+    left,
+    right: opts.viewport.width - left - stripW,
+    top,
+    headerH,
+    gap,
+    peek,
+    rowStride,
+    perRow,
+    rows,
+  };
+}
+
 /** Screen-space center of stack face at `row` (0 = bottom) for the active presentation. */
 export function stackFaceScreenOrigin(opts: {
   presentation: StackPresentation;
@@ -233,27 +329,15 @@ export function stackFaceScreenOrigin(opts: {
     };
   }
 
-  const metrics = handMetrics(opts.viewport);
-  const scale = metrics.scale;
-  const minPeek = STACK_STRIP_MIN_PEEK * scale;
-  const hPeek =
-    opts.presentation === "full" ? minPeek : Math.max(minPeek, stackStripPeek(n, opts.viewport, metrics.cardW));
-  const perRow = opts.presentation === "full" ? stackFullPerRow(opts.viewport, metrics.cardW) : n;
-  const col = row % perRow;
-  const rowY = Math.floor(row / perRow);
-  const cols = Math.min(n, perRow);
-  const rows = Math.ceil(n / perRow);
-  const margin = STACK_HORIZONTAL_MARGIN * scale;
-  const stripW = Math.min(opts.viewport.width - margin, metrics.cardW + Math.max(0, cols - 1) * hPeek);
-  const stripH = metrics.cardH + Math.max(0, rows - 1) * (metrics.cardH * 0.35);
-  const headerH = 28 * scale;
-  const gap = 8 * scale;
-  const columnH = headerH + gap + stripH;
-  const columnTop = opts.viewport.height / 2 - columnH / 2;
-  const right = STACK_OVERLAY_RIGHT * scale;
-  const stripLeft =
-    opts.presentation === "full" ? opts.viewport.width / 2 - stripW / 2 : opts.viewport.width - right - stripW;
-  const faceLeft = stripLeft + col * hPeek;
-  const faceTop = columnTop + headerH + gap + rowY * metrics.cardH * 0.35;
-  return { x: faceLeft + metrics.cardW / 2, y: faceTop + metrics.cardH / 2 };
+  const layout = stackExpandedLayout({
+    presentation: opts.presentation,
+    viewport: opts.viewport,
+    count: n,
+  });
+  const col = row % layout.perRow;
+  const rowY = Math.floor(row / layout.perRow);
+  return {
+    x: layout.left + col * layout.peek + layout.cardW / 2,
+    y: layout.top + layout.headerH + layout.gap + rowY * layout.rowStride + layout.cardH / 2,
+  };
 }
