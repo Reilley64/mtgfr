@@ -83,7 +83,7 @@ enum HoldResolution {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Disposition {
     /// The game continues; `stack_held` means auto-advance paused before a stack resolution,
-    /// so the caller owes a [`schedule_stack_resolution`] (folded in by [`settle_after_apply`]).
+    /// so the caller owes synchronous arming and an already-armed poller (folded in by [`settle_after_apply`]).
     Live { stack_held: bool },
     /// The engine panicked — quarantine (drop) the table (C3).
     Panicked,
@@ -364,7 +364,12 @@ pub fn settle_after_apply(
             reg.remove(table_id);
         }
         Disposition::Live { stack_held: true } => {
-            schedule_stack_resolution(state.clone(), table_id.to_string(), seq);
+            let armed = reg
+                .get_mut(table_id)
+                .is_some_and(|table| arm_stack_resolution(table, seq));
+            if armed {
+                schedule_armed_stack_resolution(state.clone(), table_id.to_string(), seq);
+            }
         }
         Disposition::Live { stack_held: false } => {}
     }
@@ -394,91 +399,100 @@ fn stack_hold_pass(game: &Game, yields: &[bool; 4], turn_yields: &[bool; 4]) -> 
 /// staleness: any broadcast during the hold bumps `table.seq` (and its own `settle_after_apply`
 /// schedules a fresh hold if one is still owed), so a stale timer just evaporates instead of
 /// double-resolving. [`stack_hold_pass`] re-validates the rest.
-fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
+pub(crate) fn arm_stack_resolution(table: &mut Table, seq: u64) -> bool {
+    table.chrome.clear_hold();
+    let Some(game) = table.game.as_ref() else {
+        return false;
+    };
+    if stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields()).is_none() {
+        return false;
+    }
+    table.chrome.begin_hold(seq, Instant::now());
+    true
+}
+
+pub(crate) fn schedule_armed_stack_resolution(state: AppState, table_id: String, seq: u64) {
     tokio::spawn(async move {
-        {
+        poll_armed_stack_resolution(state, table_id, seq).await;
+    });
+}
+
+async fn poll_armed_stack_resolution(state: AppState, table_id: String, seq: u64) {
+    loop {
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let resolution = {
             let mut reg = lock(&state.reg);
-            if let Some(table) = reg.get_mut(&table_id) {
-                let now = Instant::now();
-                table.chrome.begin_hold(seq, now);
-            }
-        }
-        loop {
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-            let resolution = {
-                let mut reg = lock(&state.reg);
-                let Some(table) = reg.get_mut(&table_id) else {
-                    return;
-                };
-                if table.seq != seq {
-                    table.chrome.clear_hold_if_seq(seq);
-                    return;
-                }
-                let Some((_, started)) = table.chrome.stack_hold() else {
-                    return;
-                };
-                let now = Instant::now();
-                let any_dwell = table.chrome.any_dwell();
-                if now < hold_deadline(started, any_dwell) {
-                    HoldResolution::Continue
-                } else {
-                    table.chrome.clear_hold();
-                    let Some(game) = table.game.as_ref() else {
-                        return;
-                    };
-                    let Some(holder) =
-                        stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields())
-                    else {
-                        return;
-                    };
-                    let mut session = TableSession::new(table);
-                    let wire = schema::WireIntent::PassPriority { player: holder.0 };
-                    let (result, disposition) =
-                        session.submit_system(Intent::PassPriority { player: holder });
-                    let log_row = crate::action_log::format_row(
-                        table.seq,
-                        holder.0,
-                        &wire,
-                        &result,
-                        &result.events,
-                        table.game.as_ref(),
-                    );
-                    let seq = table.seq;
-                    let rating_snapshot = result.accepted.then(|| {
-                        table.game.as_ref().map(|game| RatingSnapshot {
-                            seats: table.seats.to_vec(),
-                            game: game.clone(),
-                            events: result.events.clone(),
-                        })
-                    });
-                    settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
-                    HoldResolution::Applied {
-                        log_row,
-                        rating_snapshot: rating_snapshot.flatten().map(Box::new),
-                    }
-                }
+            let Some(table) = reg.get_mut(&table_id) else {
+                return;
             };
-            match resolution {
-                HoldResolution::Continue => continue,
+            if table.seq != seq {
+                table.chrome.clear_hold_if_seq(seq);
+                return;
+            }
+            let Some((_, started)) = table.chrome.stack_hold() else {
+                return;
+            };
+            let now = Instant::now();
+            let any_dwell = table.chrome.any_dwell();
+            if now < hold_deadline(started, any_dwell) {
+                HoldResolution::Continue
+            } else {
+                table.chrome.clear_hold();
+                let Some(game) = table.game.as_ref() else {
+                    return;
+                };
+                let Some(holder) =
+                    stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields())
+                else {
+                    return;
+                };
+                let mut session = TableSession::new(table);
+                let wire = schema::WireIntent::PassPriority { player: holder.0 };
+                let (result, disposition) =
+                    session.submit_system(Intent::PassPriority { player: holder });
+                let log_row = crate::action_log::format_row(
+                    table.seq,
+                    holder.0,
+                    &wire,
+                    &result,
+                    &result.events,
+                    table.game.as_ref(),
+                );
+                let seq = table.seq;
+                let rating_snapshot = result.accepted.then(|| {
+                    table.game.as_ref().map(|game| RatingSnapshot {
+                        seats: table.seats.to_vec(),
+                        game: game.clone(),
+                        events: result.events.clone(),
+                    })
+                });
+                settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
                 HoldResolution::Applied {
                     log_row,
-                    rating_snapshot,
-                } => {
-                    crate::action_log::append(&table_id, &log_row);
-                    if let Some(snapshot) = rating_snapshot {
-                        crate::ratings::persist_player_lost(
-                            &state.db,
-                            &snapshot.seats,
-                            &snapshot.game,
-                            &snapshot.events,
-                        )
-                        .await;
-                    }
-                    return;
+                    rating_snapshot: rating_snapshot.flatten().map(Box::new),
                 }
             }
+        };
+        match resolution {
+            HoldResolution::Continue => continue,
+            HoldResolution::Applied {
+                log_row,
+                rating_snapshot,
+            } => {
+                crate::action_log::append(&table_id, &log_row);
+                if let Some(snapshot) = rating_snapshot {
+                    crate::ratings::persist_player_lost(
+                        &state.db,
+                        &snapshot.seats,
+                        &snapshot.game,
+                        &snapshot.events,
+                    )
+                    .await;
+                }
+                return;
+            }
         }
-    });
+    }
 }
 
 /// Auto-advance the game past every window the client shouldn't have to act on: a *forced*
@@ -1999,6 +2013,38 @@ mod tests {
         );
     }
 
+    #[test]
+    fn arm_stack_resolution_rejects_ineligible_tables_and_clears_prior_hold() {
+        let now = Instant::now();
+        let mut missing_game = Table::empty();
+        missing_game.chrome.stamp_hold_for_test(7, now);
+        missing_game.chrome.set_dwell_flag(0, true);
+        assert_eq!(missing_game.chrome.stack_hold(), Some((7, now)));
+        assert!(missing_game.chrome.any_dwell());
+
+        assert!(!arm_stack_resolution(&mut missing_game, 8));
+        assert!(missing_game.chrome.stack_hold().is_none());
+        assert!(!missing_game.chrome.any_dwell());
+
+        let (mut no_eligible_hold, _bear) = bear_table();
+        no_eligible_hold.chrome.stamp_hold_for_test(9, now);
+        no_eligible_hold.chrome.set_dwell_flag(1, true);
+        assert_eq!(no_eligible_hold.chrome.stack_hold(), Some((9, now)));
+        assert!(no_eligible_hold.chrome.any_dwell());
+        assert_eq!(
+            stack_hold_pass(
+                no_eligible_hold.game.as_ref().unwrap(),
+                no_eligible_hold.chrome.yields(),
+                no_eligible_hold.chrome.turn_yields(),
+            ),
+            None,
+        );
+
+        assert!(!arm_stack_resolution(&mut no_eligible_hold, 10));
+        assert!(no_eligible_hold.chrome.stack_hold().is_none());
+        assert!(!no_eligible_hold.chrome.any_dwell());
+    }
+
     #[tokio::test(start_paused = true)]
     async fn the_stack_hold_timer_fires_and_resolves_the_stack() {
         let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
@@ -2008,12 +2054,29 @@ mod tests {
         let seq = table.seq;
         assert!(lock(&state.reg).try_insert("hold".to_string(), table));
 
-        schedule_stack_resolution(state.clone(), "hold".to_string(), seq);
+        let armed_at = Instant::now();
+        {
+            let mut reg = lock(&state.reg);
+            settle_after_apply(&mut reg, &state, "hold", disp, seq);
+            assert_eq!(
+                reg.get("hold").unwrap().chrome.stack_hold(),
+                Some((seq, armed_at)),
+                "ordinary settle arms the hold synchronously under the table lock",
+            );
+        }
+
         tokio::time::sleep(STACK_HOLD * 2).await;
 
         let reg = lock(&state.reg);
-        let game = reg.get("hold").unwrap().game.as_ref().unwrap();
+        let table = reg.get("hold").unwrap();
+        let game = table.game.as_ref().unwrap();
         assert_eq!(game.zone_of(bear), engine::Zone::Battlefield);
+        assert_eq!(
+            table.seq,
+            seq + 1,
+            "one armed task submits exactly one pass"
+        );
+        assert!(table.chrome.stack_hold().is_none());
     }
 
     #[tokio::test(start_paused = true)]
@@ -2023,15 +2086,57 @@ mod tests {
         let (_result, disp) = cast(&mut table, PlayerId(0), bear);
         assert!(held(disp));
         let stale_seq = table.seq;
-        table.seq += 1;
         assert!(lock(&state.reg).try_insert("stale".to_string(), table));
 
-        schedule_stack_resolution(state.clone(), "stale".to_string(), stale_seq);
+        let live_seq = {
+            let mut reg = lock(&state.reg);
+            let table = reg.get_mut("stale").unwrap();
+            assert!(arm_stack_resolution(table, stale_seq));
+            schedule_armed_stack_resolution(state.clone(), "stale".to_string(), stale_seq);
+            table.seq += 1;
+            table.seq
+        };
         tokio::time::sleep(STACK_HOLD * 2).await;
 
         let reg = lock(&state.reg);
-        let game = reg.get("stale").unwrap().game.as_ref().unwrap();
+        let table = reg.get("stale").unwrap();
+        let game = table.game.as_ref().unwrap();
         assert_eq!(game.zone_of(bear), engine::Zone::Stack);
+        assert_eq!(table.seq, live_seq, "the stale task never submits");
+        assert!(
+            table.chrome.stack_hold().is_none(),
+            "the stale task clears its matching hold",
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_stale_stack_hold_timer_does_not_clear_a_newer_hold() {
+        let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+        let (mut table, _bear) = bear_table();
+        let (_result, disp) = cast(&mut table, PlayerId(0), _bear);
+        assert!(held(disp));
+        let stale_seq = table.seq;
+        assert!(lock(&state.reg).try_insert("rearmed".to_string(), table));
+
+        let (new_seq, rearmed_at) = {
+            let mut reg = lock(&state.reg);
+            let table = reg.get_mut("rearmed").unwrap();
+            assert!(arm_stack_resolution(table, stale_seq));
+            schedule_armed_stack_resolution(state.clone(), "rearmed".to_string(), stale_seq);
+            table.seq += 1;
+            let new_seq = table.seq;
+            let rearmed_at = Instant::now();
+            table.chrome.begin_hold(new_seq, rearmed_at);
+            (new_seq, rearmed_at)
+        };
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let reg = lock(&state.reg);
+        assert_eq!(
+            reg.get("rearmed").unwrap().chrome.stack_hold(),
+            Some((new_seq, rearmed_at)),
+            "a stale task clears only the hold carrying its own sequence",
+        );
     }
 
     #[tokio::test(start_paused = true)]
@@ -2043,12 +2148,11 @@ mod tests {
         let seq = table.seq;
         assert!(lock(&state.reg).try_insert("dwell".to_string(), table));
 
-        schedule_stack_resolution(state.clone(), "dwell".to_string(), seq);
-        // Let the hold start stamp land.
-        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         {
             let mut reg = lock(&state.reg);
             let table = reg.get_mut("dwell").unwrap();
+            assert!(arm_stack_resolution(table, seq));
+            schedule_armed_stack_resolution(state.clone(), "dwell".to_string(), seq);
             let dwell = TableSession::new(table).set_dwell(PlayerId(1), true);
             assert!(dwell.accepted);
             assert!(table.stack_hold_remaining_ms() > STACK_HOLD.as_millis() as u32);
@@ -2066,6 +2170,7 @@ mod tests {
         }
 
         tokio::time::sleep(STACK_HOLD_DWELL_EXTRA).await;
+        tokio::task::yield_now().await;
         let reg = lock(&state.reg);
         let game = reg.get("dwell").unwrap().game.as_ref().unwrap();
         assert_eq!(
@@ -2080,7 +2185,7 @@ mod tests {
         let (mut table, bear) = bear_table();
         let (_result, disp) = cast(&mut table, PlayerId(0), bear);
         assert!(held(disp));
-        // Simulate the scheduled hold stamp (schedule_stack_resolution sets this under the lock).
+        // Simulate the synchronous hold stamp installed before timer polling.
         table.chrome.stamp_hold_for_test(table.seq, Instant::now());
         let mut rx = table.tx.subscribe();
         let seq_before = table.seq;

@@ -3,6 +3,16 @@
 //! Owned by [`crate::Table`] as `chrome`; mutate only via [`crate::session::TableSession`]
 //! (or the `pub(crate)` accessors below used by the hold timer). gRPC adapters never poke chrome.
 
+/// Debug-only logical chrome persisted by a checkpoint. Timer and dwell instants are excluded.
+#[cfg(debug_assertions)]
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct DebugChromeSnapshot {
+    pub yields: [bool; 4],
+    pub turn_yields: [bool; 4],
+    pub hold_requested: bool,
+}
+
 /// Live-table priority chrome knobs. Fields are private — see module docs.
 #[derive(Debug, Default)]
 pub struct ChromeState {
@@ -20,6 +30,24 @@ pub struct ChromeState {
 }
 
 impl ChromeState {
+    #[cfg(debug_assertions)]
+    #[allow(dead_code)]
+    pub(crate) fn debug_snapshot(&self) -> DebugChromeSnapshot {
+        DebugChromeSnapshot {
+            yields: self.yields,
+            turn_yields: self.turn_yields,
+            hold_requested: self.stack_hold.is_some(),
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    #[allow(dead_code)]
+    pub(crate) fn restore_debug_snapshot(&mut self, snapshot: DebugChromeSnapshot) {
+        self.yields = snapshot.yields;
+        self.turn_yields = snapshot.turn_yields;
+        self.clear_hold();
+    }
+
     pub fn yields(&self) -> &[bool; 4] {
         &self.yields
     }
@@ -90,5 +118,36 @@ impl ChromeState {
     #[cfg(test)]
     pub(crate) fn stamp_hold_for_test(&mut self, seq: u64, now: tokio::time::Instant) {
         self.begin_hold(seq, now);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn debug_snapshot_preserves_logical_flags_but_restore_drops_timer_and_dwell() {
+        let now = tokio::time::Instant::now();
+        let mut live = ChromeState::default();
+        live.arm_yield(0);
+        live.set_turn_yield_flag(1, true);
+        live.begin_hold(7, now);
+        live.set_dwell_flag(2, true);
+
+        let snapshot = live.debug_snapshot();
+        assert_eq!(snapshot.yields, [true, false, false, false]);
+        assert_eq!(snapshot.turn_yields, [false, true, false, false]);
+        assert!(snapshot.hold_requested);
+
+        let mut restored = ChromeState::default();
+        restored.begin_hold(99, now);
+        restored.set_dwell_flag(3, true);
+        restored.restore_debug_snapshot(snapshot);
+
+        assert_eq!(*restored.yields(), snapshot.yields);
+        assert_eq!(*restored.turn_yields(), snapshot.turn_yields);
+        assert!(restored.stack_hold().is_none());
+        assert!(!restored.any_dwell());
     }
 }
