@@ -1375,16 +1375,958 @@ fn reports_late_operation_index_after_applying_earlier_operations() {
     assert_eq!(game.players[0].life, 7);
 }
 
-#[test]
-fn scalar_unimplemented_object_operations_remain_out_of_scope() {
-    let mut game = Game::with_players(2, 0);
+fn card_id(name: &str) -> String {
+    card(name).id.to_owned()
+}
+
+fn assert_operation_error(game: &mut Game, operation: Mutation, reason: ErrorReason) {
     assert_eq!(
-        apply_one(&mut game, Mutation::RemoveCard { object_id: 0 },),
+        apply_one(game, operation),
         Err(EditError {
             operation_index: Some(0),
-            reason: ErrorReason::InvalidValue
+            reason,
         })
     );
+}
+
+#[test]
+fn create_places_known_cards_in_every_zone_with_exact_arena_ids() {
+    for destination in [
+        DebugZone::Library,
+        DebugZone::Hand,
+        DebugZone::Battlefield,
+        DebugZone::Graveyard,
+        DebugZone::Exile,
+        DebugZone::Command,
+    ] {
+        let mut game = Game::with_players(2, 0);
+        let object_id = game.objects.len() as ObjectId;
+        apply_one(
+            &mut game,
+            Mutation::CreateCard {
+                object_id,
+                card_id: card_id("Grizzly Bears"),
+                owner: P0,
+                controller: if destination == DebugZone::Battlefield {
+                    P1
+                } else {
+                    P0
+                },
+                destination,
+                commander: true,
+                face_down: false,
+            },
+        )
+        .expect("valid card creation");
+
+        match (&game.objects[object_id as usize], destination) {
+            (Object::Permanent(permanent), DebugZone::Battlefield) => {
+                assert_eq!(permanent.owner, P0);
+                assert_eq!(game.controller_of(object_id), P1);
+                assert!(permanent.commander);
+                assert!(permanent.summoning_sick);
+                assert!(permanent.entered_this_turn);
+                assert_eq!(permanent.marked_damage, 0);
+                assert_eq!(permanent.plus_counters, 0);
+            }
+            (Object::Card(created), _) => {
+                assert_eq!(created.owner, P0);
+                assert_eq!(
+                    created.zone,
+                    match destination {
+                        DebugZone::Library => Zone::Library,
+                        DebugZone::Hand => Zone::Hand,
+                        DebugZone::Battlefield => unreachable!(),
+                        DebugZone::Graveyard => Zone::Graveyard,
+                        DebugZone::Exile => Zone::Exile,
+                        DebugZone::Command => Zone::Command,
+                    }
+                );
+                assert!(created.commander);
+            }
+            other => panic!("wrong created object: {other:?}"),
+        }
+        if destination == DebugZone::Library {
+            assert_eq!(game.players[0].library, vec![object_id]);
+        }
+    }
+}
+
+#[test]
+fn create_rejects_unknown_cards_bad_ids_players_and_public_face_down_cards() {
+    let base = || Game::with_players(2, 0);
+    let create = |object_id, card_id: String, owner, controller, destination, face_down| {
+        Mutation::CreateCard {
+            object_id,
+            card_id,
+            owner,
+            controller,
+            destination,
+            commander: false,
+            face_down,
+        }
+    };
+
+    let mut game = base();
+    assert_operation_error(
+        &mut game,
+        create(0, "not-a-known-card".into(), P0, P0, DebugZone::Hand, false),
+        ErrorReason::UnknownEntity,
+    );
+    let mut game = base();
+    assert_operation_error(
+        &mut game,
+        create(1, card_id("Forest"), P0, P0, DebugZone::Hand, false),
+        ErrorReason::InvalidValue,
+    );
+    let existing = game.spawn_in_hand(P0, card("Forest"));
+    assert_operation_error(
+        &mut game,
+        create(existing, card_id("Forest"), P0, P0, DebugZone::Hand, false),
+        ErrorReason::DuplicateId,
+    );
+    for (owner, controller, destination, face_down, reason) in [
+        (
+            PlayerId(8),
+            P0,
+            DebugZone::Hand,
+            false,
+            ErrorReason::UnknownEntity,
+        ),
+        (
+            P0,
+            PlayerId(8),
+            DebugZone::Battlefield,
+            false,
+            ErrorReason::UnknownEntity,
+        ),
+        (P0, P1, DebugZone::Hand, false, ErrorReason::InvalidValue),
+        (
+            P0,
+            P0,
+            DebugZone::Graveyard,
+            true,
+            ErrorReason::InvalidValue,
+        ),
+        (P0, P0, DebugZone::Command, true, ErrorReason::InvalidValue),
+    ] {
+        let mut game = base();
+        assert_operation_error(
+            &mut game,
+            create(
+                0,
+                card_id("Forest"),
+                owner,
+                controller,
+                destination,
+                face_down,
+            ),
+            reason,
+        );
+    }
+}
+
+#[test]
+fn move_mints_a_new_object_tombstones_the_old_and_preserves_identity() {
+    let mut game = Game::with_players(2, 0);
+    let old = game.spawn_in_library(P0, card("Grizzly Bears"));
+    if let Object::Card(card) = &mut game.objects[old as usize] {
+        card.commander = true;
+    }
+    let new = game.next_object_id();
+    apply_one(
+        &mut game,
+        Mutation::MoveCard {
+            object_id: old,
+            new_object_id: new,
+            destination: DebugZone::Battlefield,
+            controller: P1,
+            face_down: true,
+        },
+    )
+    .expect("valid move");
+
+    assert!(matches!(game.objects[old as usize], Object::Moved { to } if to == new));
+    let Object::Permanent(permanent) = &game.objects[new as usize] else {
+        panic!("destination is not a permanent");
+    };
+    assert_eq!(permanent.owner, P0);
+    assert_eq!(game.controller_of(new), P1);
+    assert!(permanent.commander);
+    assert!(permanent.face_down);
+    assert!(!game.players[0].library.contains(&old));
+
+    let next = game.next_object_id();
+    apply_one(
+        &mut game,
+        Mutation::MoveCard {
+            object_id: new,
+            new_object_id: next,
+            destination: DebugZone::Library,
+            controller: P0,
+            face_down: false,
+        },
+    )
+    .expect("the newly controlled permanent can move again");
+    assert_eq!(game.players[0].library.last(), Some(&next));
+    assert!(
+        matches!(&game.objects[next as usize], Object::Card(card) if card.commander && card.owner == P0)
+    );
+}
+
+#[test]
+fn move_card_visits_every_destination_and_inserts_library_at_bottom() {
+    for destination in [
+        DebugZone::Library,
+        DebugZone::Hand,
+        DebugZone::Battlefield,
+        DebugZone::Graveyard,
+        DebugZone::Exile,
+        DebugZone::Command,
+    ] {
+        let mut game = Game::with_players(2, 0);
+        let prior_bottom = game.spawn_in_library(P0, card("Forest"));
+        let old = game.spawn_in_hand(P0, card("Grizzly Bears"));
+        let new = game.next_object_id();
+        apply_one(
+            &mut game,
+            Mutation::MoveCard {
+                object_id: old,
+                new_object_id: new,
+                destination,
+                controller: P0,
+                face_down: false,
+            },
+        )
+        .expect("valid move destination");
+        if destination == DebugZone::Library {
+            assert_eq!(game.players[0].library, vec![prior_bottom, new]);
+        }
+    }
+}
+
+#[test]
+fn move_dirty_permanents_to_every_destination_gets_fresh_destination_state() {
+    for destination in [
+        DebugZone::Library,
+        DebugZone::Hand,
+        DebugZone::Battlefield,
+        DebugZone::Graveyard,
+        DebugZone::Exile,
+        DebugZone::Command,
+    ] {
+        let mut game = Game::with_players(2, 0);
+        let old = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+        game.permanent_mut(old).commander = true;
+        game.permanent_mut(old).tapped = true;
+        game.permanent_mut(old).marked_damage = 7;
+        game.set_plus_counter_aggregate(old, 5);
+        let new = game.next_object_id();
+
+        apply_one(
+            &mut game,
+            Mutation::MoveCard {
+                object_id: old,
+                new_object_id: new,
+                destination,
+                controller: P0,
+                face_down: false,
+            },
+        )
+        .expect("unreferenced permanent moves to any debug destination");
+
+        if destination == DebugZone::Battlefield {
+            let Object::Permanent(permanent) = &game.objects[new as usize] else {
+                panic!("battlefield destination must be a permanent");
+            };
+            assert!(permanent.commander);
+            assert!(!permanent.tapped);
+            assert_eq!(permanent.marked_damage, 0);
+            assert_eq!(permanent.plus_counters, 0);
+        } else {
+            assert!(matches!(&game.objects[new as usize], Object::Card(card) if card.commander));
+        }
+        assert!(
+            game.modifier_provenance
+                .counter_batches
+                .iter()
+                .all(|&(object, ..)| object != old),
+            "battlefield provenance is discarded with old object state"
+        );
+    }
+}
+
+#[test]
+fn move_clears_ordinary_modifier_provenance_from_departing_permanent() {
+    let mut game = Game::with_players(2, 0);
+    let old = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    game.apply(&crate::Event::TempBoost {
+        object: old,
+        power: 2,
+        toughness: 2,
+        keywords: &[],
+        source_name: "ordinary boost",
+        ends_at_end_of_combat: false,
+    });
+    assert!(
+        game.modifier_provenance
+            .modifiers
+            .iter()
+            .any(|modifier| modifier.host == old)
+    );
+
+    let new = game.next_object_id();
+    apply_one(
+        &mut game,
+        Mutation::MoveCard {
+            object_id: old,
+            new_object_id: new,
+            destination: DebugZone::Hand,
+            controller: P0,
+            face_down: false,
+        },
+    )
+    .expect("an ordinary boost lapses when its permanent changes zones");
+
+    assert!(
+        game.modifier_provenance
+            .modifiers
+            .iter()
+            .all(|modifier| modifier.host != old)
+    );
+}
+
+#[test]
+fn detach_then_move_control_aura_clears_its_control_timestamp() {
+    let mut game = Game::with_players(2, 0);
+    let aura = game.spawn_on_battlefield(P0, card("Control Magic"));
+    let host = game.spawn_on_battlefield(P1, card("Grizzly Bears"));
+    game.apply(&crate::Event::AttachedTo {
+        object: aura,
+        host: Some(host),
+    });
+    assert!(
+        game.play_permissions
+            .aura_control_timestamps
+            .iter()
+            .any(|&(object, _)| object == aura)
+    );
+
+    let new = game.next_object_id();
+    apply_operations(
+        &mut game,
+        &[
+            Mutation::SetAttachment {
+                object_id: aura,
+                attached_to: None,
+            },
+            Mutation::MoveCard {
+                object_id: aura,
+                new_object_id: new,
+                destination: DebugZone::Graveyard,
+                controller: P0,
+                face_down: false,
+            },
+        ],
+    )
+    .expect("detached control Aura can change zones in the same ordered batch");
+
+    assert!(
+        game.play_permissions
+            .aura_control_timestamps
+            .iter()
+            .all(|&(object, _)| object != aura)
+    );
+}
+
+#[test]
+fn move_clears_owned_conditioned_control_override_with_departing_source() {
+    let mut game = Game::with_players(2, 0);
+    let old = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    game.play_permissions.conditioned_control_overrides.push((
+        old,
+        P1,
+        crate::ControlCondition {
+            source: old,
+            needs_tapped: false,
+        },
+        1,
+    ));
+
+    let new = game.next_object_id();
+    apply_one(
+        &mut game,
+        Mutation::MoveCard {
+            object_id: old,
+            new_object_id: new,
+            destination: DebugZone::Hand,
+            controller: P0,
+            face_down: false,
+        },
+    )
+    .expect("a departing object's owned control metadata is cleared before blocker checks");
+
+    assert!(
+        game.play_permissions
+            .conditioned_control_overrides
+            .iter()
+            .all(|entry| entry.0 != old)
+    );
+}
+
+#[test]
+fn move_rejects_external_condition_dependency_without_clearing_its_owner() {
+    let mut game = Game::with_players(2, 0);
+    let dependency = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    let controlled = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    game.play_permissions.conditioned_control_overrides.push((
+        controlled,
+        P1,
+        crate::ControlCondition {
+            source: dependency,
+            needs_tapped: false,
+        },
+        1,
+    ));
+
+    let new = game.next_object_id();
+    assert_operation_error(
+        &mut game,
+        Mutation::MoveCard {
+            object_id: dependency,
+            new_object_id: new,
+            destination: DebugZone::Hand,
+            controller: P0,
+            face_down: false,
+        },
+        ErrorReason::ReferencedObject,
+    );
+    assert!(
+        game.play_permissions
+            .conditioned_control_overrides
+            .iter()
+            .any(|entry| entry.0 == controlled && entry.2.source == dependency)
+    );
+}
+
+#[test]
+fn move_allows_recomputed_action_references_and_refreshes_actions() {
+    let mut game = Game::with_players(2, 0);
+    let old = game.spawn_in_hand(P0, card("Forest"));
+    game.refresh_actions();
+    assert!(
+        references_to(&game, old)
+            .iter()
+            .any(|site| site.disposition == ReferenceDisposition::Recomputed)
+    );
+
+    let new = game.next_object_id();
+    apply_one(
+        &mut game,
+        Mutation::MoveCard {
+            object_id: old,
+            new_object_id: new,
+            destination: DebugZone::Exile,
+            controller: P0,
+            face_down: false,
+        },
+    )
+    .expect("derived actions do not block moves");
+
+    assert!(
+        references_to(&game, old)
+            .iter()
+            .all(|site| site.disposition != ReferenceDisposition::Recomputed)
+    );
+}
+
+#[test]
+fn move_rejects_bad_ids_kinds_constraints_tokens_and_blocking_references() {
+    let mutation =
+        |object_id, new_object_id, destination, controller, face_down| Mutation::MoveCard {
+            object_id,
+            new_object_id,
+            destination,
+            controller,
+            face_down,
+        };
+
+    let mut game = Game::with_players(2, 0);
+    let source_card = game.spawn_in_hand(P0, card("Forest"));
+    let next = game.next_object_id();
+    assert_operation_error(
+        &mut game,
+        mutation(999, next, DebugZone::Hand, P0, false),
+        ErrorReason::UnknownEntity,
+    );
+    assert_operation_error(
+        &mut game,
+        mutation(source_card, source_card, DebugZone::Hand, P0, false),
+        ErrorReason::DuplicateId,
+    );
+    assert_operation_error(
+        &mut game,
+        mutation(source_card, next + 1, DebugZone::Hand, P0, false),
+        ErrorReason::InvalidValue,
+    );
+    assert_operation_error(
+        &mut game,
+        mutation(source_card, next, DebugZone::Hand, P1, false),
+        ErrorReason::InvalidValue,
+    );
+    assert_operation_error(
+        &mut game,
+        mutation(source_card, next, DebugZone::Graveyard, P0, true),
+        ErrorReason::InvalidValue,
+    );
+
+    let permanent = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    game.combat.attackers.push(permanent);
+    let next = game.next_object_id();
+    assert_operation_error(
+        &mut game,
+        mutation(permanent, next, DebugZone::Hand, P0, false),
+        ErrorReason::ReferencedObject,
+    );
+
+    let aura = game.spawn_on_battlefield(P0, card("Wild Growth"));
+    let host = game.spawn_on_battlefield(P0, card("Forest"));
+    game.permanent_mut(aura).attached_to = Some(host);
+    let next = game.next_object_id();
+    assert_operation_error(
+        &mut game,
+        mutation(host, next, DebugZone::Hand, P0, false),
+        ErrorReason::ReferencedObject,
+    );
+    let next = game.next_object_id();
+    assert_operation_error(
+        &mut game,
+        mutation(aura, next, DebugZone::Hand, P0, false),
+        ErrorReason::ReferencedObject,
+    );
+
+    let pending = game.spawn_in_hand(P0, card("Lightning Bolt"));
+    game.resume.spell_finish = Some(pending);
+    let next = game.next_object_id();
+    assert_operation_error(
+        &mut game,
+        mutation(pending, next, DebugZone::Exile, P0, false),
+        ErrorReason::ReferencedObject,
+    );
+
+    let token = game.spawn_token_on_battlefield(P0, card("Grizzly Bears"));
+    let next = game.next_object_id();
+    assert_operation_error(
+        &mut game,
+        mutation(token, next, DebugZone::Graveyard, P0, false),
+        ErrorReason::InvalidValue,
+    );
+    apply_one(
+        &mut game,
+        mutation(token, next, DebugZone::Battlefield, P0, false),
+    )
+    .expect("a structurally valid battlefield reset keeps token identity");
+    assert!(
+        matches!(&game.objects[next as usize], Object::Permanent(permanent) if permanent.token)
+    );
+}
+
+#[test]
+fn move_rejects_spell_moved_and_removed_sources() {
+    let mut game = Game::with_players(2, 0);
+    let moved = game.spawn_in_hand(P0, card("Forest"));
+    let target = game.spawn_in_hand(P0, card("Forest"));
+    game.objects[moved as usize] = Object::Moved { to: target };
+    let removed = game.spawn_in_hand(P0, card("Forest"));
+    game.mark_removed(removed);
+    let spell = game.spawn_in_hand(P0, card("Lightning Bolt"));
+    game.fund_mana(P0);
+    game.cast(
+        P0,
+        spell,
+        Some(crate::Target::Player(P1)),
+        0,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        false,
+        false,
+        false,
+        0,
+        0,
+        0,
+        false,
+    )
+    .unwrap();
+    let StackItem::Spell(live_spell) = game.stack[0] else {
+        panic!("cast did not create a spell");
+    };
+    for source in [moved, removed, live_spell] {
+        let next = game.next_object_id();
+        assert_operation_error(
+            &mut game,
+            Mutation::MoveCard {
+                object_id: source,
+                new_object_id: next,
+                destination: DebugZone::Hand,
+                controller: P0,
+                face_down: false,
+            },
+            ErrorReason::WrongObjectKind,
+        );
+    }
+}
+
+#[test]
+fn library_order_requires_the_exact_current_player_library_set() {
+    let mut game = Game::with_players(2, 0);
+    let ids = game.stack_library(P0, &[card("Forest"), card("Island"), card("Mountain")]);
+    let foreign = game.spawn_in_library(P1, card("Swamp"));
+    let hand = game.spawn_in_hand(P0, card("Plains"));
+    apply_one(
+        &mut game,
+        Mutation::SetLibraryOrder {
+            player: P0,
+            object_ids: vec![ids[2], ids[0], ids[1]],
+        },
+    )
+    .expect("exact reorder");
+    assert_eq!(game.players[0].library, vec![ids[2], ids[0], ids[1]]);
+
+    assert_operation_error(
+        &mut game,
+        Mutation::SetLibraryOrder {
+            player: P0,
+            object_ids: vec![ids[0], ids[0], ids[1]],
+        },
+        ErrorReason::DuplicateId,
+    );
+    for order in [
+        vec![ids[0], ids[1]],
+        vec![ids[0], ids[1], foreign],
+        vec![ids[0], ids[1], hand],
+    ] {
+        assert_operation_error(
+            &mut game,
+            Mutation::SetLibraryOrder {
+                player: P0,
+                object_ids: order,
+            },
+            ErrorReason::ZoneDisagreement,
+        );
+    }
+    assert_operation_error(
+        &mut game,
+        Mutation::SetLibraryOrder {
+            player: PlayerId(9),
+            object_ids: vec![],
+        },
+        ErrorReason::UnknownEntity,
+    );
+}
+
+#[test]
+fn remove_card_tombstones_only_unreferenced_live_nonbattlefield_cards() {
+    let mut game = Game::with_players(2, 0);
+    assert_operation_error(
+        &mut game,
+        Mutation::RemoveCard { object_id: 999 },
+        ErrorReason::UnknownEntity,
+    );
+    let removable = game.spawn_in_library(P0, card("Lightning Bolt"));
+    let expected_id = game.def_id_of(removable);
+    apply_one(
+        &mut game,
+        Mutation::RemoveCard {
+            object_id: removable,
+        },
+    )
+    .expect("unreferenced card removal");
+    assert!(
+        matches!(game.objects[removable as usize], Object::Removed { def, owner: P0 } if def == expected_id)
+    );
+
+    let permanent = game.spawn_on_battlefield(P0, card("Forest"));
+    assert_operation_error(
+        &mut game,
+        Mutation::RemoveCard {
+            object_id: permanent,
+        },
+        ErrorReason::WrongObjectKind,
+    );
+    let token = game.spawn_token_on_battlefield(P0, card("Grizzly Bears"));
+    assert_operation_error(
+        &mut game,
+        Mutation::RemoveCard { object_id: token },
+        ErrorReason::WrongObjectKind,
+    );
+    let moved = game.spawn_in_hand(P0, card("Forest"));
+    game.objects[moved as usize] = Object::Moved { to: permanent };
+    assert_operation_error(
+        &mut game,
+        Mutation::RemoveCard { object_id: moved },
+        ErrorReason::WrongObjectKind,
+    );
+    let removed = game.spawn_in_hand(P0, card("Forest"));
+    game.mark_removed(removed);
+    assert_operation_error(
+        &mut game,
+        Mutation::RemoveCard { object_id: removed },
+        ErrorReason::WrongObjectKind,
+    );
+    let spell_card = game.spawn_in_hand(P0, card("Lightning Bolt"));
+    game.fund_mana(P0);
+    game.cast(
+        P0,
+        spell_card,
+        Some(crate::Target::Player(P1)),
+        0,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        false,
+        false,
+        false,
+        0,
+        0,
+        0,
+        false,
+    )
+    .unwrap();
+    let StackItem::Spell(spell) = game.stack[0] else {
+        panic!("cast did not create a spell");
+    };
+    assert_operation_error(
+        &mut game,
+        Mutation::RemoveCard { object_id: spell },
+        ErrorReason::WrongObjectKind,
+    );
+
+    let referenced = game.spawn_in_library(P0, card("Island"));
+    game.resume.spell_finish = Some(referenced);
+    assert_operation_error(
+        &mut game,
+        Mutation::RemoveCard {
+            object_id: referenced,
+        },
+        ErrorReason::ReferencedObject,
+    );
+}
+
+#[test]
+fn remove_card_clears_owned_control_override_memberships() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_in_hand(P0, card("Forest"));
+    let condition_source = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    game.play_permissions
+        .control_overrides
+        .push((object_id, P1, "debug fixture", 1));
+    game.play_permissions
+        .permanent_control_overrides
+        .push((object_id, P1, 2));
+    game.play_permissions.conditioned_control_overrides.push((
+        object_id,
+        P1,
+        crate::ControlCondition {
+            source: condition_source,
+            needs_tapped: false,
+        },
+        3,
+    ));
+    validate_structural(&game)
+        .expect("owned metadata on a live card remains structurally reachable");
+
+    apply_one(&mut game, Mutation::RemoveCard { object_id })
+        .expect("owned control metadata is cleared before removal");
+
+    assert!(
+        game.play_permissions
+            .control_overrides
+            .iter()
+            .all(|entry| entry.0 != object_id)
+    );
+    assert!(
+        game.play_permissions
+            .permanent_control_overrides
+            .iter()
+            .all(|entry| entry.0 != object_id)
+    );
+    assert!(
+        game.play_permissions
+            .conditioned_control_overrides
+            .iter()
+            .all(|entry| entry.0 != object_id)
+    );
+}
+
+#[test]
+fn remove_card_clears_owned_aura_modifier_and_counter_memberships() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_in_hand(P0, card("Forest"));
+    game.play_permissions
+        .aura_control_timestamps
+        .push((object_id, 1));
+    game.register_modifier(
+        object_id,
+        "debug fixture",
+        crate::ModifierDuration::Indefinite,
+        crate::ModifierKind::Boost {
+            power: 1,
+            toughness: 1,
+            keywords: &[],
+        },
+    );
+    game.modifier_provenance
+        .counter_batches
+        .push((object_id, 1, "debug fixture"));
+    validate_structural(&game)
+        .expect("owned provenance on a live card remains structurally reachable");
+
+    apply_one(&mut game, Mutation::RemoveCard { object_id })
+        .expect("owned Aura and modifier provenance is cleared before removal");
+
+    assert!(
+        game.play_permissions
+            .aura_control_timestamps
+            .iter()
+            .all(|entry| entry.0 != object_id)
+    );
+    assert!(
+        game.modifier_provenance
+            .modifiers
+            .iter()
+            .all(|modifier| modifier.host != object_id)
+    );
+    assert!(
+        game.modifier_provenance
+            .counter_batches
+            .iter()
+            .all(|entry| entry.0 != object_id)
+    );
+}
+
+#[test]
+fn remove_card_explicitly_removes_library_membership() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_in_library(P0, card("Forest"));
+    assert!(game.players[0].library.contains(&object_id));
+
+    apply_one(&mut game, Mutation::RemoveCard { object_id })
+        .expect("library membership is explicitly removed");
+
+    assert!(!game.players[0].library.contains(&object_id));
+}
+
+#[test]
+fn remove_card_allows_recomputed_action_reference_and_refreshes_actions() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_in_hand(P0, card("Forest"));
+    game.refresh_actions();
+    assert!(
+        references_to(&game, object_id)
+            .iter()
+            .any(|site| site.kind == "legal_action")
+    );
+
+    apply_one(&mut game, Mutation::RemoveCard { object_id })
+        .expect("legal actions are recomputed after removal");
+
+    assert!(
+        references_to(&game, object_id)
+            .iter()
+            .all(|site| site.kind != "legal_action")
+    );
+}
+
+#[test]
+fn remove_card_clears_owned_conditioned_control_override_with_departing_source() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_in_hand(P0, card("Forest"));
+    game.play_permissions.conditioned_control_overrides.push((
+        object_id,
+        P1,
+        crate::ControlCondition {
+            source: object_id,
+            needs_tapped: false,
+        },
+        1,
+    ));
+
+    apply_one(&mut game, Mutation::RemoveCard { object_id })
+        .expect("a departing object's owned control metadata is cleared before blocker checks");
+
+    assert!(
+        game.play_permissions
+            .conditioned_control_overrides
+            .iter()
+            .all(|entry| entry.0 != object_id)
+    );
+}
+
+#[test]
+fn remove_card_rejects_external_condition_dependency_instead_of_clearing_its_owner() {
+    let mut game = Game::with_players(2, 0);
+    let dependency = game.spawn_in_hand(P0, card("Forest"));
+    let controlled = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    game.play_permissions.conditioned_control_overrides.push((
+        controlled,
+        P1,
+        crate::ControlCondition {
+            source: dependency,
+            needs_tapped: false,
+        },
+        1,
+    ));
+
+    assert_operation_error(
+        &mut game,
+        Mutation::RemoveCard {
+            object_id: dependency,
+        },
+        ErrorReason::ReferencedObject,
+    );
+    assert!(
+        game.play_permissions
+            .conditioned_control_overrides
+            .iter()
+            .any(|entry| entry.0 == controlled && entry.2.source == dependency)
+    );
+}
+
+#[test]
+fn structurally_valid_rule_illegal_debug_state_is_accepted() {
+    let mut game = Game::with_players(2, 0);
+    let ids = game.stack_library(P0, &[card("Forest"), card("Island"), card("Mountain")]);
+    let permanent = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    apply_operations(
+        &mut game,
+        &[
+            Mutation::SetLife {
+                player: P0,
+                life: 0,
+            },
+            Mutation::SetTurnState {
+                active_player: P0,
+                step: Step::Cleanup,
+                priority_player: P1,
+                consecutive_passes: 0,
+            },
+            Mutation::SetController {
+                object_id: permanent,
+                controller: P1,
+            },
+            Mutation::SetLibraryOrder {
+                player: P0,
+                object_ids: vec![ids[1], ids[2], ids[0]],
+            },
+        ],
+    )
+    .expect("rule-illegal state is structurally coherent");
+    assert_eq!(game.players[0].life, 0);
+    assert_eq!(game.step, Step::Cleanup);
+    assert_eq!(game.controller_of(permanent), P1);
 }
 
 #[test]

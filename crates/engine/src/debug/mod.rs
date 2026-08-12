@@ -6,8 +6,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    CounterKind, EffectMessage, Game, Object, ObjectId, PlayerCounterKind, PlayerId, StackItem,
-    Step, Target, Zone, card_def,
+    Card, CardId, CounterKind, EffectMessage, Game, Object, ObjectId, PlayerCounterKind, PlayerId,
+    StackItem, Step, Target, Zone, card_def, fresh_permanent, intern_card_def,
 };
 
 const MAX_VIOLATIONS: usize = 16;
@@ -321,6 +321,9 @@ fn inspect_stack_item(
 }
 
 /// Applies raw debug edits in request order, then rebuilds derived state once for the batch.
+///
+/// This function is intentionally not rollback-safe: callers must edit a transaction candidate and
+/// discard it on error. Zone edits can clear owned metadata before discovering an external blocker.
 pub fn apply_operations(game: &mut Game, operations: &[Mutation]) -> Result<(), EditError> {
     if operations.is_empty() {
         return Err(EditError {
@@ -424,12 +427,294 @@ fn apply_operation(game: &mut Game, operation: &Mutation) -> Result<(), ErrorRea
             object_id,
             attached_to,
         } => set_attachment(game, *object_id, *attached_to)?,
-        Mutation::CreateCard { .. }
-        | Mutation::MoveCard { .. }
-        | Mutation::SetLibraryOrder { .. }
-        | Mutation::RemoveCard { .. } => return Err(ErrorReason::InvalidValue),
+        Mutation::CreateCard {
+            object_id,
+            card_id,
+            owner,
+            controller,
+            destination,
+            commander,
+            face_down,
+        } => create_card(
+            game,
+            *object_id,
+            card_id,
+            DestinationState {
+                owner: *owner,
+                controller: *controller,
+                destination: *destination,
+                commander: *commander,
+                face_down: *face_down,
+            },
+        )?,
+        Mutation::MoveCard {
+            object_id,
+            new_object_id,
+            destination,
+            controller,
+            face_down,
+        } => move_card(
+            game,
+            *object_id,
+            *new_object_id,
+            *destination,
+            *controller,
+            *face_down,
+        )?,
+        Mutation::SetLibraryOrder { player, object_ids } => {
+            set_library_order(game, *player, object_ids)?;
+        }
+        Mutation::RemoveCard { object_id } => remove_card(game, *object_id)?,
     }
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+struct DestinationState {
+    owner: PlayerId,
+    controller: PlayerId,
+    destination: DebugZone,
+    commander: bool,
+    face_down: bool,
+}
+
+fn create_card(
+    game: &mut Game,
+    object_id: ObjectId,
+    card_id: &str,
+    state: DestinationState,
+) -> Result<(), ErrorReason> {
+    require_next_object_id(game, object_id)?;
+    require_players_and_destination(
+        game,
+        state.owner,
+        state.controller,
+        state.destination,
+        state.face_down,
+    )?;
+    let def = resolve_card_id(card_id).ok_or(ErrorReason::UnknownEntity)?;
+    let object = state
+        .destination
+        .object(def, state.owner, state.commander, state.face_down);
+    let created = game.create_object(None, object);
+    debug_assert_eq!(created, object_id);
+    finish_destination(
+        game,
+        created,
+        state.owner,
+        state.controller,
+        state.destination,
+    );
+    Ok(())
+}
+
+fn move_card(
+    game: &mut Game,
+    object_id: ObjectId,
+    new_object_id: ObjectId,
+    destination: DebugZone,
+    controller: PlayerId,
+    face_down: bool,
+) -> Result<(), ErrorReason> {
+    require_next_object_id(game, new_object_id)?;
+    let Some(source) = game.objects.get(object_id as usize) else {
+        return Err(ErrorReason::UnknownEntity);
+    };
+    let (def, owner, commander, token, attached) = match source {
+        Object::Card(card) => (card.def, card.owner, card.commander, false, false),
+        Object::Permanent(permanent) => (
+            permanent.def,
+            permanent.owner,
+            permanent.commander,
+            permanent.token,
+            permanent.attached_to.is_some(),
+        ),
+        Object::Spell(_) | Object::Moved { .. } | Object::Removed { .. } => {
+            return Err(ErrorReason::WrongObjectKind);
+        }
+    };
+    require_players_and_destination(game, owner, controller, destination, face_down)?;
+    if attached {
+        return Err(ErrorReason::ReferencedObject);
+    }
+    if token && destination != DebugZone::Battlefield {
+        return Err(ErrorReason::InvalidValue);
+    }
+
+    remove_library_membership(game, object_id);
+    clear_zone_scoped_state(game, object_id);
+    if !blocking_references_to(game, object_id).is_empty() {
+        return Err(ErrorReason::ReferencedObject);
+    }
+
+    let mut object = destination.object(def, owner, commander, face_down);
+    if let Object::Permanent(permanent) = &mut object {
+        permanent.token = token;
+    }
+    // CR 400.7: the destination is a new arena object and the prior slot becomes lineage.
+    let created = game.create_object(Some(object_id), object);
+    debug_assert_eq!(created, new_object_id);
+    finish_destination(game, created, owner, controller, destination);
+    Ok(())
+}
+
+fn set_library_order(
+    game: &mut Game,
+    player: PlayerId,
+    object_ids: &[ObjectId],
+) -> Result<(), ErrorReason> {
+    let Some(state) = game.players.get(player.0 as usize) else {
+        return Err(ErrorReason::UnknownEntity);
+    };
+    let requested: HashSet<_> = object_ids.iter().copied().collect();
+    if requested.len() != object_ids.len() {
+        return Err(ErrorReason::DuplicateId);
+    }
+    let current: HashSet<_> = state.library.iter().copied().collect();
+    if current.len() != state.library.len() || requested != current {
+        return Err(ErrorReason::ZoneDisagreement);
+    }
+    game.players[player.0 as usize].library = object_ids.to_vec();
+    Ok(())
+}
+
+fn remove_card(game: &mut Game, object_id: ObjectId) -> Result<(), ErrorReason> {
+    let Some(object) = game.objects.get(object_id as usize) else {
+        return Err(ErrorReason::UnknownEntity);
+    };
+    if !matches!(object, Object::Card(_)) {
+        return Err(ErrorReason::WrongObjectKind);
+    }
+    remove_library_membership(game, object_id);
+    clear_zone_scoped_state(game, object_id);
+    if !blocking_references_to(game, object_id).is_empty() {
+        return Err(ErrorReason::ReferencedObject);
+    }
+    let has_unrepaired_reference =
+        references_to(game, object_id)
+            .iter()
+            .any(|site| match site.disposition {
+                ReferenceDisposition::Recomputed
+                | ReferenceDisposition::Historical
+                | ReferenceDisposition::Lineage => false,
+                ReferenceDisposition::Blocking
+                | ReferenceDisposition::Membership
+                | ReferenceDisposition::ZoneScoped => true,
+            });
+    if has_unrepaired_reference {
+        return Err(ErrorReason::ReferencedObject);
+    }
+    game.mark_removed(object_id);
+    Ok(())
+}
+
+fn require_next_object_id(game: &Game, requested: ObjectId) -> Result<(), ErrorReason> {
+    let next = game.next_object_id();
+    if requested < next {
+        return Err(ErrorReason::DuplicateId);
+    }
+    if requested > next {
+        return Err(ErrorReason::InvalidValue);
+    }
+    Ok(())
+}
+
+fn require_players_and_destination(
+    game: &Game,
+    owner: PlayerId,
+    controller: PlayerId,
+    destination: DebugZone,
+    face_down: bool,
+) -> Result<(), ErrorReason> {
+    if game.players.get(owner.0 as usize).is_none()
+        || game.players.get(controller.0 as usize).is_none()
+    {
+        return Err(ErrorReason::UnknownEntity);
+    }
+    if destination != DebugZone::Battlefield && controller != owner {
+        return Err(ErrorReason::InvalidValue);
+    }
+    if face_down && matches!(destination, DebugZone::Graveyard | DebugZone::Command) {
+        return Err(ErrorReason::InvalidValue);
+    }
+    Ok(())
+}
+
+fn resolve_card_id(id: &str) -> Option<CardId> {
+    cards::get(id).map(intern_card_def)
+}
+
+fn remove_library_membership(game: &mut Game, object_id: ObjectId) {
+    for player in &mut game.players {
+        player.library.retain(|&member| member != object_id);
+    }
+}
+
+fn clear_zone_scoped_state(game: &mut Game, object_id: ObjectId) {
+    game.play_permissions
+        .control_overrides
+        .retain(|&(object, ..)| object != object_id);
+    game.play_permissions
+        .permanent_control_overrides
+        .retain(|&(object, ..)| object != object_id);
+    game.play_permissions
+        .conditioned_control_overrides
+        .retain(|&(object, ..)| object != object_id);
+    game.clear_modifier_provenance(object_id);
+    game.play_permissions
+        .aura_control_timestamps
+        .retain(|&(object, _)| object != object_id);
+}
+
+fn finish_destination(
+    game: &mut Game,
+    object_id: ObjectId,
+    owner: PlayerId,
+    controller: PlayerId,
+    destination: DebugZone,
+) {
+    if destination == DebugZone::Library {
+        game.players[owner.0 as usize].library.push(object_id);
+    }
+    if destination != DebugZone::Battlefield {
+        return;
+    }
+    game.permanent_mut(object_id).continuous_timestamp = game.stamp_continuous_timestamp();
+    if controller == owner {
+        return;
+    }
+    let timestamp = game.stamp_control_timestamp();
+    game.play_permissions
+        .permanent_control_overrides
+        .push((object_id, controller, timestamp));
+}
+
+impl DebugZone {
+    fn object(self, def: CardId, owner: PlayerId, commander: bool, face_down: bool) -> Object {
+        if self == Self::Battlefield {
+            let mut permanent = fresh_permanent(def, owner, true, commander);
+            permanent.face_down = face_down;
+            return Object::Permanent(permanent);
+        }
+        Object::Card(Card {
+            def,
+            owner,
+            zone: self.zone(),
+            commander,
+            face_down,
+        })
+    }
+
+    fn zone(self) -> Zone {
+        match self {
+            Self::Library => Zone::Library,
+            Self::Hand => Zone::Hand,
+            Self::Battlefield => Zone::Battlefield,
+            Self::Graveyard => Zone::Graveyard,
+            Self::Exile => Zone::Exile,
+            Self::Command => Zone::Command,
+        }
+    }
 }
 
 fn set_controller(
@@ -1447,8 +1732,10 @@ fn visit_attachment(
 enum ReferenceDisposition {
     /// The referencing state must be explicitly resolved before the object can leave its slot.
     Blocking,
-    /// Ordered zone membership that a move updates as part of changing zones.
+    /// Ordered zone membership explicitly removed as part of changing zones.
     Membership,
+    /// State owned by the departing zone object and actively cleared before it leaves its slot.
+    ZoneScoped,
     /// A derived cache discarded and rebuilt after an edit batch.
     Recomputed,
     /// Last-known information or history whose retired object IDs remain meaningful.
@@ -1466,6 +1753,9 @@ struct ReferenceSite {
 fn reference_disposition(kind: &'static str) -> ReferenceDisposition {
     match kind {
         "library" => ReferenceDisposition::Membership,
+        "control_override" | "aura_control" | "modifier" | "counter_batch" => {
+            ReferenceDisposition::ZoneScoped
+        }
         "legal_action" => ReferenceDisposition::Recomputed,
         "moved_to" => ReferenceDisposition::Lineage,
         "damage_history" | "draw_history" | "hand_seen" | "block_history" | "batch_scratch"
