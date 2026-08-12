@@ -86,6 +86,11 @@ debug-cli-check:
     ./scripts/test_debug_just_recipes.sh
 
 [group('server')]
+[doc("Build debug and release servers and prove the release omits the debug API")]
+debug-release-isolation:
+    ./scripts/check_debug_release_absence.sh
+
+[group('server')]
 [doc("proto-lint + proto-breaking + debug client and CLI checks")]
 proto-check: proto-lint proto-breaking debug-ts-exclusion debug-cli-check
 

@@ -18,8 +18,25 @@ COPY toasty ./toasty
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
-    cargo build -p server --release \
-    && cp target/release/server /server
+    set -eu; \
+    cargo build -p server --release --bin server; \
+    for needle in \
+      'MTGFR_DEBUG_IMPLEMENTATION_MARKER_V1' \
+      'mtgfr.debug.v1.DebugService' \
+      '/mtgfr.debug.v1.DebugService/'; \
+    do \
+      if grep -aFq -- "$needle" target/release/server; then \
+        echo "release server contains forbidden debug bytes: $needle" >&2; \
+        exit 1; \
+      else \
+        status=$?; \
+      fi; \
+      if [ "$status" -ne 1 ]; then \
+        echo "failed to inspect release server for: $needle" >&2; \
+        exit "$status"; \
+      fi; \
+    done; \
+    cp target/release/server /server
 
 # Empty dir for COPY --chown into the distroless image (nonroot uid 65532).
 RUN mkdir -p /logs_placeholder
