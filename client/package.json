@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "gen:wire": "PATH=\"$PWD/node_modules/.bin:$PATH\" bunx --bun buf generate --template ../proto/buf.gen.yaml ../proto",
+    "gen:wire": "PATH=\"$PWD/node_modules/.bin:$PATH\" bunx --bun buf generate --template ../proto/buf.gen.yaml --exclude-path ../proto/mtgfr/debug ../proto",
     "gen:tokens": "bun scripts/gen-tokens.mjs",
     "gen:tokens:check": "bun scripts/gen-tokens.mjs --check",
     "gen": "bun run gen:wire && bun run gen:tokens",

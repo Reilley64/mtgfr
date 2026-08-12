@@ -1,0 +1,232 @@
+syntax = "proto3";
+
+package mtgfr.debug.v1;
+
+service DebugService {
+  rpc ListTables(ListTablesRequest) returns (ListTablesResponse);
+  rpc InspectTable(InspectTableRequest) returns (InspectTableResponse);
+  rpc MutateTable(MutateTableRequest) returns (MutateTableResponse);
+}
+
+message ListTablesRequest {}
+message TableSummary {
+  string table_id = 1;
+  uint64 debug_revision = 2;
+  uint64 table_seq = 3;
+}
+message ListTablesResponse {
+  repeated TableSummary tables = 1;
+}
+
+message InspectTableRequest {
+  string table_id = 1;
+}
+message InspectTableResponse {
+  string table_id = 1;
+  uint64 debug_revision = 2;
+  uint64 table_seq = 3;
+  bool debug_mutated = 4;
+  GameInspection game = 5;
+}
+message GameInspection {
+  repeated PlayerInspection players = 1;
+  repeated ObjectInspection objects = 2;
+  repeated StackInspection stack = 3;
+  uint32 active_player = 4;
+  Step step = 5;
+  uint32 priority_player = 6;
+  uint32 consecutive_passes = 7;
+  bool has_pending_choice = 8;
+  bool has_deferred_resume = 9;
+}
+message PlayerInspection {
+  uint32 player_id = 1;
+  sint32 life = 2;
+  uint32 poison = 3;
+  uint32 rad = 4;
+  repeated uint32 library = 5;
+  repeated uint32 hand = 6;
+  repeated uint32 graveyard = 7;
+  repeated uint32 exile = 8;
+  repeated uint32 command = 9;
+}
+message ObjectInspection {
+  uint32 object_id = 1;
+  oneof state {
+    CardInspection card = 2;
+    PermanentInspection permanent = 3;
+    SpellInspection spell = 4;
+    MovedInspection moved = 5;
+    RemovedInspection removed = 6;
+  }
+}
+message CardInspection {
+  string card_id = 1;
+  uint32 owner = 2;
+  Zone zone = 3;
+  bool commander = 4;
+  bool face_down = 5;
+}
+message PermanentInspection {
+  string card_id = 1;
+  uint32 owner = 2;
+  uint32 controller = 3;
+  bool tapped = 4;
+  sint32 marked_damage = 5;
+  sint32 plus_one_counters = 6;
+  optional uint32 attached_to = 7;
+  bool commander = 8;
+  bool token = 9;
+  bool face_down = 10;
+}
+message SpellInspection {
+  string card_id = 1;
+  uint32 controller = 2;
+}
+message MovedInspection {
+  uint32 to_object_id = 1;
+}
+message RemovedInspection {
+  string card_id = 1;
+  uint32 owner = 2;
+}
+message StackInspection {
+  uint32 position_from_bottom = 1;
+  string kind = 2;
+  optional uint32 source_object_id = 3;
+  uint32 controller = 4;
+  string label = 5;
+}
+
+enum Zone {
+  ZONE_UNSPECIFIED = 0;
+  ZONE_LIBRARY = 1;
+  ZONE_HAND = 2;
+  ZONE_BATTLEFIELD = 3;
+  ZONE_GRAVEYARD = 4;
+  ZONE_EXILE = 5;
+  ZONE_COMMAND = 6;
+}
+enum Step {
+  STEP_UNSPECIFIED = 0;
+  STEP_UNTAP = 1;
+  STEP_UPKEEP = 2;
+  STEP_DRAW = 3;
+  STEP_MAIN_1 = 4;
+  STEP_BEGIN_COMBAT = 5;
+  STEP_DECLARE_ATTACKERS = 6;
+  STEP_DECLARE_BLOCKERS = 7;
+  STEP_FIRST_STRIKE_COMBAT_DAMAGE = 8;
+  STEP_COMBAT_DAMAGE = 9;
+  STEP_END_COMBAT = 10;
+  STEP_MAIN_2 = 11;
+  STEP_END = 12;
+  STEP_CLEANUP = 13;
+}
+enum PlayerCounter {
+  PLAYER_COUNTER_UNSPECIFIED = 0;
+  PLAYER_COUNTER_POISON = 1;
+  PLAYER_COUNTER_RAD = 2;
+}
+
+message MutateTableRequest {
+  string table_id = 1;
+  optional uint64 expected_debug_revision = 2;
+  optional uint64 expected_table_seq = 3;
+  repeated Mutation operations = 4;
+}
+message Mutation {
+  oneof operation {
+    SetLife set_life = 1;
+    SetPlayerCounter set_player_counter = 2;
+    SetTurnState set_turn_state = 3;
+    SetPermanentState set_permanent_state = 4;
+    SetController set_controller = 5;
+    SetAttachment set_attachment = 6;
+    CreateCard create_card = 7;
+    MoveCard move_card = 8;
+    SetLibraryOrder set_library_order = 9;
+    RemoveCard remove_card = 10;
+  }
+}
+message SetLife {
+  uint32 player = 1;
+  sint32 life = 2;
+}
+message SetPlayerCounter {
+  uint32 player = 1;
+  PlayerCounter counter = 2;
+  uint32 value = 3;
+}
+message SetTurnState {
+  uint32 active_player = 1;
+  Step step = 2;
+  uint32 priority_player = 3;
+  uint32 consecutive_passes = 4;
+}
+message SetPermanentState {
+  uint32 object_id = 1;
+  optional bool tapped = 2;
+  optional sint32 marked_damage = 3;
+  optional sint32 plus_one_counters = 4;
+}
+message SetController {
+  uint32 object_id = 1;
+  uint32 controller = 2;
+}
+message SetAttachment {
+  uint32 object_id = 1;
+  optional uint32 attached_to = 2;
+}
+message CreateCard {
+  uint32 object_id = 1;
+  string card_id = 2;
+  uint32 owner = 3;
+  uint32 controller = 4;
+  Zone destination = 5;
+  bool commander = 6;
+  bool face_down = 7;
+}
+message MoveCard {
+  uint32 object_id = 1;
+  uint32 new_object_id = 2;
+  Zone destination = 3;
+  uint32 controller = 4;
+  bool face_down = 5;
+}
+message SetLibraryOrder {
+  uint32 player = 1;
+  repeated uint32 object_ids = 2;
+}
+message RemoveCard {
+  uint32 object_id = 1;
+}
+message MutateTableResponse {
+  uint64 debug_revision = 1;
+  uint64 table_seq = 2;
+  uint32 applied_operation_count = 3;
+}
+
+enum DebugErrorReason {
+  DEBUG_ERROR_REASON_UNSPECIFIED = 0;
+  DEBUG_ERROR_REASON_STALE_DEBUG_REVISION = 1;
+  DEBUG_ERROR_REASON_STALE_TABLE_SEQ = 2;
+  DEBUG_ERROR_REASON_UNKNOWN_ENTITY = 3;
+  DEBUG_ERROR_REASON_DUPLICATE_ID = 4;
+  DEBUG_ERROR_REASON_INVALID_VALUE = 5;
+  DEBUG_ERROR_REASON_WRONG_OBJECT_KIND = 6;
+  DEBUG_ERROR_REASON_ZONE_DISAGREEMENT = 7;
+  DEBUG_ERROR_REASON_REFERENCED_OBJECT = 8;
+  DEBUG_ERROR_REASON_ATTACHMENT_CYCLE = 9;
+  DEBUG_ERROR_REASON_PROJECTION_FAILED = 10;
+  DEBUG_ERROR_REASON_EMPTY_BATCH = 11;
+}
+message Violation {
+  string code = 1;
+  string message = 2;
+}
+message ErrorDetail {
+  optional uint32 operation_index = 1;
+  DebugErrorReason reason = 2;
+  repeated Violation violations = 3;
+}

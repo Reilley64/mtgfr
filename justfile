@@ -61,8 +61,13 @@ proto-breaking:
     cd client && PATH="$PWD/node_modules/.bin:$PATH" bunx --bun buf breaking --against '../.git#branch=origin/main,subdir=proto' ../proto
 
 [group('server')]
-[doc("proto-lint + proto-breaking")]
-proto-check: proto-lint proto-breaking
+[doc("Fail if debug protobuf artifacts appear in browser wire generation")]
+debug-ts-exclusion:
+    ./scripts/check_debug_ts_exclusion.sh
+
+[group('server')]
+[doc("proto-lint + proto-breaking + debug TypeScript exclusion")]
+proto-check: proto-lint proto-breaking debug-ts-exclusion
 
 # ── Docs / OpenSpec ───────────────────────────────────────────────────────────────────
 

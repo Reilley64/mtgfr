@@ -28,6 +28,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 # gRPC transport for the .proto-owned wire (wire-protocol-and-visibility spec): tonic 0.12+ runs on hyper 1 / axum 0.8.
 tonic = "0.12"
 prost = "0.13"
+pbjson = "0.7"
 tokio-stream = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
@@ -49,6 +50,7 @@ tracing-opentelemetry = "0.32"
 
 [build-dependencies]
 tonic-build = "0.12"
+pbjson-build = "0.7"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

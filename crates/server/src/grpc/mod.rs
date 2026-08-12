@@ -18,6 +18,14 @@ pub mod pb {
     tonic::include_proto!("mtgfr.v1");
 }
 
+/// Generated debug-only types, clients, service traits, and protobuf-JSON mappings.
+#[cfg(debug_assertions)]
+#[allow(clippy::useless_borrows_in_formatting)]
+pub mod debug_pb {
+    tonic::include_proto!("mtgfr.debug.v1");
+    include!(concat!(env!("OUT_DIR"), "/mtgfr.debug.v1.serde.rs"));
+}
+
 use std::future::Future;
 use std::net::SocketAddr;
 
