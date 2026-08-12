@@ -121,6 +121,53 @@ Browser Faro SHALL post to same-origin `/api/faro/collect`; the BFF SHALL proxy 
 - **WHEN** a request arrives with `traceparent` whose flags are unsampled
 - **THEN** the BFF starts a new root span rather than parenting under a span Tempo will never receive
 
+### Requirement: Debug builds expose an authoritative development API
+
+Every Rust server build with debug assertions enabled SHALL register the unauthenticated `mtgfr.debug.v1.DebugService` on the existing gRPC listener automatically. The service SHALL provide `ListTables`, an unfiltered structural `InspectTable`, and an atomic `MutateTable`. Listing SHALL expose active table identifiers with debug revisions and table sequences without game contents. Inspection SHALL expose authoritative players, zones, objects, stack inspection, turn and priority state, pending/deferred-presence flags, table sequence, debug revision, and whether the table was debug-mutated. An inspected library SHALL retain its authoritative order; an inspected hand SHALL be an unordered collection of object identifiers.
+
+Mutation SHALL accept an ordered batch containing exactly these typed operations: set life, set a poison or rad player counter, set turn state, set permanent tapped/damage/+1/+1-counter state, set controller, set attachment, create a card, move a card, set library order, and remove a card. It SHALL NOT accept a generic patch or internal snapshot. `CreateCard` SHALL require the caller-provided object identifier to equal the arena's exact next identifier. `MoveCard` SHALL require its caller-provided destination identifier to equal that same exact next identifier, tombstone the source, and mint the fresh destination identity required by CR 400.7. The editor SHALL enforce structural safety and successful production projection, not whether normal Magic costs, priority, timing, or zone legality could have produced the state.
+
+`MutateTable` SHALL support independent optional `expected_debug_revision` and `expected_table_seq` guards. It SHALL lock the table once, apply the operations in order to a candidate, validate the whole candidate, and commit only when every operation and every seat/spectator projection succeeds. A successful batch SHALL replace the authoritative game, mark it debug-mutated, advance the table sequence and debug revision exactly once, and publish a complete replacement snapshot separately through the production visibility projection for every ordinary stream viewer. A failed batch SHALL change neither game state, revisions, provenance, nor streams. Ordinary authenticated intents SHALL continue through the normal submit and event path after a debug commit.
+
+#### Scenario: A guarded development mutation commits atomically
+
+- **WHEN** an unauthenticated debug caller supplies matching optional guards and all typed operations, structural checks, and viewer projections succeed
+- **THEN** the candidate replaces the table, both revisions advance exactly once, and each owner, opponent, and spectator stream receives a fresh snapshot filtered for that viewer
+
+#### Scenario: A stale or invalid batch rolls back
+
+- **WHEN** either supplied guard is stale or any operation, structural invariant, or viewer projection fails
+- **THEN** the service returns the stable typed failure without changing authoritative state, revisions, provenance, or stream output
+
+#### Scenario: Structurally safe rule-illegal state is accepted
+
+- **WHEN** a typed batch creates a representable, referentially sound, projectable state that ordinary Magic play could not legally produce
+- **THEN** the debug service accepts it without treating rules legality as a structural invariant
+
+### Requirement: Debug failures and tooling do not disclose payloads
+
+Debug RPC failures SHALL use stable gRPC statuses (`NOT_FOUND`, `ALREADY_EXISTS`, `INVALID_ARGUMENT`, `FAILED_PRECONDITION`, or `ABORTED` as applicable) plus a typed detail containing an optional operation index, stable reason, and a bounded sanitized list of non-secret structural violation codes. The public status message and violation text SHALL be generic and SHALL NOT echo table identifiers, card identities, request fields, or private state. Debug request and response payloads, unfiltered inspections, table identifiers, and hidden identities SHALL NOT enter application logs or telemetry.
+
+The checked-in `mtgfr-debug` CLI SHALL expose `tables`, `inspect <table> [--out <file>]`, and `mutate <protobuf-json-file> [--out <file>]`, with a global endpoint flag, `MTGFR_DEBUG_ENDPOINT` fallback, and the local debug listener as its default. It SHALL emit protobuf JSON, render stable typed failures with operation indexes, write requested output atomically with private default permissions, and SHALL NOT log mutation bodies automatically. The corresponding `debug-tables`, `debug-inspect`, and `debug-mutate` recipes SHALL preserve arguments without shell evaluation.
+
+#### Scenario: A failed CLI mutation is safe to retain
+
+- **WHEN** the CLI receives a typed debug failure
+- **THEN** it prints only the stable status, reason, optional operation index, and sanitized violations without printing the request body or hidden identity
+
+### Requirement: Release artifacts omit the authoritative debug API
+
+Release compilation SHALL omit debug protobuf exposure, service implementation and registration, engine/server raw-editor hooks, and identifying service, route, and implementation-marker strings from the production server. The production descriptor SHALL omit the `mtgfr.debug.v1` package, browser wire generation SHALL exclude that package and `DebugService`, and the production image SHALL contain only the gated release server rather than an operational debug CLI or service. Production authentication and visibility requirements SHALL remain unchanged.
+
+CI SHALL build and scan the same release target used by production (`server` package, release profile, `server` binary), proving that the debug service FQN, RPC path, and implementation marker are absent from its bytes and that exactly one production descriptor contains no debug package. The production Docker build SHALL independently repeat the forbidden-byte gate on the exact server binary it copies into the runtime image. Browser generation exclusion and CLI recipe argument safety SHALL be protocol verification gates.
+
+The authoritative debug API SHALL NOT expose checkpoint creation/restoration, a mutation journal, pending/resume clearing, stack mutation or public stack ghosts, or per-object printing overrides. Those surfaces are outside the available development contract.
+
+#### Scenario: Release and browser surfaces contain no debug contract
+
+- **WHEN** release-isolation, production-image, descriptor, and browser-generation gates inspect their artifacts
+- **THEN** no operational debug service, debug package, debug RPC path, implementation marker, browser binding, or production-runtime debug executable is present
+
 ### Requirement: Commit convention and release authorship
 
 Commits and squash-merge PR titles SHALL follow Angular conventional commits. Husky `commit-msg` SHALL run commitlint locally; Cursor Cloud SHALL chain the same hook after `npm clean-install`. semantic-release (default Angular analyzer, no custom `.releaserc`) SHALL be the only writer of `v*` tags and GitHub Releases. Hand-created version tags are forbidden. Repo secret `RELEASE_TOKEN` (PAT with `contents` + `workflow`) SHALL be required so tag push can cascade `docker.yml`. Squash-merge means semantic-release analyzes the PR title (plus major `BREAKING CHANGE` footer) only.

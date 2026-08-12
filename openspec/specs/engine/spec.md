@@ -46,20 +46,51 @@ The engine MUST represent the seven MTG zones and a flat object arena addressed 
 - **WHEN** an object moves between zones
 - **THEN** it receives a new object id and the old id resolves to the current id via tombstone chaining
 
+#### Scenario: Debug zone change preserves CR 400.7 identity
+- **WHEN** a debug-only raw edit creates an object or moves a non-stack object between supported zones
+- **THEN** creation uses the exact next arena identifier, movement uses that identifier for a fresh destination object, and the departed identity becomes a tombstone under CR 400.7
+
 #### Scenario: Removed objects are illegal inputs
 - **WHEN** an intent or rules path references a removed object
 - **THEN** that reference is treated as illegal (not a normal board read)
 
 ### Requirement: Event-Sourced Board Facts vs Orchestration State
-Board facts (life, zones, counters, tap, damage marks, mana pools, stack contents) MUST mutate only via events applied by direct pattern-matched handlers. Priority holder, consecutive passes, pending choice, deferred resume frames, keyword obligations, resolution-finish policy, and similar orchestration MUST live as plain fields on the game and MUST NOT be reconstituted from the event log alone. Library order MUST NOT be fully event-sourced (shuffles/draws mutate the library directly) so other players never observe order through events. The event log MUST be treated as audit-only; intent replay of a full match from events alone is out of scope.
+During ordinary play, board facts (life, zones, counters, tap, damage marks, mana pools, stack contents) MUST mutate only via events applied by direct pattern-matched handlers. Priority holder, consecutive passes, pending choice, deferred resume frames, keyword obligations, resolution-finish policy, and similar orchestration MUST live as plain fields on the game and MUST NOT be reconstituted from the event log alone. Library order MUST NOT be fully event-sourced (shuffles/draws mutate the library directly) so other players never observe order through events. The event log MUST be treated as audit-only; intent replay of a full match from events alone is out of scope.
 
-#### Scenario: Events mutate board facts
-- **WHEN** an event such as life change, zone move, or mana spend is applied
-- **THEN** the corresponding board fact changes and no non-event path mutates that fact
+A debug-assertion-only authoritative raw editor MAY mutate a cloned transaction candidate without manufacturing ordinary events. This is the sole exception for board-fact editing: it SHALL expose typed edits only, rebuild derived state after the ordered batch, require structural validation and all-viewer projection before the server swaps the candidate, and leave later ordinary intents on the event-applied path. Raw debug edits SHALL NOT claim that the resulting state or event log arose through rules-legal play.
+
+#### Scenario: Events mutate ordinary board facts
+- **WHEN** an ordinary event such as life change, zone move, or mana spend is applied
+- **THEN** the corresponding board fact changes and no ordinary non-event path mutates that fact
+
+#### Scenario: Debug editing is an explicit out-of-band exception
+- **WHEN** a debug-only typed batch edits a transaction candidate
+- **THEN** the candidate facts change without fabricated incremental events and become authoritative only after structural and projection checks succeed
 
 #### Scenario: Priority is not in the event log
 - **WHEN** priority passes or a pending choice is raised
 - **THEN** those fields update on the game directly without requiring an event to store them
+
+### Requirement: Finite numeric facts preserve logical operation semantics
+
+Stored player life SHALL be an `i32` and stored +1/+1-counter aggregates SHALL remain in `0..=i32::MAX`; named permanent and player counter totals SHALL remain in `0..=u8::MAX`. Applying a life change SHALL saturate the stored life at the `i32` endpoints rather than wrap or panic. An internal life-change event SHALL carry an `i64` delta so one logical change can span the full distance between the two stored endpoints without being split, preserving one replacement, trigger, and turn-tally operation.
+
+The authoritative +1/+1-counter aggregate SHALL equal its bounded provenance ledger. Authoritative event batches SHALL normalize ordinary +1/+1, named permanent, and player counter events before application and exposure to the delta the bounded destination can accept; a partial request SHALL report only the accepted delta and a zero-delta request SHALL produce no authoritative event. A debug assignment of +1/+1 counters SHALL reconcile the same ledger: increases append debug provenance, decreases consume newest batches first, and the stored aggregate SHALL be resynchronized from the retained batches. Derived counter sums SHALL use wider accumulation and clamp to their public finite representation rather than overflow.
+
+#### Scenario: One life event spans the stored range
+
+- **WHEN** one logical life operation moves a player between opposite `i32` endpoints
+- **THEN** one `i64` life event records the full signed delta and application stores the clamped endpoint without splitting the operation
+
+#### Scenario: Counter placement reaches a finite ceiling
+
+- **WHEN** a counter event requests more counters than the bounded aggregate can accept
+- **THEN** the applied and exposed event contains only the accepted delta, and a request accepted as zero is omitted
+
+#### Scenario: Debug counter assignment retains authoritative provenance
+
+- **WHEN** a debug edit lowers and then raises a permanent's +1/+1-counter total
+- **THEN** newest provenance is consumed on the decrease, debug provenance is added for the increase, and every counter reader observes the ledger-derived bounded aggregate
 
 ### Requirement: Pre-Game Mulligans and Opening Hands
 Real setup MUST stack each library, deal opening hands with 2-sample BO1 land smoothing (closest land count to deck expectation; ties keep the first sample), then enter a simultaneous mulligan phase. During mulligans, undecided living seats MAY keep or mulligan; ordinary game actions MUST be blocked until every living seat has kept. Friendly mulligan: first mulligan redraws to 7; later mulligans draw to 6, 5, …, 1. There is no London bottoming or Vancouver scry. Mulligan redraws MUST also be land-smoothed. A seat at hand size 1 MUST auto-keep after redraw. When all living seats have kept, the engine MUST clear the mulligan phase and begin the first turn. First-turn beginning steps (Untap → Upkeep → Draw) MUST run through the post-intent pipeline. In two-player games the starting player MUST skip their first draw; in 3–4 player games no player skips.

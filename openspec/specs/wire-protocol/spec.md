@@ -28,6 +28,20 @@ The contract SHALL expose Buf STANDARD `*Service` service names for authenticati
 - **WHEN** an unauthenticated caller submits a game intent
 - **THEN** the request is rejected
 
+### Requirement: The debug protobuf package remains outside production wire surfaces
+
+The debug-only `mtgfr.debug.v1` package SHALL have separate generated Rust bindings and a separate descriptor; those bindings SHALL be linked and exposed only when debug assertions are enabled. The package SHALL NOT be included in the production descriptor or browser-generated clients. Its `DebugService` SHALL remain a direct development gRPC surface rather than weakening authentication on ordinary game, deck, rating, or seed services or adding a browser route.
+
+#### Scenario: Browser generation excludes the debug package
+
+- **WHEN** browser bindings are regenerated from the production proto inputs
+- **THEN** no generated path or symbol contains `mtgfr.debug.v1` or `DebugService`
+
+#### Scenario: Production descriptor excludes the debug package
+
+- **WHEN** the release server descriptor is generated
+- **THEN** it contains the ordinary production services and no debug package or service
+
 ### Requirement: Browser reaches the API through a same-origin backend
 Browsers SHALL speak a same-origin RPC surface to the web backend. The backend SHALL terminate the session cookie and forward the resolved session token as gRPC metadata to the API. The live game stream SHALL be a server-streaming RPC on the API, bridged by the backend to a browser-safe server-push channel. Health probes MAY live on a separate HTTP port from gRPC. Native WebSocket is not part of the protocol.
 
@@ -73,16 +87,34 @@ Each viewer's visible state SHALL carry turn structure, per-seat public player v
 - **WHEN** an attacker became blocked and its blockers later leave combat
 - **THEN** the combat view still lists that attacker among blocked attackers for the rest of combat
 
-### Requirement: Stream opens with snapshot then self-sufficient deltas
-A connecting client SHALL receive an initial snapshot frame at the current sequence number, then delta frames and heartbeats. Each delta SHALL carry a monotonic sequence watermark, a batch of already-redacted visible events, the viewer's complete visible state after those events, and optional auto-action notices for forced or automatic submissions in the frame. Clients SHALL fold by replacing the board from state and appending events to the log without a mid-stream snapshot refetch. On reconnect after a sequence gap, the client SHALL open a new stream and treat the opening snapshot as resume. Heartbeat frames SHALL exist to prevent edge-proxy idle timeouts and MUST be forwarded on the browser-facing push channel.
+### Requirement: Stream snapshots and deltas are ordered first-class frames
+A connecting client SHALL receive an initial snapshot frame at the current sequence number, then ordered delta, replacement snapshot, and heartbeat frames. Each delta SHALL carry a monotonic sequence watermark, a batch of already-redacted visible events, the viewer's complete visible state after those events, and optional auto-action notices for forced or automatic submissions in the frame. A midstream replacement snapshot SHALL be a first-class frame at its own monotonic sequence watermark, SHALL contain a complete state freshly projected for that viewer, and SHALL establish the baseline for every later delta without inventing incremental events. Clients SHALL fold snapshots by replacing the board and SHALL fold deltas by replacing the board from state and appending the events to the log. They SHALL NOT reorder visible events across frames or fetch a side snapshot. On reconnect after a sequence gap, the client SHALL open a new stream and treat the opening snapshot as resume. Heartbeat frames SHALL exist to prevent edge-proxy idle timeouts and MUST be forwarded on the browser-facing push channel.
 
 #### Scenario: Fresh table opens on snapshot
 - **WHEN** a newly seeded table has produced no events yet
 - **THEN** the first stream frame is a snapshot at the current sequence
 
+#### Scenario: Authoritative edit publishes a midstream snapshot
+- **WHEN** an out-of-band authoritative debug edit commits while ordinary viewers are connected
+- **THEN** each viewer receives a separate complete replacement snapshot through the unchanged production redaction boundary, and subsequent deltas follow it in sequence order
+
 #### Scenario: Delta needs no side refetch
 - **WHEN** a client receives a delta envelope
 - **THEN** the enclosed visible state is sufficient to render the board without fetching another snapshot
+
+### Requirement: Wide internal life changes retain direction on the visible wire
+
+An authoritative life-change event MAY carry an internal `i64` amount while the existing visible event amount remains `i32`. Projection SHALL preserve the exact amount when representable and otherwise clamp a positive amount to `i32::MAX` or a negative amount to `i32::MIN`; it SHALL NOT wrap, reverse direction, split the logical event, or alter event ordering. The visible state carried with the frame, and any replacement snapshot, SHALL expose the exact resulting stored `i32` life total independently of the clamped visible event amount.
+
+#### Scenario: Endpoint-spanning gain projects without reversal
+
+- **WHEN** one positive internal life event is larger than the visible `i32` event field
+- **THEN** the visible event amount is `i32::MAX`, the event remains one ordered event, and the accompanying visible state carries the exact resulting stored life
+
+#### Scenario: Endpoint-spanning loss projects without reversal
+
+- **WHEN** one negative internal life event is smaller than the visible `i32` event field can represent
+- **THEN** the visible event amount is `i32::MIN`, the event remains one ordered event, and the accompanying visible state carries the exact resulting stored life
 
 ### Requirement: Mulligan progress is snapshot-sourced on the wire
 Until explicit mulligan visible-event arms exist on the stream contract, the API MUST NOT emit empty or placeholder mulligan event oneofs. Clients SHALL treat visible-state mulliganing and per-player mulligan status fields as the source of truth for mulligan UI. Keep and mulligan intents SHALL exist as dedicated intent arms; the authenticated seat SHALL be stamped at the projection boundary so a client cannot keep or mulligan for another player by altering the payload.
