@@ -2406,3 +2406,326 @@ fn bounded_counter_events_publish_a_partial_accepted_delta() {
         [crate::Event::CountersPlaced { count: 1, .. }]
     ));
 }
+
+fn game_with_every_pending_rider() -> Game {
+    use std::sync::Arc;
+
+    use crate::resolution::{DrawAfter, DrawBatch, ResolveCtx, SearchFanout, SequenceCont};
+
+    let mut game = Game::with_players(2, 0);
+    let trigger_source = game.spawn_on_battlefield(P0, card("Phyrexian Arena"));
+    let scratch_object = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    let spell = game.spawn_in_hand(P0, card("Lightning Bolt"));
+    game.fund_mana(P0);
+    game.cast(
+        P0,
+        spell,
+        Some(crate::Target::Player(P1)),
+        0,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        false,
+        false,
+        false,
+        0,
+        0,
+        0,
+        false,
+    )
+    .expect("fixture spell casts");
+    game.spawn_in_hand(P1, card("Lightning Bolt"));
+    game.fund_mana(P1);
+
+    game.pending_choice = Some(PendingChoice::ChooseTarget {
+        player: P0,
+        controller: P0,
+        source: spell,
+        effect: None,
+        legal: vec![crate::Target::Player(P1)],
+        count: TargetCount::default(),
+        clause: 0,
+        target: None,
+        x: 0,
+        spent_mana: [0; 6],
+        activated: false,
+    });
+    game.resume.clash_scry = Some(P1);
+    game.resume.sequence = Some(SequenceCont {
+        steps: Arc::from([Effect::Draw(crate::DrawEffect::Cards {
+            who: crate::PlayerSet::You,
+            count: crate::Amount::Fixed(1),
+        })]),
+        ctx: ResolveCtx {
+            controller: P0,
+            source: spell,
+            target: Some(crate::Target::Player(P1)),
+            targets_second: Default::default(),
+            x: 0,
+            spent_mana: [0; 6],
+        },
+    });
+    game.resume.demonstrate_opponent_copy = Some((P1, spell));
+    game.resume.spell_finish = Some(spell);
+    game.resume.draw_batch = Some(DrawBatch {
+        seats: vec![(P0, 1)],
+        after: DrawAfter::DrawStep,
+        paused: true,
+    });
+
+    let scratch_def = match &game.objects[scratch_object as usize] {
+        Object::Permanent(permanent) => permanent.def,
+        _ => unreachable!("fixture object is a permanent"),
+    };
+    game.resolution_frame.destroyed_this_way = vec![crate::state::DestroyedThisWay {
+        def: scratch_def,
+        controller: P0,
+        token: false,
+    }];
+    game.resolution_frame.nonland_cards_exiled_this_way = 1;
+    game.resolution_frame.cards_discarded_this_way = 1;
+    game.resolution_frame.creatures_sacrificed_this_way = 1;
+    game.resolution_frame.cards_exiled_by_search_this_way = 1;
+    game.resolution_frame.join_forces_mana = 1;
+    game.resolution_frame.council_past_votes = 1;
+    game.resolution_frame.council_present_votes = 1;
+    game.resolution_frame.milled_mana_value_this_way = 1;
+    game.resolution_frame.counters_removed_this_way = 1;
+    game.resolution_frame.damage_dealt_this_way = 1;
+    game.resolution_frame.resolving_targets = vec![crate::Target::Player(P1)];
+    game.resolution_frame.surge_exiled_card = Some((scratch_object, 1));
+    game.resolution_frame.returned_nonland_card_mana_value = Some(1);
+    game.resolution_frame.power_exiled_this_way = vec![crate::state::PowerExiledThisWay {
+        controller: P0,
+        power: 2,
+    }];
+    game.resolution_frame.sacrificed_by_edict_controller = true;
+    game.resolution_frame.vanished_permanent_owner = Some((scratch_object, P0));
+    game.resolution_frame.chosen_damage_source = Some(scratch_object);
+    game.resolution_frame.search_fanout = Some(SearchFanout {
+        remaining: vec![P1],
+        filter: crate::CardFilter::AnyCard,
+        to_zone: crate::SearchDest::Hand,
+        tapped: false,
+        count: 1,
+        overflow: None,
+    });
+    game.resolution_frame.discard_cause = Some(P0);
+
+    game.resolution_finish = Some(crate::FinishPolicy::Exile);
+    game.pending_enter_bonus_counters.push((spell, 1));
+    game.clash_won = true;
+    game.pending_trigger_groups.push(crate::TriggerGroup {
+        controller: P0,
+        source: trigger_source,
+        abilities: vec![card("Phyrexian Arena").abilities[0].clone()],
+        expanded: false,
+    });
+    game.pending_obligations.push(crate::Obligation::Echo {
+        permanent: scratch_object,
+    });
+    game.refresh_actions();
+    game
+}
+
+#[test]
+fn pending_orchestration_inspection_reports_every_rider_category() {
+    let game = game_with_every_pending_rider();
+
+    assert_eq!(
+        inspect_pending_orchestration(&game),
+        PendingOrchestrationInspection {
+            has_pending_choice: true,
+            has_resume: true,
+            has_resolution_frame: true,
+            has_resolution_finish: true,
+            pending_enter_bonus_counters: 1,
+            pending_trigger_groups: 1,
+            pending_obligations: 1,
+        }
+    );
+    assert!(game.clash_won, "the fixture includes clash-local scratch");
+    assert_eq!(object_slot_count(&game), game.objects.len());
+}
+
+#[test]
+fn clear_pending_orchestration_drops_pause_resume_scratch_and_refreshes_actions() {
+    let mut game = game_with_every_pending_rider();
+    assert!(inspect_pending_orchestration(&game).has_pending_choice);
+
+    apply_operations(
+        &mut game,
+        &[Mutation::ClearPendingOrchestration {
+            clear_queued_triggers: true,
+        }],
+    )
+    .expect("the coherent clear is structurally safe");
+
+    assert_eq!(
+        inspect_pending_orchestration(&game),
+        PendingOrchestrationInspection::default()
+    );
+    assert!(!game.clash_won);
+    assert!(
+        !game.legal_actions().is_empty(),
+        "the batch tail refreshes actions"
+    );
+    assert!(
+        validate_structural(&game).is_ok(),
+        "the paused spell remains paired with its stack item"
+    );
+    game.submit(crate::Intent::PassPriority { player: P0 })
+        .expect("the active player can pass priority");
+    game.submit(crate::Intent::PassPriority { player: P1 })
+        .expect("the opponent's pass resolves the retained spell");
+    assert!(game.stack.is_empty(), "the formerly paused spell resolves");
+    assert!(validate_structural(&game).is_ok());
+}
+
+#[test]
+fn cleared_pausing_spell_restarts_from_its_first_effect_on_the_next_resolution() {
+    let mut game = Game::with_players(2, 0);
+    let library = game.stack_library(
+        P0,
+        &[
+            card("Forest"),
+            card("Grizzly Bears"),
+            card("Lightning Bolt"),
+        ],
+    );
+    let spell = game.spawn_in_hand(P0, card("Prismari Charm"));
+    game.fund_mana(P0);
+    game.cast(
+        P0,
+        spell,
+        None,
+        0,
+        vec![(0, None)],
+        vec![],
+        vec![],
+        vec![],
+        false,
+        false,
+        false,
+        0,
+        0,
+        0,
+        false,
+    )
+    .expect("Prismari Charm's surveil-then-draw mode casts");
+
+    for player in [P0, P1] {
+        game.submit(crate::Intent::PassPriority { player })
+            .expect("ordinary priority passes resolve the spell");
+    }
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ArrangeTop { .. })
+        ),
+        "the first surveil pauses the spell"
+    );
+
+    apply_operations(
+        &mut game,
+        &[Mutation::ClearPendingOrchestration {
+            clear_queued_triggers: true,
+        }],
+    )
+    .expect("clearing the first pause retains a structurally valid stack item");
+
+    for player in [P0, P1] {
+        game.submit(crate::Intent::PassPriority { player })
+            .expect("ordinary priority passes safely restart the retained spell");
+    }
+    let shown = match game.pending_choice() {
+        Some(PendingChoice::ArrangeTop { cards, .. }) => cards.clone(),
+        other => panic!("restarted spell should repeat its surveil, got {other:?}"),
+    };
+    assert_eq!(
+        shown,
+        library[..2],
+        "clearing a paused continuation documents restart-from-the-beginning semantics"
+    );
+
+    game.submit(crate::Intent::ArrangeTop {
+        player: P0,
+        top: shown,
+        bottom: vec![],
+    })
+    .expect("answering the repeated surveil completes the restarted spell");
+    assert!(game.stack.is_empty());
+    assert!(game.pending_choice().is_none());
+    assert!(validate_structural(&game).is_ok());
+}
+
+#[test]
+fn clear_pending_orchestration_can_preserve_queued_triggers_and_obligations() {
+    let mut game = game_with_every_pending_rider();
+
+    apply_operations(
+        &mut game,
+        &[Mutation::ClearPendingOrchestration {
+            clear_queued_triggers: false,
+        }],
+    )
+    .unwrap();
+
+    let pending = inspect_pending_orchestration(&game);
+    assert!(!pending.has_pending_choice);
+    assert!(!pending.has_resume);
+    assert!(!pending.has_resolution_frame);
+    assert!(!pending.has_resolution_finish);
+    assert_eq!(pending.pending_enter_bonus_counters, 0);
+    assert_eq!(pending.pending_trigger_groups, 1);
+    assert_eq!(pending.pending_obligations, 1);
+    assert!(!game.clash_won);
+}
+
+#[test]
+fn object_slot_count_includes_moved_and_removed_tombstones() {
+    let mut game = Game::with_players(2, 0);
+    let moved = game.spawn_in_hand(P0, card("Forest"));
+    let destination = game.spawn_in_hand(P0, card("Forest"));
+    let removed = game.spawn_in_hand(P1, card("Forest"));
+    let (removed_def, removed_owner) = match game.objects[removed as usize] {
+        Object::Card(ref card) => (card.def, card.owner),
+        _ => unreachable!("fixture object is a card"),
+    };
+    game.objects[moved as usize] = Object::Moved { to: destination };
+    game.objects[removed as usize] = Object::Removed {
+        def: removed_def,
+        owner: removed_owner,
+    };
+
+    assert_eq!(object_slot_count(&game), 3);
+}
+
+#[test]
+fn later_invalid_operation_does_not_commit_an_earlier_pending_clear() {
+    let live = game_with_every_pending_rider();
+    let before = inspect_pending_orchestration(&live);
+    let mut candidate = live.clone();
+    let error = apply_operations(
+        &mut candidate,
+        &[
+            Mutation::ClearPendingOrchestration {
+                clear_queued_triggers: true,
+            },
+            Mutation::SetLife {
+                player: PlayerId(9),
+                life: 20,
+            },
+        ],
+    )
+    .unwrap_err();
+
+    assert_eq!(error.operation_index, Some(1));
+    assert_eq!(inspect_pending_orchestration(&live), before);
+    assert_eq!(
+        inspect_pending_orchestration(&candidate),
+        PendingOrchestrationInspection::default(),
+        "the failed candidate was partially edited and must be discarded"
+    );
+}

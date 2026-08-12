@@ -142,6 +142,20 @@ pub enum Mutation {
     RemoveCard {
         object_id: ObjectId,
     },
+    ClearPendingOrchestration {
+        clear_queued_triggers: bool,
+    },
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PendingOrchestrationInspection {
+    pub has_pending_choice: bool,
+    pub has_resume: bool,
+    pub has_resolution_frame: bool,
+    pub has_resolution_finish: bool,
+    pub pending_enter_bonus_counters: usize,
+    pub pending_trigger_groups: usize,
+    pub pending_obligations: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -225,12 +239,86 @@ pub fn inspect(game: &Game) -> Inspection {
         priority_player: game.priority,
         consecutive_passes: game.consecutive_passes,
         has_pending_choice: game.pending_choice.is_some(),
-        has_deferred_resume: game.resume.clash_scry.is_some()
-            || game.resume.sequence.is_some()
-            || game.resume.demonstrate_opponent_copy.is_some()
-            || game.resume.spell_finish.is_some()
-            || game.resume.draw_batch.is_some(),
+        has_deferred_resume: resume_has_pending(&game.resume),
     }
+}
+
+pub fn inspect_pending_orchestration(game: &Game) -> PendingOrchestrationInspection {
+    PendingOrchestrationInspection {
+        has_pending_choice: game.pending_choice.is_some(),
+        has_resume: resume_has_pending(&game.resume),
+        has_resolution_frame: resolution_frame_has_pending(&game.resolution_frame),
+        has_resolution_finish: game.resolution_finish.is_some(),
+        pending_enter_bonus_counters: game.pending_enter_bonus_counters.len(),
+        pending_trigger_groups: game.pending_trigger_groups.len(),
+        pending_obligations: game.pending_obligations.len(),
+    }
+}
+
+pub fn object_slot_count(game: &Game) -> usize {
+    game.objects.len()
+}
+
+fn resume_has_pending(resume: &crate::resolution::ResumeState) -> bool {
+    let crate::resolution::ResumeState {
+        clash_scry,
+        sequence,
+        demonstrate_opponent_copy,
+        spell_finish,
+        draw_batch,
+    } = resume;
+
+    clash_scry.is_some()
+        || sequence.is_some()
+        || demonstrate_opponent_copy.is_some()
+        || spell_finish.is_some()
+        || draw_batch.is_some()
+}
+
+fn resolution_frame_has_pending(frame: &crate::resolution::ResolutionFrame) -> bool {
+    let crate::resolution::ResolutionFrame {
+        destroyed_this_way,
+        nonland_cards_exiled_this_way,
+        cards_discarded_this_way,
+        creatures_sacrificed_this_way,
+        cards_exiled_by_search_this_way,
+        join_forces_mana,
+        council_past_votes,
+        council_present_votes,
+        milled_mana_value_this_way,
+        counters_removed_this_way,
+        damage_dealt_this_way,
+        resolving_targets,
+        surge_exiled_card,
+        returned_nonland_card_mana_value,
+        power_exiled_this_way,
+        sacrificed_by_edict_controller,
+        vanished_permanent_owner,
+        chosen_damage_source,
+        search_fanout,
+        discard_cause,
+    } = frame;
+
+    !destroyed_this_way.is_empty()
+        || *nonland_cards_exiled_this_way != 0
+        || *cards_discarded_this_way != 0
+        || *creatures_sacrificed_this_way != 0
+        || *cards_exiled_by_search_this_way != 0
+        || *join_forces_mana != 0
+        || *council_past_votes != 0
+        || *council_present_votes != 0
+        || *milled_mana_value_this_way != 0
+        || *counters_removed_this_way != 0
+        || *damage_dealt_this_way != 0
+        || !resolving_targets.is_empty()
+        || surge_exiled_card.is_some()
+        || returned_nonland_card_mana_value.is_some()
+        || !power_exiled_this_way.is_empty()
+        || *sacrificed_by_edict_controller
+        || vanished_permanent_owner.is_some()
+        || chosen_damage_source.is_some()
+        || search_fanout.is_some()
+        || discard_cause.is_some()
 }
 
 fn zone_cards(game: &Game, owner: PlayerId, zone: Zone) -> Vec<ObjectId> {
@@ -340,11 +428,12 @@ pub fn apply_operations(game: &mut Game, operations: &[Mutation]) -> Result<(), 
     }
 
     game.characteristics_cache = crate::characteristics_cache::CharacteristicsCacheCell::default();
-    game.refresh_actions();
     validate_structural(game).map_err(|_| EditError {
         operation_index: None,
         reason: ErrorReason::InvalidValue,
-    })
+    })?;
+    game.refresh_actions();
+    Ok(())
 }
 
 fn apply_operation(game: &mut Game, operation: &Mutation) -> Result<(), ErrorReason> {
@@ -465,8 +554,24 @@ fn apply_operation(game: &mut Game, operation: &Mutation) -> Result<(), ErrorRea
             set_library_order(game, *player, object_ids)?;
         }
         Mutation::RemoveCard { object_id } => remove_card(game, *object_id)?,
+        Mutation::ClearPendingOrchestration {
+            clear_queued_triggers,
+        } => clear_pending_orchestration(game, *clear_queued_triggers),
     }
     Ok(())
+}
+
+fn clear_pending_orchestration(game: &mut Game, clear_queued_triggers: bool) {
+    game.pending_choice = None;
+    game.resume = crate::resolution::ResumeState::default();
+    game.resolution_frame = crate::resolution::ResolutionFrame::default();
+    game.resolution_finish = None;
+    game.pending_enter_bonus_counters.clear();
+    game.clash_won = false;
+    if clear_queued_triggers {
+        game.pending_trigger_groups.clear();
+        game.pending_obligations.clear();
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
