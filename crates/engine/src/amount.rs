@@ -48,9 +48,9 @@ impl Game {
                 .and_then(|p| p.attached_to)
                 .map_or(0, |host| self.counters_of_kind(host, kind) as i32),
             Amount::YourLifeTotal => self.players[controller.0 as usize].life,
-            Amount::LifeGainedThisTurn => {
-                self.players[controller.0 as usize].life_gained_this_turn as i32
-            }
+            Amount::LifeGainedThisTurn => self.players[controller.0 as usize]
+                .life_gained_this_turn
+                .min(i32::MAX as u32) as i32,
             Amount::SpellsCastThisTurn => {
                 self.players[controller.0 as usize].spells_cast_this_turn as i32
             }

@@ -474,10 +474,10 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         debug_assert!(matches!(effect, DestroyEffect::All { .. }));
-        let evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
+        let mut evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
         self.resolution_frame.destroyed_this_way.clear();
         self.record_destroyed_this_way(&evs);
-        self.apply_all(&evs);
+        self.apply_all(&mut evs);
         events.extend(evs);
     }
 
@@ -622,7 +622,7 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         debug_assert!(matches!(effect, ExileEffect::All { .. }));
-        let evs = self.execute_effect(Effect::Exile(effect), controller, source, target, x);
+        let mut evs = self.execute_effect(Effect::Exile(effect), controller, source, target, x);
         self.resolution_frame.power_exiled_this_way.clear();
         for e in &evs {
             match e.clone() {
@@ -649,7 +649,7 @@ impl Game {
                 _ => {}
             }
         }
-        self.apply_all(&evs);
+        self.apply_all(&mut evs);
         events.extend(evs);
     }
 }

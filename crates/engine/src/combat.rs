@@ -1980,7 +1980,9 @@ impl Game {
                     let lethal = if deathtouch {
                         1
                     } else {
-                        (self.toughness(blocker) - self.permanent(blocker).marked_damage).max(1)
+                        self.toughness(blocker)
+                            .saturating_sub(self.permanent(blocker).marked_damage)
+                            .max(1)
                     };
                     let assign = remaining.min(lethal);
                     remaining -= assign;
@@ -2392,7 +2394,7 @@ impl Game {
             events,
             Event::LifeChanged {
                 player,
-                amount: self.life_gain_after_replacements(player, amount),
+                amount: self.life_gain_after_replacements(player, i64::from(amount)),
                 source: Some(source),
             },
         );

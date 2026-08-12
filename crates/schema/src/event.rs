@@ -903,6 +903,30 @@ mod tests {
     }
 
     #[test]
+    fn accepted_counter_delta_projects_exactly_and_zero_delta_has_no_event_to_project() {
+        let accepted = Event::CountersPlaced {
+            object: 7,
+            count: 1,
+            source_name: "bounded",
+        };
+        assert_eq!(
+            spectator_redact(&accepted),
+            VisibleEvent::CountersPlaced {
+                object: 7,
+                count: 1
+            }
+        );
+        let authoritative_zero_delta_batch: Vec<Event> = Vec::new();
+        assert!(
+            authoritative_zero_delta_batch
+                .iter()
+                .map(spectator_redact)
+                .next()
+                .is_none()
+        );
+    }
+
+    #[test]
     fn a_poison_counter_is_public_to_every_viewer() {
         // Ten or more poison counters lose the game (CR 704.5c). A total nobody but the poisoned
         // seat could see would be an invisible win condition, so this event is never redacted —

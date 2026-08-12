@@ -635,3 +635,832 @@ fn validator_bounds_passes_by_living_players_and_handles_terminal_state() {
     game.consecutive_passes = 1;
     assert!(codes(&game).contains(&"consecutive_passes"));
 }
+
+fn apply_one(game: &mut Game, operation: Mutation) -> Result<(), EditError> {
+    apply_operations(game, &[operation])
+}
+
+#[test]
+fn scalar_life_accepts_full_i32_range() {
+    for life in [i32::MIN, i32::MAX] {
+        let mut game = Game::with_players(2, 0);
+        apply_one(&mut game, Mutation::SetLife { player: P0, life }).expect("life edit");
+        assert_eq!(game.players[0].life, life);
+    }
+}
+
+#[test]
+fn scalar_life_extrema_remain_safe_under_ordinary_changes() {
+    for (life, amount) in [(i32::MAX, 1), (i32::MIN, -1)] {
+        let mut game = Game::with_players(2, 0);
+        apply_one(&mut game, Mutation::SetLife { player: P0, life }).expect("life edit");
+
+        game.apply(&crate::Event::LifeChanged {
+            player: P0,
+            amount,
+            source: None,
+        });
+
+        assert_eq!(game.life(P0), life);
+    }
+}
+
+#[test]
+fn wide_life_changes_clamp_at_endpoints_and_tally_each_logical_event() {
+    for (start, amount, expected_life, expected_gain, expected_losses) in [
+        (i32::MIN, i64::MIN, i32::MIN, 0, 1),
+        (i32::MAX, i64::MIN, i32::MIN, 0, 1),
+        (i32::MAX, i64::MAX, i32::MAX, u32::MAX, 0),
+        (i32::MIN, i64::MAX, i32::MAX, u32::MAX, 0),
+        // Sylvan-style declined-card multiplication can reach this exact loss amount.
+        (i32::MIN, -i64::MAX, i32::MIN, 0, 1),
+    ] {
+        let mut game = Game::with_players(2, 0);
+        apply_one(
+            &mut game,
+            Mutation::SetLife {
+                player: P0,
+                life: start,
+            },
+        )
+        .expect("life edit");
+
+        game.apply(&crate::Event::LifeChanged {
+            player: P0,
+            amount,
+            source: None,
+        });
+
+        assert_eq!(game.life(P0), expected_life);
+        assert_eq!(
+            game.players[P0.0 as usize].life_gained_this_turn,
+            expected_gain
+        );
+        assert_eq!(
+            game.players[P0.0 as usize].life_losses_this_turn,
+            expected_losses
+        );
+    }
+}
+
+#[test]
+fn scalar_life_extrema_remain_safe_for_exact_setup_changes() {
+    for (life, requested) in [(i32::MIN, i32::MAX), (i32::MAX, i32::MIN)] {
+        let mut game = Game::with_players(2, 0);
+        apply_one(&mut game, Mutation::SetLife { player: P0, life }).expect("life edit");
+        let losses_before = game.players[P0.0 as usize].life_losses_this_turn;
+
+        game.set_life(P0, requested);
+
+        assert_eq!(game.life(P0), requested);
+        assert_eq!(
+            game.players[P0.0 as usize].life_losses_this_turn - losses_before,
+            u32::from(requested < life),
+            "one logical setup loss must record one loss occurrence"
+        );
+    }
+}
+
+#[test]
+fn scalar_player_counters_accept_full_u8_range() {
+    for counter in PlayerCounterKind::ALL {
+        for value in [0, u8::MAX] {
+            let mut game = Game::with_players(2, 0);
+            apply_one(
+                &mut game,
+                Mutation::SetPlayerCounter {
+                    player: P1,
+                    counter,
+                    value,
+                },
+            )
+            .expect("player counter edit");
+            assert_eq!(game.players[1].kind_counters[counter as usize], value);
+        }
+    }
+    assert!(
+        u8::try_from(256_u16).is_err(),
+        "wire values above 255 cannot enter the domain mutation"
+    );
+}
+
+#[test]
+fn scalar_player_edits_reject_unknown_players() {
+    for operation in [
+        Mutation::SetLife {
+            player: PlayerId(2),
+            life: 7,
+        },
+        Mutation::SetPlayerCounter {
+            player: PlayerId(2),
+            counter: PlayerCounterKind::Poison,
+            value: 1,
+        },
+    ] {
+        let mut game = Game::with_players(2, 0);
+        assert_eq!(
+            apply_one(&mut game, operation),
+            Err(EditError {
+                operation_index: Some(0),
+                reason: ErrorReason::UnknownEntity,
+            })
+        );
+    }
+}
+
+#[test]
+fn scalar_turn_state_accepts_every_step_and_living_seats() {
+    let steps = [
+        Step::Untap,
+        Step::Upkeep,
+        Step::Draw,
+        Step::Main1,
+        Step::BeginCombat,
+        Step::DeclareAttackers,
+        Step::DeclareBlockers,
+        Step::FirstStrikeCombatDamage,
+        Step::CombatDamage,
+        Step::EndCombat,
+        Step::Main2,
+        Step::End,
+        Step::Cleanup,
+    ];
+    for step in steps {
+        let mut game = Game::with_players(2, 0);
+        apply_one(
+            &mut game,
+            Mutation::SetTurnState {
+                active_player: P1,
+                step,
+                priority_player: P0,
+                consecutive_passes: 1,
+            },
+        )
+        .expect("turn state edit");
+        assert_eq!(game.active_player, P1);
+        assert_eq!(game.step, step);
+        assert_eq!(game.priority, P0);
+        assert_eq!(game.consecutive_passes, 1);
+    }
+}
+
+#[test]
+fn scalar_turn_state_rejects_unknown_lost_players_and_completed_pass_rounds() {
+    let cases = [
+        Mutation::SetTurnState {
+            active_player: PlayerId(2),
+            step: Step::Main1,
+            priority_player: P0,
+            consecutive_passes: 0,
+        },
+        Mutation::SetTurnState {
+            active_player: P0,
+            step: Step::Main1,
+            priority_player: PlayerId(2),
+            consecutive_passes: 0,
+        },
+    ];
+    for operation in cases {
+        let mut game = Game::with_players(2, 0);
+        assert_eq!(
+            apply_one(&mut game, operation),
+            Err(EditError {
+                operation_index: Some(0),
+                reason: ErrorReason::UnknownEntity,
+            })
+        );
+    }
+
+    for (lost, active_player, priority_player) in [(P0, P0, P1), (P1, P0, P1)] {
+        let mut game = Game::with_players(2, 0);
+        game.players[lost.0 as usize].lost = true;
+        assert_eq!(
+            apply_one(
+                &mut game,
+                Mutation::SetTurnState {
+                    active_player,
+                    step: Step::Main1,
+                    priority_player,
+                    consecutive_passes: 0,
+                },
+            ),
+            Err(EditError {
+                operation_index: Some(0),
+                reason: ErrorReason::InvalidValue,
+            })
+        );
+    }
+
+    let mut game = Game::with_players(4, 0);
+    game.players[2].lost = true;
+    game.players[3].lost = true;
+    assert_eq!(
+        apply_one(
+            &mut game,
+            Mutation::SetTurnState {
+                active_player: P0,
+                step: Step::Main1,
+                priority_player: P1,
+                consecutive_passes: 2,
+            },
+        ),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::InvalidValue,
+        })
+    );
+}
+
+#[test]
+fn scalar_permanent_state_sets_requested_raw_fields_and_preserves_omitted_fields() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    apply_one(
+        &mut game,
+        Mutation::SetPermanentState {
+            object_id,
+            tapped: Some(true),
+            marked_damage: Some(i32::MAX),
+            plus_one_counters: Some(i32::MAX),
+        },
+    )
+    .expect("permanent edit");
+    let Object::Permanent(permanent) = &game.objects[object_id as usize] else {
+        panic!("fixture permanent disappeared");
+    };
+    assert!(permanent.tapped);
+    assert_eq!(permanent.marked_damage, i32::MAX);
+    assert_eq!(permanent.plus_counters, i32::MAX);
+
+    apply_one(
+        &mut game,
+        Mutation::SetPermanentState {
+            object_id,
+            tapped: Some(false),
+            marked_damage: None,
+            plus_one_counters: None,
+        },
+    )
+    .expect("partial permanent edit");
+    let Object::Permanent(permanent) = &game.objects[object_id as usize] else {
+        panic!("fixture permanent disappeared");
+    };
+    assert!(!permanent.tapped);
+    assert_eq!(permanent.marked_damage, i32::MAX);
+    assert_eq!(permanent.plus_counters, i32::MAX);
+}
+
+#[test]
+fn scalar_permanent_extrema_remain_safe_for_characteristics_and_damage() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    apply_one(
+        &mut game,
+        Mutation::SetPermanentState {
+            object_id,
+            tapped: None,
+            marked_damage: Some(i32::MAX),
+            plus_one_counters: Some(i32::MAX),
+        },
+    )
+    .expect("permanent edit");
+
+    assert_eq!(game.power(object_id), i32::MAX);
+    assert_eq!(game.toughness(object_id), i32::MAX);
+    game.apply(&crate::Event::DamageMarked {
+        object: object_id,
+        amount: 1,
+        cant_be_regenerated: false,
+        exile_instead_of_dying: false,
+        source: None,
+    });
+    assert_eq!(game.marked_damage(object_id), i32::MAX);
+}
+
+#[test]
+fn debug_set_plus_counters_keeps_all_counter_readers_and_provenance_coherent() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_on_battlefield(P0, card("Steelbane Hydra"));
+    game.fund_mana(P0);
+    game.apply(&crate::Event::CountersPlaced {
+        object: object_id,
+        count: 2,
+        source_name: "ordinary source",
+    });
+
+    apply_one(
+        &mut game,
+        Mutation::SetPermanentState {
+            object_id,
+            tapped: None,
+            marked_damage: None,
+            plus_one_counters: Some(i32::MAX),
+        },
+    )
+    .expect("counter edit");
+
+    let Object::Permanent(permanent) = &game.objects[object_id as usize] else {
+        panic!("fixture permanent disappeared");
+    };
+    assert_eq!(permanent.plus_counters, i32::MAX);
+    assert_eq!(game.plus_counters(object_id), i32::MAX);
+    assert_eq!(
+        game.resolve_amount(crate::Amount::PerCounterOnSource, P0, object_id, None, 0),
+        i32::MAX
+    );
+    let filter = crate::PermanentFilter {
+        with_counter: Some(crate::CounterAxis::PlusOnePlusOne),
+        ..Default::default()
+    };
+    assert_eq!(
+        game.count_matching(&filter, crate::AmountZone::Battlefield, P0, Some(object_id)),
+        1
+    );
+    assert!(game.ability_activation_gate(P0, object_id, 1).is_ok());
+    assert!(
+        game.modifier_provenance
+            .counter_batches
+            .iter()
+            .any(|&(host, count, source)| host == object_id
+                && count == 2
+                && source == "ordinary source")
+    );
+}
+
+#[test]
+fn endpoint_plus_counter_placement_and_removal_keep_ledger_and_raw_total_coherent() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    apply_one(
+        &mut game,
+        Mutation::SetPermanentState {
+            object_id,
+            tapped: None,
+            marked_damage: None,
+            plus_one_counters: Some(i32::MAX),
+        },
+    )
+    .expect("counter edit");
+
+    game.apply(&crate::Event::CountersPlaced {
+        object: object_id,
+        count: 1,
+        source_name: "clamped placement",
+    });
+    assert_eq!(game.plus_counters(object_id), i32::MAX);
+    assert_eq!(game.permanent(object_id).plus_counters, i32::MAX);
+
+    game.apply(&crate::Event::CountersPlaced {
+        object: object_id,
+        count: -1,
+        source_name: "remove one",
+    });
+    assert_eq!(game.plus_counters(object_id), i32::MAX - 1);
+    assert_eq!(game.permanent(object_id).plus_counters, i32::MAX - 1);
+
+    game.apply(&crate::Event::KindCountersPlaced {
+        object: object_id,
+        kind: crate::CounterKind::Charge,
+        count: 1,
+    });
+    let (mut events, removed) = game.remove_counters_events(object_id, true, 0);
+    assert_eq!(removed, i32::MAX);
+    game.apply_all(&mut events);
+    assert_eq!(game.plus_counters(object_id), 0);
+    assert_eq!(game.permanent(object_id).plus_counters, 0);
+    assert_eq!(
+        game.counters_of_kind(object_id, crate::CounterKind::Charge),
+        0
+    );
+    assert!(
+        game.modifier_provenance
+            .counter_batches
+            .iter()
+            .all(|&(host, ..)| host != object_id)
+    );
+}
+
+#[test]
+fn scalar_permanent_state_rejects_negative_totals_wrong_kinds_and_missing_objects() {
+    let mut game = Game::with_players(2, 0);
+    let permanent = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    let hand = game.spawn_in_hand(P0, card("Forest"));
+    for operation in [
+        Mutation::SetPermanentState {
+            object_id: permanent,
+            tapped: None,
+            marked_damage: Some(-1),
+            plus_one_counters: None,
+        },
+        Mutation::SetPermanentState {
+            object_id: permanent,
+            tapped: None,
+            marked_damage: None,
+            plus_one_counters: Some(-1),
+        },
+    ] {
+        assert_eq!(
+            apply_one(&mut game, operation),
+            Err(EditError {
+                operation_index: Some(0),
+                reason: ErrorReason::InvalidValue,
+            })
+        );
+    }
+    assert_eq!(
+        apply_one(
+            &mut game,
+            Mutation::SetPermanentState {
+                object_id: hand,
+                tapped: Some(true),
+                marked_damage: None,
+                plus_one_counters: None,
+            },
+        ),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::WrongObjectKind,
+        })
+    );
+    assert_eq!(
+        apply_one(
+            &mut game,
+            Mutation::SetPermanentState {
+                object_id: 999,
+                tapped: Some(true),
+                marked_damage: None,
+                plus_one_counters: None,
+            },
+        ),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::UnknownEntity,
+        })
+    );
+}
+
+#[test]
+fn scalar_controller_replaces_all_overrides_stamps_and_removes_from_combat() {
+    let mut game = Game::with_players(2, 0);
+    let object_id = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    let other = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    game.play_permissions
+        .control_overrides
+        .push((object_id, P0, "old", 3));
+    game.play_permissions
+        .permanent_control_overrides
+        .push((object_id, P0, 4));
+    game.play_permissions.conditioned_control_overrides.push((
+        object_id,
+        P0,
+        crate::ControlCondition {
+            source: other,
+            needs_tapped: false,
+        },
+        5,
+    ));
+    game.next_control_timestamp = 17;
+    game.combat.attackers.push(object_id);
+    game.combat
+        .attack_targets
+        .push((object_id, crate::Defender::Player(P1)));
+    game.combat.blocks.push((object_id, other));
+    game.combat.blocks.push((other, object_id));
+    game.combat.blocked_ever.push((object_id, other));
+    game.combat.blocked_ever.push((other, object_id));
+
+    apply_one(
+        &mut game,
+        Mutation::SetController {
+            object_id,
+            controller: P1,
+        },
+    )
+    .expect("controller edit");
+
+    assert_eq!(game.controller_of(object_id), P1);
+    assert!(
+        game.play_permissions
+            .control_overrides
+            .iter()
+            .all(|entry| entry.0 != object_id)
+    );
+    assert!(
+        game.play_permissions
+            .conditioned_control_overrides
+            .iter()
+            .all(|entry| entry.0 != object_id)
+    );
+    assert_eq!(
+        game.play_permissions.permanent_control_overrides,
+        vec![(object_id, P1, 17)]
+    );
+    assert_eq!(game.next_control_timestamp, 18);
+    assert!(!game.combat.attackers.contains(&object_id));
+    assert!(
+        game.combat
+            .attack_targets
+            .iter()
+            .all(|&(attacker, _)| attacker != object_id)
+    );
+    assert!(
+        game.combat
+            .blocks
+            .iter()
+            .all(|&(blocker, attacker)| blocker != object_id && attacker != object_id)
+    );
+    assert!(
+        game.combat
+            .blocked_ever
+            .iter()
+            .all(|&(_, attacker)| attacker != object_id)
+    );
+}
+
+#[test]
+fn scalar_controller_rejects_nonpermanents_and_invalid_players() {
+    let mut game = Game::with_players(2, 0);
+    let permanent = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    let hand = game.spawn_in_hand(P0, card("Forest"));
+    assert_eq!(
+        apply_one(
+            &mut game,
+            Mutation::SetController {
+                object_id: hand,
+                controller: P1
+            }
+        ),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::WrongObjectKind
+        })
+    );
+    assert_eq!(
+        apply_one(
+            &mut game,
+            Mutation::SetController {
+                object_id: permanent,
+                controller: PlayerId(2)
+            }
+        ),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::UnknownEntity
+        })
+    );
+}
+
+#[test]
+fn attachment_set_and_detach_require_compatible_live_permanents() {
+    let mut game = Game::with_players(2, 0);
+    let host = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    let aura = game.spawn_on_battlefield(P0, card("Prison Term"));
+    let equipment = game.spawn_on_battlefield(P0, card("Bonesplitter"));
+    for attachment in [aura, equipment] {
+        apply_one(
+            &mut game,
+            Mutation::SetAttachment {
+                object_id: attachment,
+                attached_to: Some(host),
+            },
+        )
+        .expect("compatible attachment");
+        assert_eq!(game.attached_to(attachment), Some(host));
+        apply_one(
+            &mut game,
+            Mutation::SetAttachment {
+                object_id: attachment,
+                attached_to: None,
+            },
+        )
+        .expect("detach");
+        assert_eq!(game.attached_to(attachment), None);
+    }
+
+    let hand = game.spawn_in_hand(P0, card("Forest"));
+    for operation in [
+        Mutation::SetAttachment {
+            object_id: hand,
+            attached_to: Some(host),
+        },
+        Mutation::SetAttachment {
+            object_id: aura,
+            attached_to: Some(hand),
+        },
+    ] {
+        assert_eq!(
+            apply_one(&mut game, operation),
+            Err(EditError {
+                operation_index: Some(0),
+                reason: ErrorReason::WrongObjectKind
+            })
+        );
+    }
+    assert_eq!(
+        apply_one(
+            &mut game,
+            Mutation::SetAttachment {
+                object_id: host,
+                attached_to: Some(aura)
+            },
+        ),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::InvalidValue
+        })
+    );
+}
+
+#[test]
+fn attachment_validates_effective_type_in_the_requested_result_state() {
+    let mut game = Game::with_players(2, 0);
+    let host = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    let bestowed = game.spawn_on_battlefield(P0, card("Eidolon of Countless Battles"));
+    let type_lost_aura = game.spawn_on_battlefield(P0, card("Prison Term"));
+    game.permanent_mut(bestowed).bestowed = true;
+    game.permanent_mut(type_lost_aura).face_down = true;
+
+    apply_one(
+        &mut game,
+        Mutation::SetAttachment {
+            object_id: bestowed,
+            attached_to: Some(host),
+        },
+    )
+    .expect("a prospective attached bestow permanent is an Aura");
+    assert_eq!(game.attached_to(bestowed), Some(host));
+    assert!(game.effective_subtypes(bestowed).contains(&"Aura"));
+
+    assert_eq!(
+        apply_one(
+            &mut game,
+            Mutation::SetAttachment {
+                object_id: type_lost_aura,
+                attached_to: Some(host),
+            },
+        ),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::InvalidValue,
+        })
+    );
+    assert_eq!(game.attached_to(type_lost_aura), None);
+}
+
+#[test]
+fn attachment_rejects_self_links_and_cycles() {
+    let mut game = Game::with_players(2, 0);
+    let first = game.spawn_on_battlefield(P0, card("Faith's Fetters"));
+    let second = game.spawn_on_battlefield(P0, card("Faith's Fetters"));
+    assert_eq!(
+        apply_one(
+            &mut game,
+            Mutation::SetAttachment {
+                object_id: first,
+                attached_to: Some(first)
+            },
+        ),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::AttachmentCycle
+        })
+    );
+    apply_one(
+        &mut game,
+        Mutation::SetAttachment {
+            object_id: first,
+            attached_to: Some(second),
+        },
+    )
+    .expect("first link");
+    assert_eq!(
+        apply_one(
+            &mut game,
+            Mutation::SetAttachment {
+                object_id: second,
+                attached_to: Some(first)
+            },
+        ),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::AttachmentCycle
+        })
+    );
+}
+
+#[test]
+fn reports_late_operation_index_after_applying_earlier_operations() {
+    let mut game = Game::with_players(2, 0);
+    assert_eq!(
+        apply_operations(
+            &mut game,
+            &[
+                Mutation::SetLife {
+                    player: P0,
+                    life: 7
+                },
+                Mutation::SetPermanentState {
+                    object_id: 999,
+                    tapped: Some(true),
+                    marked_damage: None,
+                    plus_one_counters: None,
+                },
+            ],
+        ),
+        Err(EditError {
+            operation_index: Some(1),
+            reason: ErrorReason::UnknownEntity
+        })
+    );
+    assert_eq!(game.players[0].life, 7);
+}
+
+#[test]
+fn scalar_unimplemented_object_operations_remain_out_of_scope() {
+    let mut game = Game::with_players(2, 0);
+    assert_eq!(
+        apply_one(&mut game, Mutation::RemoveCard { object_id: 0 },),
+        Err(EditError {
+            operation_index: Some(0),
+            reason: ErrorReason::InvalidValue
+        })
+    );
+}
+
+#[test]
+fn bounded_counter_events_report_only_the_accepted_state_delta() {
+    let mut game = Game::with_players(2, 0);
+    let object = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    apply_one(
+        &mut game,
+        Mutation::SetPermanentState {
+            object_id: object,
+            tapped: None,
+            marked_damage: None,
+            plus_one_counters: Some(i32::MAX),
+        },
+    )
+    .expect("counter edit");
+    game.permanent_mut(object).kind_counters[crate::CounterKind::Charge as usize] = u8::MAX;
+    game.players[P0.0 as usize].kind_counters[crate::PlayerCounterKind::Poison as usize] = u8::MAX;
+
+    let mut events = Vec::new();
+    game.push_apply(
+        &mut events,
+        crate::Event::CountersPlaced {
+            object,
+            count: 1,
+            source_name: "bounded",
+        },
+    );
+    game.push_apply(
+        &mut events,
+        crate::Event::KindCountersPlaced {
+            object,
+            kind: crate::CounterKind::Charge,
+            count: 1,
+        },
+    );
+    game.push_apply(
+        &mut events,
+        crate::Event::PlayerCountersPlaced {
+            player: P0,
+            kind: crate::PlayerCounterKind::Poison,
+            count: 1,
+        },
+    );
+
+    assert!(events.is_empty(), "zero accepted delta publishes no event");
+}
+
+#[test]
+fn bounded_counter_events_publish_a_partial_accepted_delta() {
+    let mut game = Game::with_players(2, 0);
+    let object = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    apply_one(
+        &mut game,
+        Mutation::SetPermanentState {
+            object_id: object,
+            tapped: None,
+            marked_damage: None,
+            plus_one_counters: Some(i32::MAX - 1),
+        },
+    )
+    .expect("counter edit");
+
+    let mut events = Vec::new();
+    game.push_apply(
+        &mut events,
+        crate::Event::CountersPlaced {
+            object,
+            count: 2,
+            source_name: "bounded",
+        },
+    );
+
+    assert_eq!(game.plus_counters(object), i32::MAX);
+    assert!(matches!(
+        events.as_slice(),
+        [crate::Event::CountersPlaced { count: 1, .. }]
+    ));
+}

@@ -2264,26 +2264,28 @@ impl Game {
         mut layers: Vec<ContinuousEffect>,
     ) -> (i32, i32) {
         layers.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
-        let mut power = printed_power;
-        let mut toughness = printed_toughness;
+        // Magic integers are mathematically unbounded. Accumulate the layer in a wider type so
+        // opposite deltas still cancel before clamping at the engine's i32 representation boundary.
+        let mut power = i64::from(printed_power);
+        let mut toughness = i64::from(printed_toughness);
         for effect in layers {
             match effect.kind {
                 ContinuousEffectKind::BasePtSet {
                     power: base_power,
                     toughness: base_toughness,
                 } => {
-                    power = base_power;
-                    toughness = base_toughness;
+                    power = i64::from(base_power);
+                    toughness = i64::from(base_toughness);
                 }
                 ContinuousEffectKind::BaseToughnessSet {
                     toughness: base_toughness,
-                } => toughness = base_toughness,
+                } => toughness = i64::from(base_toughness),
                 ContinuousEffectKind::PtDelta {
                     power: delta_power,
                     toughness: delta_toughness,
                 } => {
-                    power += delta_power;
-                    toughness += delta_toughness;
+                    power += i64::from(delta_power);
+                    toughness += i64::from(delta_toughness);
                 }
                 ContinuousEffectKind::PtSwitch => std::mem::swap(&mut power, &mut toughness),
                 ContinuousEffectKind::SetTypes { .. }
@@ -2292,7 +2294,10 @@ impl Game {
                 | ContinuousEffectKind::LoseKeywords { .. } => {}
             }
         }
-        (power, toughness)
+        (
+            power.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32,
+            toughness.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32,
+        )
     }
 
     fn compute_effective_keywords_uncached(&self, object: ObjectId) -> Vec<Keyword> {
@@ -3496,7 +3501,7 @@ impl Game {
     /// life-gain replacements (CR 614 — Pest Rescuer, "you gain that much life plus 1 instead").
     /// Each [`Effect::Static(StaticEffect::LifeGainReplacement)`] that `recipient` controls adds its `plus`; the addends
     /// fold together. Gaining `base <= 0` is not "gaining life", so no replacement applies.
-    pub(crate) fn life_gain_after_replacements(&self, recipient: PlayerId, base: i32) -> i32 {
+    pub(crate) fn life_gain_after_replacements(&self, recipient: PlayerId, base: i64) -> i64 {
         self.replacement_registry()
             .life_gain_replaced_amount(recipient, base)
     }

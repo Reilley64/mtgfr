@@ -3621,11 +3621,13 @@ pub enum Event {
         card: ObjectId,
         from: ObjectId,
     },
-    /// A player's life total changed by `amount` (negative = lost life). `source` is what
-    /// caused it (an attacker, a life-gain effect) for the log; `None` for setup adjustments.
+    /// A player's life total changed by `amount` (negative = lost life). The event uses `i64`
+    /// because one logical change can span the full distance between the engine's two `i32` life
+    /// endpoints; keeping that span in one event preserves replacement and trigger cardinality.
+    /// `source` is what caused it (an attacker, a life-gain effect) for the log; `None` for setup.
     LifeChanged {
         player: PlayerId,
-        amount: i32,
+        amount: i64,
         source: Option<ObjectId>,
     },
     /// A player tried to draw from an empty library; they lose on the next SBA sweep.

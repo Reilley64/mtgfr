@@ -440,7 +440,7 @@ impl Game {
                 }
                 vec![Event::LifeChanged {
                     player: self.controller_of(host),
-                    amount: -(life as i32),
+                    amount: -i64::from(life),
                     source: Some(source),
                 }]
             }
@@ -634,5 +634,47 @@ impl Game {
                     .collect()
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod endpoint_tests {
+    use super::*;
+
+    #[test]
+    fn enchanted_attacker_life_loss_preserves_the_full_unsigned_amount() {
+        let mut game = Game::with_players(2, 0);
+        let controller = PlayerId(0);
+        let source = game.spawn_on_battlefield(
+            controller,
+            cards::get_by_name("Grizzly Bears").expect("fixture card"),
+        );
+        let host = game.spawn_on_battlefield(
+            controller,
+            cards::get_by_name("Grizzly Bears").expect("fixture card"),
+        );
+        game.permanent_mut(source).attached_to = Some(host);
+        game.players[controller.0 as usize].life = i32::MAX;
+
+        let minted = game.mint_pump(
+            PumpEffect::EnchantedAttackerPumpAttackingOpponentElseControllerLosesLife {
+                power: 0,
+                toughness: 0,
+                life: u32::MAX,
+            },
+            controller,
+            source,
+            None,
+            0,
+        );
+        let mut events = Vec::new();
+        game.apply_effect_events_with_replacements(minted, &mut events);
+
+        assert_eq!(game.life(controller), i32::MIN);
+        assert_eq!(game.players[controller.0 as usize].life_losses_this_turn, 1);
+        assert!(matches!(
+            events.as_slice(),
+            [Event::LifeChanged { amount, .. }] if *amount == -i64::from(u32::MAX)
+        ));
     }
 }

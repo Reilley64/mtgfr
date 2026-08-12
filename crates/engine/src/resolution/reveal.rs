@@ -277,14 +277,14 @@ impl Game {
                 if let Some(card) = them {
                     events.push(Event::LifeChanged {
                         player: controller,
-                        amount: -(self.def_of(card).mana_value() as i32),
+                        amount: -i64::from(self.def_of(card).mana_value()),
                         source: Some(source),
                     });
                 }
                 if let Some(card) = you {
                     events.push(Event::LifeChanged {
                         player: opponent,
-                        amount: -(self.def_of(card).mana_value() as i32),
+                        amount: -i64::from(self.def_of(card).mana_value()),
                         source: Some(source),
                     });
                 }

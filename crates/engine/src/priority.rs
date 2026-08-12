@@ -123,7 +123,7 @@ impl Game {
             .then(|| self.pending_choice.take())
             .flatten();
         let mut events = vec![Event::PlayerLost { player }];
-        self.apply_all(&events);
+        self.apply_all(&mut events);
         // The combat damage step's turn-based action is not the quitter's to forfeit, though: it
         // belongs to the game, and the other seats' attackers and blockers are waiting on it. Finish
         // the batch for whoever is left rather than skipping every point of damage in it (CR 510.1).
@@ -194,7 +194,7 @@ impl Game {
                 persist: false,
             });
         }
-        self.apply_all(&events);
+        self.apply_all(&mut events);
         // Fertile Ground / Mirari's Wake fire off the same tap (CR 605.3 — inline, no stack).
         self.land_tapped_for_mana(object, player, &mut events);
         Ok(events)
@@ -337,7 +337,7 @@ impl Game {
         if self.life(player) < 1 {
             return Err(Reject::CannotProduceMana);
         }
-        let events = vec![
+        let mut events = vec![
             Event::LifeChanged {
                 player,
                 amount: -1,
@@ -350,7 +350,7 @@ impl Game {
                 persist: false,
             },
         ];
-        self.apply_all(&events);
+        self.apply_all(&mut events);
         Ok(events)
     }
 
@@ -1518,7 +1518,7 @@ impl Game {
         }
 
         let mut events = vec![Event::PriorityPassed { player }];
-        self.apply_all(&events);
+        self.apply_all(&mut events);
         self.consecutive_passes += 1;
         self.priority = self.next_player(player);
 
@@ -1534,6 +1534,9 @@ impl Game {
     /// Apply `event`, recording it into `events`. Used where turn-based actions must
     /// see the effect of the previous event (e.g. untap reads the just-entered step).
     pub(crate) fn push_apply(&mut self, events: &mut Vec<Event>, event: Event) {
+        let Some(event) = self.normalize_event(event) else {
+            return;
+        };
         self.apply(&event);
         events.push(event);
     }
@@ -2152,7 +2155,7 @@ impl Game {
             return;
         }
 
-        let milled = self.mill_events(player, rad as u32);
+        let mut milled = self.mill_events(player, rad as u32);
         let nonland = milled
             .iter()
             .filter(|event| match event {
@@ -2162,7 +2165,7 @@ impl Game {
                 _ => false,
             })
             .count() as i32;
-        self.apply_all(&milled);
+        self.apply_all(&mut milled);
         events.extend(milled);
         if nonland == 0 {
             return;
@@ -2172,7 +2175,7 @@ impl Game {
             events,
             Event::LifeChanged {
                 player,
-                amount: -nonland,
+                amount: -i64::from(nonland),
                 source: None,
             },
         );

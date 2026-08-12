@@ -109,10 +109,10 @@ impl Game {
                 return Err(Reject::CannotPayCost);
             }
         }
-        if cost.additional.pay_life_x && self.life(player) < x as i32 {
+        if cost.additional.pay_life_x && i64::from(self.life(player)) < i64::from(x) {
             return Err(Reject::CannotPayCost);
         }
-        if self.life(player) < cost.additional.pay_life as i32 {
+        if i64::from(self.life(player)) < i64::from(cost.additional.pay_life) {
             return Err(Reject::CannotPayCost);
         }
         // "Reveal a creature card from your hand" (CR 601.2g — Disaster Radius): can't be cast
@@ -515,7 +515,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(2 * i32::from(phyrexian_life)),
+                    amount: -i64::from(2 * i32::from(phyrexian_life)),
                     source: Some(object),
                 },
             );
@@ -590,7 +590,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(x as i32),
+                    amount: -i64::from(x),
                     source: Some(object),
                 },
             );
@@ -602,7 +602,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(cost.additional.pay_life as i32),
+                    amount: -i64::from(cost.additional.pay_life),
                     source: Some(object),
                 },
             );
@@ -1238,7 +1238,7 @@ impl Game {
         // affordable (CR 119.4 — life down to and including 0); below the cost the land just
         // enters tapped with no prompt, handled by `Game::enters_tapped` at `Event::LandPlayed`.
         if let Some(life) = printed.enters_tapped_unless_you_pay_life
-            && self.life(player) >= life as i32
+            && i64::from(self.life(player)) >= i64::from(life)
         {
             pending::raise_choice(
                 self,
@@ -1277,7 +1277,7 @@ impl Game {
             player,
             tapped,
         }];
-        self.apply_all(&events);
+        self.apply_all(&mut events);
         // A land's own as-enters static (CR 616.1 — Vivid Crag's "enters with two charge
         // counters"): no spell/target context at this special action, unlike the cast-resolution
         // choke `push_enters_with_counters` also serves.
@@ -2777,7 +2777,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -pay_life,
+                    amount: -i64::from(pay_life),
                     source: Some(object),
                 },
             );
@@ -2880,7 +2880,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(cost.self_damage as i32),
+                    amount: -i64::from(cost.self_damage),
                     source: Some(object),
                 },
             );

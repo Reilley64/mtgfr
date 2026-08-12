@@ -105,8 +105,8 @@ impl Game {
                         .iter()
                         .any(|&flagged| self.current_id(flagged) == original);
                 if !goes_to_graveyard {
-                    let evs = self.counter_spell(original);
-                    self.apply_all(&evs);
+                    let mut evs = self.counter_spell(original);
+                    self.apply_all(&mut evs);
                     events.extend(evs);
                     return;
                 }
@@ -140,12 +140,12 @@ impl Game {
                         .iter()
                         .any(|&flagged| self.current_id(flagged) == original);
                 if !goes_to_graveyard {
-                    let evs = self.counter_spell(original);
-                    self.apply_all(&evs);
+                    let mut evs = self.counter_spell(original);
+                    self.apply_all(&mut evs);
                     events.extend(evs);
                     return;
                 }
-                let evs = if self.is_copy_object(original) {
+                let mut evs = if self.is_copy_object(original) {
                     vec![Event::SpellCeasedToExist { spell: original }]
                 } else {
                     vec![Event::TuckedToLibrary {
@@ -155,7 +155,7 @@ impl Game {
                         second_from_top: false,
                     }]
                 };
-                self.apply_all(&evs);
+                self.apply_all(&mut evs);
                 events.extend(evs);
             }
             // "Whenever a player casts a spell, counter it [unless that player pays {N}]" (Presence
@@ -175,8 +175,8 @@ impl Game {
                     return;
                 }
                 let Some(amount) = unless_pays else {
-                    let evs = self.counter_spell(original);
-                    self.apply_all(&evs);
+                    let mut evs = self.counter_spell(original);
+                    self.apply_all(&mut evs);
                     events.extend(evs);
                     return;
                 };

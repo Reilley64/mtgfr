@@ -4814,7 +4814,7 @@ impl Game {
             }
             Condition::AnOpponentHasLifeAtMost { at_most } => self
                 .living_players()
-                .any(|p| p != ctx.controller && self.life(p) <= at_most as i32),
+                .any(|p| p != ctx.controller && i64::from(self.life(p)) <= i64::from(at_most)),
             // Corrupted (CR 702.165): "an opponent has three or more poison counters" — an
             // existential over living opponents, same shape as the life check above.
             Condition::AnOpponentHasPoisonAtLeast { at_least } => self.living_players().any(|p| {

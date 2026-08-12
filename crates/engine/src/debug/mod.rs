@@ -320,16 +320,225 @@ fn inspect_stack_item(
     }
 }
 
-/// Task 3 declares the ordered editor boundary. Tasks 4 and 5 implement its ten operations.
+/// Applies raw debug edits in request order, then rebuilds derived state once for the batch.
 pub fn apply_operations(game: &mut Game, operations: &[Mutation]) -> Result<(), EditError> {
-    let _ = game;
     if operations.is_empty() {
         return Err(EditError {
             operation_index: None,
             reason: ErrorReason::EmptyBatch,
         });
     }
+
+    for (operation_index, operation) in operations.iter().enumerate() {
+        apply_operation(game, operation).map_err(|reason| EditError {
+            operation_index: Some(operation_index),
+            reason,
+        })?;
+    }
+
+    game.characteristics_cache = crate::characteristics_cache::CharacteristicsCacheCell::default();
+    game.refresh_actions();
+    validate_structural(game).map_err(|_| EditError {
+        operation_index: None,
+        reason: ErrorReason::InvalidValue,
+    })
+}
+
+fn apply_operation(game: &mut Game, operation: &Mutation) -> Result<(), ErrorReason> {
+    match operation {
+        Mutation::SetLife { player, life } => {
+            let Some(state) = game.players.get_mut(player.0 as usize) else {
+                return Err(ErrorReason::UnknownEntity);
+            };
+            state.life = *life;
+        }
+        Mutation::SetPlayerCounter {
+            player,
+            counter,
+            value,
+        } => {
+            let Some(state) = game.players.get_mut(player.0 as usize) else {
+                return Err(ErrorReason::UnknownEntity);
+            };
+            state.kind_counters[*counter as usize] = *value;
+        }
+        Mutation::SetTurnState {
+            active_player,
+            step,
+            priority_player,
+            consecutive_passes,
+        } => {
+            let Some(active) = game.players.get(active_player.0 as usize) else {
+                return Err(ErrorReason::UnknownEntity);
+            };
+            let Some(priority) = game.players.get(priority_player.0 as usize) else {
+                return Err(ErrorReason::UnknownEntity);
+            };
+            if active.lost || priority.lost {
+                return Err(ErrorReason::InvalidValue);
+            }
+            let living_players = game.living_player_count();
+            if living_players == 0 || *consecutive_passes >= living_players {
+                return Err(ErrorReason::InvalidValue);
+            }
+            game.active_player = *active_player;
+            game.step = *step;
+            game.priority = *priority_player;
+            game.consecutive_passes = *consecutive_passes;
+        }
+        Mutation::SetPermanentState {
+            object_id,
+            tapped,
+            marked_damage,
+            plus_one_counters,
+        } => {
+            if marked_damage.is_some_and(|value| value < 0)
+                || plus_one_counters.is_some_and(|value| value < 0)
+            {
+                return Err(ErrorReason::InvalidValue);
+            }
+            let Some(object) = game.objects.get(*object_id as usize) else {
+                return Err(ErrorReason::UnknownEntity);
+            };
+            if !matches!(object, Object::Permanent(_)) {
+                return Err(ErrorReason::WrongObjectKind);
+            }
+            {
+                let permanent = game.permanent_mut(*object_id);
+                if let Some(value) = tapped {
+                    permanent.tapped = *value;
+                }
+                if let Some(value) = marked_damage {
+                    permanent.marked_damage = *value;
+                }
+            }
+            if let Some(value) = plus_one_counters {
+                game.set_plus_counter_aggregate(*object_id, *value);
+            }
+        }
+        Mutation::SetController {
+            object_id,
+            controller,
+        } => set_controller(game, *object_id, *controller)?,
+        Mutation::SetAttachment {
+            object_id,
+            attached_to,
+        } => set_attachment(game, *object_id, *attached_to)?,
+        Mutation::CreateCard { .. }
+        | Mutation::MoveCard { .. }
+        | Mutation::SetLibraryOrder { .. }
+        | Mutation::RemoveCard { .. } => return Err(ErrorReason::InvalidValue),
+    }
     Ok(())
+}
+
+fn set_controller(
+    game: &mut Game,
+    object_id: ObjectId,
+    controller: PlayerId,
+) -> Result<(), ErrorReason> {
+    if game.players.get(controller.0 as usize).is_none() {
+        return Err(ErrorReason::UnknownEntity);
+    }
+    let Some(object) = game.objects.get(object_id as usize) else {
+        return Err(ErrorReason::UnknownEntity);
+    };
+    if !matches!(object, Object::Permanent(_)) {
+        return Err(ErrorReason::WrongObjectKind);
+    }
+
+    game.play_permissions
+        .control_overrides
+        .retain(|&(object, ..)| object != object_id);
+    game.play_permissions
+        .permanent_control_overrides
+        .retain(|&(object, ..)| object != object_id);
+    game.play_permissions
+        .conditioned_control_overrides
+        .retain(|&(object, ..)| object != object_id);
+    let timestamp = game.stamp_control_timestamp();
+    game.play_permissions
+        .permanent_control_overrides
+        .push((object_id, controller, timestamp));
+
+    game.combat.attackers.retain(|&object| object != object_id);
+    game.combat
+        .attack_targets
+        .retain(|&(attacker, _)| attacker != object_id);
+    game.combat
+        .blocks
+        .retain(|&(blocker, attacker)| blocker != object_id && attacker != object_id);
+    game.combat
+        .blocked_ever
+        .retain(|&(_, attacker)| attacker != object_id);
+    Ok(())
+}
+
+fn set_attachment(
+    game: &mut Game,
+    object_id: ObjectId,
+    attached_to: Option<ObjectId>,
+) -> Result<(), ErrorReason> {
+    let Some(object) = game.objects.get(object_id as usize) else {
+        return Err(ErrorReason::UnknownEntity);
+    };
+    if !matches!(object, Object::Permanent(_)) {
+        return Err(ErrorReason::WrongObjectKind);
+    }
+    let Some(host) = attached_to else {
+        let Object::Permanent(permanent) = &mut game.objects[object_id as usize] else {
+            unreachable!("kind checked above");
+        };
+        permanent.attached_to = None;
+        return Ok(());
+    };
+    let Some(host_object) = game.objects.get(host as usize) else {
+        return Err(ErrorReason::UnknownEntity);
+    };
+    if !matches!(host_object, Object::Permanent(_)) {
+        return Err(ErrorReason::WrongObjectKind);
+    }
+    if attachment_would_cycle(game, object_id, host) {
+        return Err(ErrorReason::AttachmentCycle);
+    }
+    let Object::Permanent(permanent) = &mut game.objects[object_id as usize] else {
+        unreachable!("kind checked above");
+    };
+    let previous_host = permanent.attached_to.replace(host);
+    game.characteristics_cache = crate::characteristics_cache::CharacteristicsCacheCell::default();
+
+    let effective_subtypes = game.effective_subtypes(object_id);
+    let valid_result = (effective_subtypes.contains(&"Aura")
+        || effective_subtypes.contains(&"Equipment"))
+        && game.attachment_host_legal(object_id, host);
+    if valid_result {
+        return Ok(());
+    }
+
+    let Object::Permanent(permanent) = &mut game.objects[object_id as usize] else {
+        unreachable!("kind checked above");
+    };
+    permanent.attached_to = previous_host;
+    // The prospective relationship may have populated derived reads. Discard them so a rejected
+    // local operation leaves its candidate coherent for the transaction layer to inspect/drop.
+    game.characteristics_cache = crate::characteristics_cache::CharacteristicsCacheCell::default();
+    Err(ErrorReason::InvalidValue)
+}
+
+fn attachment_would_cycle(game: &Game, object_id: ObjectId, mut host: ObjectId) -> bool {
+    let mut visited = HashSet::new();
+    loop {
+        if host == object_id || !visited.insert(host) {
+            return true;
+        }
+        let Some(Object::Permanent(permanent)) = game.objects.get(host as usize) else {
+            return false;
+        };
+        let Some(next) = permanent.attached_to else {
+            return false;
+        };
+        host = next;
+    }
 }
 
 pub fn validate_structural(game: &Game) -> Result<(), Vec<Violation>> {

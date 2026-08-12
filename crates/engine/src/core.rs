@@ -288,13 +288,12 @@ impl Game {
         });
     }
 
-    /// Test/setup helper: set a player's life to `value` (routed through an event
-    /// so state stays mutated only by [`Game::apply`]).
+    /// Test/setup helper: set a player's life to `value` through one logical event, even when the
+    /// delta spans the full stored range. This preserves gain/loss trigger and turn-tally cardinality.
     pub fn set_life(&mut self, player: PlayerId, value: i32) {
-        let delta = value - self.life(player);
         self.apply(&Event::LifeChanged {
             player,
-            amount: delta,
+            amount: i64::from(value) - i64::from(self.life(player)),
             source: None,
         });
     }
@@ -608,8 +607,8 @@ impl Game {
             .counter_batches
             .iter()
             .filter(|&&(o, _, _)| o == id)
-            .map(|&(_, c, _)| c)
-            .sum()
+            .fold(0_i64, |total, &(_, count, _)| total + i64::from(count))
+            .clamp(0, i64::from(i32::MAX)) as i32
     }
 
     /// Whether any inspect-ledger provenance batches remain for `object` (cleared when it leaves
@@ -749,7 +748,10 @@ impl Game {
             .iter()
             .map(|&kind| self.counters_of_kind(id, kind) as u32)
             .sum();
-        self.plus_counters(id).max(0) as u32 + named + self.finality_counter(id) as u32
+        (u64::from(self.plus_counters(id).max(0) as u32)
+            + u64::from(named)
+            + u64::from(self.finality_counter(id) as u32))
+        .min(u64::from(u32::MAX)) as u32
     }
 
     /// Whether the permanent at `id` is "prepared" (soc/sos prepare DFCs — its controller may

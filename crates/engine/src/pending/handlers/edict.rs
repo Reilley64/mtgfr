@@ -555,7 +555,7 @@ impl Game {
                     events,
                     Event::LifeChanged {
                         player: p,
-                        amount: -life_loss,
+                        amount: -i64::from(life_loss),
                         source: Some(source),
                     },
                 );
@@ -611,7 +611,7 @@ impl Game {
                     &mut events,
                     Event::LifeChanged {
                         player: p,
-                        amount: -life_loss,
+                        amount: -i64::from(life_loss),
                         source: Some(source),
                     },
                 );

@@ -143,7 +143,7 @@ impl Game {
             unreachable!("only the mill mode takes this choreography");
         };
         let n = self.resolve_count(count, controller, source, target, x);
-        let evs = self.mill_events_for(&self.players_in(who, controller, target), n);
+        let mut evs = self.mill_events_for(&self.players_in(who, controller, target), n);
         self.resolution_frame.milled_mana_value_this_way = evs
             .iter()
             .filter_map(|e| match e {
@@ -151,7 +151,7 @@ impl Game {
                 _ => None,
             })
             .sum();
-        self.apply_all(&evs);
+        self.apply_all(&mut evs);
         events.extend(evs);
     }
 }
