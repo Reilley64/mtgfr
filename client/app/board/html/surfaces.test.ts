@@ -262,6 +262,39 @@ test("priority bar exposes stack presence and uses the reserved offset", () => {
   );
 });
 
+test("wide non-empty-stack actions stay inside the shared short-landscape action column", () => {
+  const waitingStack = stackObjects(1);
+  const staged = stagedBoard();
+  if (staged.staged == null) throw new Error("missing staged action");
+  const nonTargetedStaged = {
+    ...staged,
+    staged: {
+      ...staged.staged,
+      action: { ...staged.staged.action, needs_target: false, targets: undefined },
+    },
+  };
+  overlayScene(
+    overlayModel(
+      nonTargetedStaged,
+      gameState({
+        ...waitingStack,
+        can_act: true,
+        priority: 0,
+        viewer: 0,
+      }),
+    ),
+    resolveBoardCardFaceMounts(2),
+    Scene.expect(Scene.testId("board-pass")).toExist(),
+    Scene.expect(Scene.testId("board-stack-yield")).toExist(),
+    Scene.expect(Scene.testId("board-cancel-target")).toExist(),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveClass("stack-action-column"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--stack-action-column-w", "220px"),
+    Scene.expect(Scene.testId("board-pass")).toHaveClass("max-w-full"),
+    Scene.expect(Scene.testId("board-stack-yield")).toHaveClass("max-w-full"),
+    Scene.expect(Scene.testId("board-cancel-target")).toHaveClass("max-w-full"),
+  );
+});
+
 function gameFold(state: VisibleState | null = gameState(), log: ReadonlyArray<LogLine> = []): GameFoldState {
   return {
     seq: 1,
@@ -2858,9 +2891,12 @@ test("simple prompt primary bar stacks above pile and prompt modal backdrops", (
     Scene.expect(Scene.testId("pile-overlay")).toHaveClass("z-29"),
     Scene.expect(Scene.testId("pending-exile-aim")).toExist(),
     Scene.expect(Scene.testId("priority-context-bar")).toHaveClass("z-45"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveClass("stack-action-column"),
     Scene.expect(Scene.testId("priority-context-bar")).toHaveAttr("data-stack-present", "true"),
     Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--b", "calc(var(--hand-bar-h) + 2px)"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--stack-action-column-w", "220px"),
     Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toBeEnabled(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveClass("max-w-full"),
     Scene.expect(Scene.testId("pending-exile-count")).toContainText("0 / up to 2"),
     Scene.tap((sim) => {
       const ids = collectTestIds(sim.html);

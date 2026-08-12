@@ -190,14 +190,6 @@
     }
   }
 
-  /* Short landscape (phones on their side): tighten screen chrome, keep side-by-side. */
-  @media (orientation: landscape) and (max-height: 500px) {
-    [data-ui="panel"] {
-      padding: var(--spacing-xl);
-      gap: var(--spacing-md);
-    }
-  }
-
   a {
     text-decoration: none;
   }
@@ -227,6 +219,26 @@
       transition-duration: 0.01ms !important;
       /* biome-ignore lint/complexity/noImportantStyles: must override component-level motion for a11y */
       animation-duration: 0.01ms !important;
+    }
+  }
+
+  /* Short landscape (phones on their side): tighten screen chrome, keep side-by-side. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    [data-ui="panel"] {
+      padding: var(--spacing-xl);
+      gap: var(--spacing-md);
+    }
+
+    /* Geometry reserves this exact right-side column whenever the compact stack must flatten. */
+    .stack-action-column[data-stack-present="true"] {
+      box-sizing: border-box;
+      width: var(--stack-action-column-w);
+      max-width: var(--stack-action-column-w);
+    }
+
+    .stack-action-column[data-stack-present="true"] > *,
+    .stack-action-column[data-stack-present="true"] button {
+      max-width: 100%;
     }
   }
 }

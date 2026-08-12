@@ -17,6 +17,7 @@ import type { VisibleState, WireAttack } from "~/wire/types";
 import { formatMessage } from "../../domain/i18n/message";
 import { bandCandidates, canArmEndTurn, stagedAttackersForDisplay } from "../geometry/combat-staging";
 import { type PrimaryAction, primaryActionFor } from "../geometry/interaction";
+import { STACK_ACTION_COLUMN_WIDTH } from "../geometry/stackLayout";
 import {
   CancelActionClicked,
   CombatBandToggled,
@@ -137,7 +138,7 @@ function rocker(
       h.Attribute("aria-label", opts.label),
       h.Attribute("title", opts.label),
       h.OnClick(TurnYieldToggled({ enabled: !opts.checked })),
-      h.Class(turnYieldRockerClass(opts.tone)),
+      h.Class(`${turnYieldRockerClass(opts.tone)} max-w-full`),
     ],
     [
       h.span([h.Class(turnYieldLabelClass()), h.Attribute("aria-hidden", "true")], [opts.label]),
@@ -169,8 +170,13 @@ export function priorityBarView(
         h.DataAttribute("testid", "priority-context-bar"),
         h.DataAttribute("stack-present", state.stack.length > 0 ? "true" : "false"),
         // Above pile (z-29) and prompt-modal (z-40) backdrops so Choose / Confirm stay clickable.
-        h.Class("pointer-events-auto fixed bottom-(--b) right-md z-45 flex flex-col items-end gap-sm"),
-        h.Style({ "--b": priorityBarBottom(state.stack.length) }),
+        h.Class(
+          "stack-action-column pointer-events-auto fixed bottom-(--b) right-md z-45 flex flex-col items-end gap-sm",
+        ),
+        h.Style({
+          "--b": priorityBarBottom(state.stack.length),
+          "--stack-action-column-w": `${STACK_ACTION_COLUMN_WIDTH}px`,
+        }),
       ],
       [simpleActions, board.reject != null ? rejectView(board.reject, h) : null].filter((v): v is Html => v !== null),
     );
@@ -193,22 +199,47 @@ export function priorityBarView(
           disabled: !yours,
           onClick: PrimaryClicked(),
           variant: "game",
-          class: priorityPrimaryClass(yours),
+          class: [priorityPrimaryClass(yours), "max-w-full whitespace-normal"],
         },
         [primary.label],
       )
     : null;
 
   const passBtn: Html | null = canResolveCard(state)
-    ? button(h, { testId: "board-pass", onClick: PassClicked(), variant: "game", class: "shadow-glow" }, [
-        "Resolve card",
-      ])
+    ? button(
+        h,
+        {
+          testId: "board-pass",
+          onClick: PassClicked(),
+          variant: "game",
+          class: "max-w-full whitespace-normal shadow-glow",
+        },
+        ["Resolve card"],
+      )
     : null;
 
   const stackYieldBtn: Html | null = canArmStackYield(state, yielded)
-    ? button(h, { testId: "board-stack-yield", onClick: StackYieldArmed(), variant: "game-quiet" }, ["Resolve stack"])
+    ? button(
+        h,
+        {
+          testId: "board-stack-yield",
+          onClick: StackYieldArmed(),
+          variant: "game-quiet",
+          class: "max-w-full whitespace-normal",
+        },
+        ["Resolve stack"],
+      )
     : yielded && stackLen > 0
-      ? button(h, { testId: "board-stack-yield-armed", disabled: true, variant: "game-yielded" }, ["Resolve stack"])
+      ? button(
+          h,
+          {
+            testId: "board-stack-yield-armed",
+            disabled: true,
+            variant: "game-yielded",
+            class: "max-w-full whitespace-normal",
+          },
+          ["Resolve stack"],
+        )
       : null;
 
   const endTurnBtn: Html | null = showEndTurn(state, pendingAttackers)
@@ -245,7 +276,16 @@ export function priorityBarView(
     board.discardPick != null ||
     board.gyExilePick != null;
   const cancelBtn: Html | null = hasStaged
-    ? button(h, { testId: "board-cancel-target", onClick: CancelActionClicked(), variant: "game-quiet" }, ["Cancel"])
+    ? button(
+        h,
+        {
+          testId: "board-cancel-target",
+          onClick: CancelActionClicked(),
+          variant: "game-quiet",
+          class: "max-w-full whitespace-normal",
+        },
+        ["Cancel"],
+      )
     : null;
 
   const companions = [passBtn, stackYieldBtn, cancelBtn].filter((v): v is Html => v !== null);
@@ -258,8 +298,13 @@ export function priorityBarView(
     [
       h.DataAttribute("testid", "priority-context-bar"),
       h.DataAttribute("stack-present", state.stack.length > 0 ? "true" : "false"),
-      h.Class("pointer-events-auto fixed bottom-(--b) right-md z-25 flex flex-col items-end gap-sm"),
-      h.Style({ "--b": priorityBarBottom(state.stack.length) }),
+      h.Class(
+        "stack-action-column pointer-events-auto fixed bottom-(--b) right-md z-25 flex flex-col items-end gap-sm",
+      ),
+      h.Style({
+        "--b": priorityBarBottom(state.stack.length),
+        "--stack-action-column-w": `${STACK_ACTION_COLUMN_WIDTH}px`,
+      }),
     ],
     [
       bandPanelView(board, state, attackers, h),

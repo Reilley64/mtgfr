@@ -66,16 +66,24 @@ describe("stackFanLayout", () => {
     }
   });
 
-  it("keeps a short-landscape compact face clear of the hand", () => {
-    const viewport = { width: 844, height: 390 };
-    const layout = stackFanLayout(viewport, 1);
-    const bounds = stackFanVisualBounds(layout, 0);
-    expect(bounds).not.toBeNull();
-    if (bounds == null) return;
+  it.each([1, 2, 3, 4])(
+    "keeps every transformed face in a %i-card short-landscape fan onscreen above the hand",
+    (count) => {
+      const viewport = { width: 844, height: 390 };
+      const layout = stackFanLayout(viewport, count);
+      const handTop = viewport.height - handMetrics(viewport).barH;
 
-    const handTop = viewport.height - handMetrics(viewport).barH;
-    expect(bounds.bottom).toBeLessThanOrEqual(handTop);
-  });
+      for (let row = 0; row < count; row++) {
+        const bounds = stackFanVisualBounds(layout, row);
+        expect(bounds).not.toBeNull();
+        if (bounds == null) continue;
+        expect(bounds.left).toBeGreaterThanOrEqual(0);
+        expect(bounds.top).toBeGreaterThanOrEqual(0);
+        expect(bounds.right).toBeLessThanOrEqual(viewport.width);
+        expect(bounds.bottom).toBeLessThanOrEqual(handTop);
+      }
+    },
+  );
 
   it("reserves the action column at its CSS width instead of shrinking it with hand cards", () => {
     const viewport = { width: 844, height: 390 };

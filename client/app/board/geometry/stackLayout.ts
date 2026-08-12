@@ -11,7 +11,7 @@ const STACK_FAN_MAX_ROTATION = 6;
 const STACK_ACTION_LANE_BASE = 120;
 const STACK_ACTION_GAP_BASE = 12;
 /** Expanded rocker label + track + padding in unscaled CSS pixels. */
-const STACK_ACTION_COLUMN_WIDTH = 220;
+export const STACK_ACTION_COLUMN_WIDTH = 220;
 /** `right-md` from the action bar's layout token. */
 const STACK_ACTION_RIGHT = 10;
 /** Comfortable design-space horizontal peek for expanded stack cards. */
@@ -42,6 +42,8 @@ export type StackFanLayout = {
   fanW: number;
   left: number;
   top: number;
+  maxRotation: number;
+  maxRise: number;
 };
 
 export function stackActionLane(viewport: ViewportSize): number {
@@ -78,13 +80,18 @@ export function stackFanLayout(viewport: ViewportSize, count: number): StackFanL
   const stride = Math.round(metrics.cardW * STACK_FAN_STRIDE_RATIO);
   const fanW = metrics.cardW + Math.max(0, visibleCount - 1) * stride;
   const naturalTop = (viewport.height - metrics.cardH) / 2;
-  const maxRotation = visibleCount <= 1 ? 0 : STACK_FAN_MAX_ROTATION;
-  const rotatedHeight = rotatedCardHeight(metrics.cardW, metrics.cardH, maxRotation);
-  const rotationOverflow = Math.ceil((rotatedHeight - metrics.cardH) / 2);
-  const maxTop = viewport.height - metrics.barH - stackActionLane(viewport) - metrics.cardH - rotationOverflow;
+  const normalMaxRotation = visibleCount <= 1 ? 0 : STACK_FAN_MAX_ROTATION;
+  const normalRotatedHeight = rotatedCardHeight(metrics.cardW, metrics.cardH, normalMaxRotation);
+  const normalRotationOverflow = Math.ceil((normalRotatedHeight - metrics.cardH) / 2);
+  const maxTop = viewport.height - metrics.barH - stackActionLane(viewport) - metrics.cardH - normalRotationOverflow;
   const normalMinTop = Math.round(16 * metrics.scale);
   const verticalClearanceImpossible = maxTop < normalMinTop;
-  const top = verticalClearanceImpossible ? rotationOverflow : Math.max(normalMinTop, Math.min(naturalTop, maxTop));
+  // A rotated 156×218 phone-landscape face is ~233.6px tall, but only 226px exists above
+  // the hand at 844×390. Preserve the exact hand-card size and flatten the compact transform
+  // instead of trying to place an AABB that mathematically cannot fit in that band.
+  const maxRotation = verticalClearanceImpossible ? 0 : normalMaxRotation;
+  const maxRise = verticalClearanceImpossible ? 0 : 8 * (metrics.cardW / HAND_FACE_W);
+  const top = verticalClearanceImpossible ? 0 : Math.max(normalMinTop, Math.min(naturalTop, maxTop));
 
   const normalLeft = viewport.width - STACK_OVERLAY_RIGHT - fanW;
   const rotatedWidth = rotatedCardWidth(metrics.cardW, metrics.cardH, maxRotation);
@@ -105,6 +112,8 @@ export function stackFanLayout(viewport: ViewportSize, count: number): StackFanL
     fanW,
     left,
     top,
+    maxRotation,
+    maxRise,
   };
 }
 
@@ -118,11 +127,11 @@ export function stackFanPlacement(
 
   const progress = index / (layout.visibleCount - 1);
   const centered = progress * 2 - 1;
-  const rise = Math.round(8 * (layout.cardW / HAND_FACE_W) * (1 - centered * centered));
+  const rise = Math.round(layout.maxRise * (1 - centered * centered));
   return {
     x: layout.left + index * layout.stride,
     y: layout.top - rise,
-    rotation: -STACK_FAN_MAX_ROTATION + progress * STACK_FAN_MAX_ROTATION * 2,
+    rotation: -layout.maxRotation + progress * layout.maxRotation * 2,
   };
 }
 
