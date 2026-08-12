@@ -4,6 +4,8 @@
 pub mod auth_ctx;
 mod auth_svc;
 mod cards_svc;
+#[cfg(debug_assertions)]
+mod debug_svc;
 mod decks_svc;
 mod game_svc;
 pub(crate) mod map;
@@ -42,6 +44,15 @@ pub async fn serve(
     state: AppState,
     shutdown: impl Future<Output = ()> + Send + 'static,
 ) -> Result<(), tonic::transport::Error> {
+    let router = production_router(&state);
+    serve_router(router, addr, state, shutdown).await
+}
+
+type ProductionRouter = tonic::transport::server::Router<
+    tower::layer::util::Stack<TraceLayer, tower::layer::util::Identity>,
+>;
+
+fn production_router(state: &AppState) -> ProductionRouter {
     Server::builder()
         .layer(TraceLayer)
         .add_service(pb::auth_service_server::AuthServiceServer::new(
@@ -60,8 +71,31 @@ pub async fn serve(
             game_svc::GameSvc::new(state.clone()),
         ))
         .add_service(pb::tables_service_server::TablesServiceServer::new(
-            tables_svc::TablesSvc::new(state),
+            tables_svc::TablesSvc::new(state.clone()),
+        ))
+}
+
+#[cfg(debug_assertions)]
+async fn serve_router(
+    router: ProductionRouter,
+    addr: SocketAddr,
+    state: AppState,
+    shutdown: impl Future<Output = ()> + Send + 'static,
+) -> Result<(), tonic::transport::Error> {
+    router
+        .add_service(debug_pb::debug_service_server::DebugServiceServer::new(
+            debug_svc::DebugSvc::new(state),
         ))
         .serve_with_shutdown(addr, shutdown)
         .await
+}
+
+#[cfg(not(debug_assertions))]
+async fn serve_router(
+    router: ProductionRouter,
+    addr: SocketAddr,
+    _state: AppState,
+    shutdown: impl Future<Output = ()> + Send + 'static,
+) -> Result<(), tonic::transport::Error> {
+    router.serve_with_shutdown(addr, shutdown).await
 }
