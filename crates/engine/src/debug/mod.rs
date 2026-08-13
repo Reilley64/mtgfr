@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     Card, CardId, CounterKind, DebugStackRender, EffectMessage, Game, Object, ObjectId,
-    PlayerCounterKind, PlayerId, PublicStackGhost, StackEntryId, StackItem, StackPayload,
+    PlayerCounterKind, PlayerId, PublicStackGhost, Spell, StackEntryId, StackItem, StackPayload,
     StackRenderSource, Step, Target, Zone, card_def, fresh_permanent, intern_card_def,
 };
 
@@ -106,6 +106,523 @@ fn bounded_nonempty(value: &str, max_bytes: usize) -> bool {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DebugStackEntrySpec {
+    KnownSpell {
+        entry_id: StackEntryId,
+        from_object_id: ObjectId,
+        spell_object_id: ObjectId,
+        controller: PlayerId,
+        targets: Vec<Target>,
+        targets_second: Vec<Target>,
+        x: u32,
+    },
+    AuthoredAbility {
+        entry_id: StackEntryId,
+        controller: PlayerId,
+        source_object_id: ObjectId,
+        ability_index: usize,
+        target: Option<Target>,
+        targets_second: Vec<Target>,
+        x: u32,
+    },
+    PublicGhost {
+        entry_id: StackEntryId,
+        controller: PlayerId,
+        public: PublicStackGhost,
+    },
+}
+
+impl DebugStackEntrySpec {
+    fn entry_id(&self) -> StackEntryId {
+        match self {
+            Self::KnownSpell { entry_id, .. }
+            | Self::AuthoredAbility { entry_id, .. }
+            | Self::PublicGhost { entry_id, .. } => *entry_id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StackEditError {
+    pub entry_index: Option<usize>,
+    pub reason: StackEditReason,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StackEditReason {
+    Engine(ErrorReason),
+    UnsupportedStackConstruction,
+    PendingOrchestration,
+}
+
+impl From<ErrorReason> for StackEditReason {
+    fn from(reason: ErrorReason) -> Self {
+        Self::Engine(reason)
+    }
+}
+
+/// Atomically replace the stack, bottom first, with checked explicit entries.
+pub fn replace_stack(
+    game: &mut Game,
+    entries: &[DebugStackEntrySpec],
+) -> Result<Vec<StackEntryId>, StackEditError> {
+    require_stack_editable(game)?;
+    let mut candidate = game.clone();
+    while !candidate.stack.is_empty() {
+        remove_top_stack_entry(&mut candidate);
+    }
+    add_stack_entries(&mut candidate, entries)?;
+    finish_stack_edit(game, candidate, entries)
+}
+
+/// Atomically append one checked explicit entry to the top of the stack.
+pub fn push_stack(
+    game: &mut Game,
+    entry: &DebugStackEntrySpec,
+) -> Result<Vec<StackEntryId>, StackEditError> {
+    require_stack_editable(game)?;
+    let mut candidate = game.clone();
+    add_stack_entries(&mut candidate, std::slice::from_ref(entry))?;
+    finish_stack_edit(game, candidate, std::slice::from_ref(entry))
+}
+
+/// Atomically remove `count` entries from the top without fabricating zone events.
+pub fn pop_stack(game: &mut Game, count: usize) -> Result<Vec<StackEntryId>, StackEditError> {
+    require_stack_editable(game)?;
+    if count == 0 || count > game.stack.len() {
+        return Err(StackEditError {
+            entry_index: None,
+            reason: ErrorReason::InvalidValue.into(),
+        });
+    }
+    let mut candidate = game.clone();
+    let mut removed = Vec::with_capacity(count);
+    for _ in 0..count {
+        removed.push(candidate.stack.last().expect("count was bounded").entry_id);
+        remove_top_stack_entry(&mut candidate);
+    }
+    validate_structural(&candidate).map_err(|_| StackEditError {
+        entry_index: None,
+        reason: ErrorReason::InvalidValue.into(),
+    })?;
+    candidate.characteristics_cache =
+        crate::characteristics_cache::CharacteristicsCacheCell::default();
+    candidate.refresh_actions();
+    *game = candidate;
+    Ok(removed)
+}
+
+fn finish_stack_edit(
+    game: &mut Game,
+    mut candidate: Game,
+    entries: &[DebugStackEntrySpec],
+) -> Result<Vec<StackEntryId>, StackEditError> {
+    validate_structural(&candidate).map_err(|_| StackEditError {
+        entry_index: None,
+        reason: ErrorReason::InvalidValue.into(),
+    })?;
+    candidate.characteristics_cache =
+        crate::characteristics_cache::CharacteristicsCacheCell::default();
+    candidate.refresh_actions();
+    let ids = entries.iter().map(DebugStackEntrySpec::entry_id).collect();
+    *game = candidate;
+    Ok(ids)
+}
+
+fn require_stack_editable(game: &Game) -> Result<(), StackEditError> {
+    let pending = inspect_pending_orchestration(game);
+    if pending.has_pending_choice
+        || pending.has_resume
+        || pending.has_resolution_frame
+        || pending.has_resolution_finish
+        || pending.pending_enter_bonus_counters != 0
+        || pending.pending_trigger_groups != 0
+        || pending.pending_obligations != 0
+    {
+        return Err(StackEditError {
+            entry_index: None,
+            reason: StackEditReason::PendingOrchestration,
+        });
+    }
+    Ok(())
+}
+
+fn add_stack_entries(
+    game: &mut Game,
+    entries: &[DebugStackEntrySpec],
+) -> Result<(), StackEditError> {
+    for (entry_index, entry) in entries.iter().enumerate() {
+        add_stack_entry(game, entry).map_err(|reason| StackEditError {
+            entry_index: Some(entry_index),
+            reason,
+        })?;
+    }
+    Ok(())
+}
+
+fn add_stack_entry(game: &mut Game, entry: &DebugStackEntrySpec) -> Result<(), StackEditReason> {
+    reserve_explicit_stack_entry_id(game, entry.entry_id())?;
+    match entry {
+        DebugStackEntrySpec::KnownSpell {
+            entry_id,
+            from_object_id,
+            spell_object_id,
+            controller,
+            targets,
+            targets_second,
+            x,
+        } => add_known_spell(
+            game,
+            *entry_id,
+            *from_object_id,
+            *spell_object_id,
+            *controller,
+            targets,
+            targets_second,
+            *x,
+        ),
+        DebugStackEntrySpec::AuthoredAbility {
+            entry_id,
+            controller,
+            source_object_id,
+            ability_index,
+            target,
+            targets_second,
+            x,
+        } => add_authored_ability(
+            game,
+            *entry_id,
+            *controller,
+            *source_object_id,
+            *ability_index,
+            *target,
+            targets_second,
+            *x,
+        ),
+        DebugStackEntrySpec::PublicGhost {
+            entry_id,
+            controller,
+            public,
+        } => {
+            validate_public_stack_ghost(game, *controller, public)
+                .map_err(|_| StackEditReason::Engine(ErrorReason::InvalidValue))?;
+            game.push_stack_item_with_id(
+                *entry_id,
+                StackRenderSource::InlinePublic(DebugStackRender {
+                    controller: *controller,
+                    public: public.clone(),
+                }),
+                StackPayload::DebugNoOp,
+            );
+            Ok(())
+        }
+    }
+}
+
+fn reserve_explicit_stack_entry_id(
+    game: &mut Game,
+    requested: StackEntryId,
+) -> Result<(), StackEditReason> {
+    if requested.0 == 0 {
+        return Err(ErrorReason::InvalidValue.into());
+    }
+    if game.stack.iter().any(|item| item.entry_id == requested) {
+        return Err(ErrorReason::DuplicateId.into());
+    }
+    let Some(next) = game.next_stack_entry_id else {
+        return Err(ErrorReason::InvalidValue.into());
+    };
+    if requested.0 < next.get() {
+        return Err(ErrorReason::DuplicateId.into());
+    }
+    // Explicit gaps are allowed, but request order remains monotonic. This prevents reuse while
+    // permitting deterministic fixture ids. Reserving u64::MAX exhausts the allocator.
+    game.next_stack_entry_id = requested
+        .0
+        .checked_add(1)
+        .and_then(std::num::NonZeroU64::new);
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn add_known_spell(
+    game: &mut Game,
+    entry_id: StackEntryId,
+    from: ObjectId,
+    spell_id: ObjectId,
+    controller: PlayerId,
+    targets: &[Target],
+    targets_second: &[Target],
+    x: u32,
+) -> Result<(), StackEditReason> {
+    if spell_id != game.next_object_id() {
+        return Err(if spell_id < game.next_object_id() {
+            ErrorReason::DuplicateId.into()
+        } else {
+            ErrorReason::InvalidValue.into()
+        });
+    }
+    let Some(Object::Card(source)) = game.objects.get(from as usize) else {
+        return Err(if game.objects.get(from as usize).is_some() {
+            ErrorReason::WrongObjectKind.into()
+        } else {
+            ErrorReason::UnknownEntity.into()
+        });
+    };
+    let source = source.clone();
+    if source.zone != Zone::Hand || source.face_down || source.owner != controller {
+        return Err(StackEditReason::UnsupportedStackConstruction);
+    }
+    let def = card_def(source.def);
+    admit_known_spell(game, from, &def, controller, targets, targets_second, x)?;
+    let target = targets.first().copied();
+    let created = game.create_object(
+        Some(from),
+        Object::Spell(Spell {
+            def: source.def,
+            controller,
+            targets: crate::TargetList::single(target),
+            targets_second: crate::TargetList::from_targets(targets_second),
+            commander: source.commander,
+            x,
+            chosen_color: None,
+            set_color: None,
+            text_swap: None,
+            modes: crate::Modes::default(),
+            copy: false,
+            flashback: false,
+            escape: false,
+            cast_from_hand: true,
+            cast_during_main_phase: game.active_player == controller
+                && matches!(game.step, Step::Main1 | Step::Main2),
+            damage_division: crate::DamageAssignment::default(),
+            damage_division_players: [None; crate::MAX_TARGETS],
+            counter_division: crate::DamageAssignment::default(),
+            sacrifice_count: 0,
+            sacrificed_mana_value: 0,
+            revealed_creature_mana_value: 0,
+            kicked: false,
+            bought_back: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            serra_recursion: false,
+            bestowed: false,
+            face_down: false,
+            masked: false,
+            evoked: false,
+            spent_colors: [false; crate::Color::COUNT],
+            phyrexian_life_paid: 0,
+        }),
+    );
+    debug_assert_eq!(created, spell_id);
+    game.push_stack_item_with_id(
+        entry_id,
+        StackRenderSource::Object(spell_id),
+        StackPayload::Spell(spell_id),
+    );
+    Ok(())
+}
+
+fn admit_known_spell(
+    game: &Game,
+    source: ObjectId,
+    def: &crate::CardDef,
+    controller: PlayerId,
+    targets: &[Target],
+    targets_second: &[Target],
+    x: u32,
+) -> Result<(), StackEditReason> {
+    if !matches!(def.kind, crate::CardKind::Spell { .. })
+        || def.modal
+        || def
+            .abilities
+            .iter()
+            .all(|ability| !matches!(ability.timing, crate::Timing::Spell))
+        || !targets_second.is_empty()
+        || game.spell_multi_target(def).is_some()
+        || def.cost.additional != crate::AdditionalCost::default()
+        || !def.cost.hybrid.is_empty()
+        || !def.cost.phyrexian.is_empty()
+        || def.cost.reduce_own_generic.is_some()
+        || def.alternative_cost.is_some()
+        || def.free_cast_if.is_some()
+        || def.flashback.is_some()
+        || def.escape.is_some()
+        || def.retrace
+        || def.delve
+        || def.demonstrate
+        || def.cascade
+        || !def.halves.is_empty()
+        || def.adventure.is_some()
+        || def.back.is_some()
+        || def.cost.x == 0 && x != 0
+        || def.cost.x_defined.is_some()
+        || def.cast_x_max.is_some()
+        || targets.len() > 1
+    {
+        return Err(StackEditReason::UnsupportedStackConstruction);
+    }
+    let chosen = targets.first().copied();
+    if !game.targets_are_legal(source, def, chosen, controller, None, x)
+        || targets
+            .iter()
+            .copied()
+            .any(|target| !target_is_public(game, target))
+    {
+        return Err(ErrorReason::InvalidValue.into());
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn add_authored_ability(
+    game: &mut Game,
+    entry_id: StackEntryId,
+    controller: PlayerId,
+    source: ObjectId,
+    ability_index: usize,
+    target: Option<Target>,
+    targets_second: &[Target],
+    x: u32,
+) -> Result<(), StackEditReason> {
+    if game.players.get(controller.0 as usize).is_none() {
+        return Err(ErrorReason::UnknownEntity.into());
+    }
+    if !public_authored_source(game, source) {
+        return Err(if game.objects.get(source as usize).is_some() {
+            StackEditReason::UnsupportedStackConstruction
+        } else {
+            ErrorReason::UnknownEntity.into()
+        });
+    }
+    if game.controller_of(source) != controller {
+        return Err(ErrorReason::InvalidValue.into());
+    }
+    let def = game.def_of(source);
+    let Some(ability) = def.abilities.get(ability_index).cloned() else {
+        return Err(ErrorReason::UnknownEntity.into());
+    };
+    let activated = match ability.timing {
+        crate::Timing::Activated(cost) => {
+            if !activated_payload_is_representable_without_payment_history(cost, x)
+                || !crate::effect_is_context_free_for_debug_stack(&ability.effect)
+            {
+                return Err(StackEditReason::UnsupportedStackConstruction);
+            }
+            true
+        }
+        crate::Timing::Triggered(_) => {
+            if x != 0 || !crate::effect_is_context_free_for_debug_stack(&ability.effect) {
+                return Err(StackEditReason::UnsupportedStackConstruction);
+            }
+            false
+        }
+        crate::Timing::Spell | crate::Timing::Static => {
+            return Err(ErrorReason::WrongObjectKind.into());
+        }
+    };
+    if !targets_second.is_empty()
+        || !ability.effect.target_count().is_single()
+        || effect_requires_spent_mana(&ability.effect)
+    {
+        return Err(StackEditReason::UnsupportedStackConstruction);
+    }
+    let spec = ability.effect.target();
+    let legal = match target {
+        None => spec == crate::TargetSpec::None,
+        Some(target) => {
+            target_is_public(game, target)
+                && game
+                    .legal_targets_for(spec, source, controller, crate::color_identity(&def), x)
+                    .contains(&target)
+        }
+    };
+    if !legal {
+        return Err(ErrorReason::InvalidValue.into());
+    }
+    game.push_stack_item_with_id(
+        entry_id,
+        StackRenderSource::Object(source),
+        StackPayload::Ability {
+            controller,
+            source,
+            effect: ability.effect,
+            activated,
+            target,
+            targets_second: crate::TargetList::from_targets(targets_second),
+            x,
+            spent_mana: [0; 6],
+        },
+    );
+    Ok(())
+}
+
+/// Whether resolution can execute this activated payload without reconstructing paid-cost data.
+///
+/// This makes no claim that the activation was legal or that any printed cost was paid. In
+/// particular, a `{T}` cost neither requires nor causes the source's present tapped state: raw
+/// debug stack construction does not replay payment history.
+fn activated_payload_is_representable_without_payment_history(
+    cost: crate::ActivationCost,
+    x: u32,
+) -> bool {
+    cost.mana == crate::Cost::FREE
+        && x == 0
+        && matches!(cost.sacrifice, crate::SacrificeCost::None)
+        && cost.pay_life == crate::Amount::Fixed(0)
+        && cost.remove_counters == 0
+        && !cost.remove_counters_x
+        && cost.loyalty.is_none()
+        && !cost.return_self
+        && !cost.exile_self
+        && cost.mill_self == 0
+        && cost.discard_cost == 0
+        && cost.graveyard_exile_target_count == 0
+}
+
+fn effect_requires_spent_mana(effect: &crate::Effect) -> bool {
+    match effect {
+        crate::Effect::Choice(crate::ChoiceEffect::CastCreatureFaceDown) => true,
+        crate::Effect::Sequence { steps } => steps.iter().any(effect_requires_spent_mana),
+        _ => false,
+    }
+}
+
+fn public_authored_source(game: &Game, source: ObjectId) -> bool {
+    match game.objects.get(source as usize) {
+        Some(Object::Permanent(permanent)) => !permanent.face_down && !permanent.phased_out,
+        Some(Object::Spell(spell)) => !spell.face_down,
+        Some(Object::Card(card)) => {
+            matches!(card.zone, Zone::Graveyard | Zone::Exile | Zone::Command) && !card.face_down
+        }
+        Some(Object::Moved { .. } | Object::Removed { .. }) | None => false,
+    }
+}
+
+fn target_is_public(game: &Game, target: Target) -> bool {
+    match target {
+        Target::Player(player) => game.players.get(player.0 as usize).is_some_and(|p| !p.lost),
+        Target::Object(object) => match game.objects.get(object as usize) {
+            Some(Object::Permanent(permanent)) => !permanent.face_down && !permanent.phased_out,
+            Some(Object::Spell(spell)) => !spell.face_down,
+            Some(Object::Card(card)) => {
+                matches!(card.zone, Zone::Graveyard | Zone::Exile | Zone::Command)
+                    && !card.face_down
+            }
+            Some(Object::Moved { .. } | Object::Removed { .. }) | None => false,
+        },
+    }
+}
+
+fn remove_top_stack_entry(game: &mut Game) {
+    let item = game.stack.pop().expect("caller checked nonempty stack");
+    if let StackPayload::Spell(spell) = item.payload {
+        game.mark_removed(spell);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Inspection {
     pub players: Vec<PlayerInspection>,
     pub objects: Vec<ObjectInspection>,
@@ -179,6 +696,8 @@ pub struct StackInspection {
     /// The authoritative controller, or `None` when corrupt stack state has no matching object.
     pub controller: Option<PlayerId>,
     pub label: String,
+    pub targets: Vec<Target>,
+    pub public_ghost: Option<PublicStackGhost>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -486,11 +1005,22 @@ fn inspect_stack_item(
                 Some(Object::Spell(spell)) => card_def(spell.def).name.to_string(),
                 _ => format!("spell object {object_id}"),
             },
+            targets: match game.objects.get(*object_id as usize) {
+                Some(Object::Spell(spell)) => spell
+                    .targets
+                    .iter()
+                    .chain(spell.targets_second.iter())
+                    .collect(),
+                _ => vec![],
+            },
+            public_ghost: None,
         },
         StackPayload::Ability {
             controller,
             source,
             effect,
+            target,
+            targets_second,
             ..
         } => StackInspection {
             entry_id: item.entry_id,
@@ -499,6 +1029,12 @@ fn inspect_stack_item(
             source_object_id: Some(*source),
             controller: Some(*controller),
             label: effect.clone().message().key.as_str().to_string(),
+            targets: target
+                .iter()
+                .copied()
+                .chain(targets_second.iter())
+                .collect(),
+            public_ghost: None,
         },
         StackPayload::DebugNoOp => match &item.render_source {
             StackRenderSource::InlinePublic(render) => StackInspection {
@@ -508,6 +1044,8 @@ fn inspect_stack_item(
                 source_object_id: None,
                 controller: Some(render.controller),
                 label: render.public.label.clone(),
+                targets: vec![],
+                public_ghost: Some(render.public.clone()),
             },
             StackRenderSource::Object(_) => StackInspection {
                 entry_id: item.entry_id,
@@ -516,6 +1054,8 @@ fn inspect_stack_item(
                 source_object_id: None,
                 controller: None,
                 label: "invalid no-op stack pairing".to_string(),
+                targets: vec![],
+                public_ghost: None,
             },
         },
     }

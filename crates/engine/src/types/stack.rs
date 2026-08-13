@@ -3413,7 +3413,9 @@ pub enum Event {
     },
     /// Marked damage was removed from a permanent (the cleanup step).
     DamageCleared { object: ObjectId },
-    /// Mana was added to a player's pool (e.g. by tapping a land): `amount` of one `mana` kind.
+    /// A bounded amount of one mana kind was attempted for a player's pool (e.g. by tapping a
+    /// land). `amount` is the attempted credit after effect-level `u8` bounding; each authoritative
+    /// pool bucket, including its persistent mirror, saturates independently at [`u8::MAX`].
     ManaAdded {
         player: PlayerId,
         mana: Mana,

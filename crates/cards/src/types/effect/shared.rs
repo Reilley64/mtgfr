@@ -1238,18 +1238,19 @@ Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
         }
     }
 
-    /// Whether this (mana) ability's produced credits should be recorded in
-    /// [`Player::mana_provenance`](crate::state) — an [`Effect::Mana(ManaEffect::Add)`] with `track_provenance`
-    /// set (recursing a `Sequence` like [`is_mana_ability`](Self::is_mana_ability)). Read by
+    /// Whether this mana ability's produced credits should be recorded in
+    /// [`Player::mana_provenance`](crate::state). Only a direct
+    /// [`Effect::Mana(ManaEffect::Add)`] leaf with `track_provenance` set is eligible: rejecting
+    /// every composite and other mana variant keeps post-resolution event replay exact. Read by
     /// `Game::activate_ability` to decide whether to tag the batch it just resolved.
     pub fn tracks_mana_provenance(&self) -> bool {
-        match self.clone() {
+        matches!(
+            self,
             Effect::Mana(ManaEffect::Add {
-                track_provenance, ..
-            }) => track_provenance,
-            Effect::Sequence { steps } => steps.iter().any(|s| s.clone().tracks_mana_provenance()),
-            _ => false,
-        }
+                track_provenance: true,
+                ..
+            })
+        )
     }
 
     /// How many targets this effect chooses (CR 601.2c). Most targeted effects take a single
@@ -2483,6 +2484,171 @@ pub fn expect_object_target(target: Option<Target>, what: &str) -> ObjectId {
         Some(Target::Object(id)) => id,
         other => panic!("{what} resolves with a chosen creature target, got {other:?}"),
     }
+}
+
+/// Largest fixed draw or mana-repeat amount admitted to direct debug-stack construction.
+///
+/// Draw resolution emits one event per attempted card and mana resolution expands a fixed-size
+/// batch, so this conservative editor-only ceiling keeps an externally authored stack bounded.
+#[cfg(debug_assertions)]
+pub const DEBUG_STACK_SAFE_AMOUNT_MAX: i32 = 4096;
+
+/// Whether an authored effect belongs to the deliberately small grammar that can be placed
+/// directly on the debug stack without a triggering event to contextualize it.
+///
+/// Debug construction does not have trigger history or last-known information. This check is
+/// therefore independent of [`contextualize_effect`]: it allowlists only audited leaves and
+/// recursively allows sequences of those leaves. Adding an [`Effect`] or [`Amount`] variant must
+/// update an exhaustive match here. Effects outside this grammar are conservatively rejected even
+/// when a broader proof might show them executable.
+#[cfg(debug_assertions)]
+pub fn effect_is_context_free_for_debug_stack(effect: &Effect) -> bool {
+    match effect {
+        Effect::Draw(DrawEffect::Cards { who, count }) => {
+            matches!(who, PlayerSet::You) && debug_stack_draw_count(count).is_some()
+        }
+        Effect::Mana(ManaEffect::Add {
+            // These fields are consumed faithfully by the ordinary stack resolver.
+            mana: _,
+            identity: _,
+            opponent_colors: _,
+            repeat,
+            restriction: _,
+            single_color,
+            track_provenance,
+            target,
+            persist_until_end_of_turn: _,
+            recipient,
+        }) => {
+            matches!(target, TargetSpec::None)
+                && recipient.is_none()
+                && !single_color
+                && !track_provenance
+                && debug_stack_mana_repeat(repeat).is_some()
+        }
+        Effect::Sequence { steps } => steps
+            .iter()
+            .all(effect_is_context_free_for_debug_stack),
+        Effect::Damage(_)
+        | Effect::Life(_)
+        | Effect::Destroy(_)
+        | Effect::Exile(_)
+        | Effect::Sacrifice(_)
+        | Effect::Control(_)
+        | Effect::Counters(_)
+        | Effect::Mana(ManaEffect::LoseAllUnspent { .. })
+        | Effect::Mana(ManaEffect::TargetPlayerTapsLandsForMana)
+        | Effect::Mana(ManaEffect::TargetLandProducesColorlessInsteadOf { .. })
+        | Effect::Mill(_)
+        | Effect::Pump(_)
+        | Effect::Reveal(_)
+        | Effect::Token(_)
+        | Effect::Zone(_)
+        | Effect::Copy(_)
+        | Effect::Dig(_)
+        | Effect::Choice(_)
+        | Effect::Static(_)
+        | Effect::Misc(_)
+        | Effect::ChooseOne { .. }
+        | Effect::Conditional { .. } => false,
+    }
+}
+
+/// Extract a literal fixed amount for effect-specific debug-stack domain validation.
+///
+/// `Combine` is deliberately rejected even when both operands are fixed: admission does not
+/// rewrite the authored effect to a checked folded value, and ordinary amount resolution uses
+/// arithmetic that can overflow. The exhaustive match makes new amount vocabulary fail closed.
+#[cfg(debug_assertions)]
+fn debug_stack_fixed_amount(amount: &Amount) -> Option<i32> {
+    match amount {
+        Amount::Fixed(value) => Some(*value),
+        Amount::X
+        | Amount::PerCreatureYouControl
+        | Amount::PerCreatureOnBattlefield
+        | Amount::PerPermanentMatching { .. }
+        | Amount::SourcePower
+        | Amount::SourceToughness
+        | Amount::SourceManaValue
+        | Amount::TargetPower
+        | Amount::TargetToughness
+        | Amount::TargetManaValue
+        | Amount::PerCounterOnSource
+        | Amount::PerCounterOfKindOnSource { .. }
+        | Amount::PerCounterOfKindOnAttached { .. }
+        | Amount::LifeGainedThisTurn
+        | Amount::YourLifeTotal
+        | Amount::SpellsCastThisTurn
+        | Amount::DamageTakenThisTurn
+        | Amount::UntappedLandsAtTurnStart
+        | Amount::CardsInTargetPlayerHand
+        | Amount::CardsInYourHand
+        | Amount::CommanderCastsFromCommandZone
+        | Amount::CreaturesDiedThisTurn
+        | Amount::CreaturesDiedThisTurnAnyController
+        | Amount::NontokenCreaturesEnteredThisTurn
+        | Amount::TotalPowerYouControl
+        | Amount::GreatestPowerAmongCreaturesYouControl
+        | Amount::PermanentsYouOwnOpponentsControl
+        | Amount::IfCondition { .. }
+        | Amount::SacrificedCreaturePower
+        | Amount::SacrificedCreatureToughness
+        | Amount::DiscardCostWasLand(_)
+        | Amount::DyingEnchantedCreatureToughness
+        | Amount::CommanderColorCount
+        | Amount::TriggeringSpellManaValue
+        | Amount::TriggeringSpellManaSpent
+        | Amount::SpellSacrificeCount
+        | Amount::SpellSacrificedManaValue
+        | Amount::SpellMultikickerCount
+        | Amount::RevealedCreatureManaValue
+        | Amount::PermanentsDiedThisTurn
+        | Amount::PermanentsDestroyedThisWay { .. }
+        | Amount::NonlandCardsExiledThisWay
+        | Amount::CardsExiledBySearchThisWay
+        | Amount::ManaPaidThisWay
+        | Amount::PastVotes
+        | Amount::PresentVotes
+        | Amount::TotalManaValueMilledThisWay
+        | Amount::ExiledCardManaValueThisWay
+        | Amount::ReturnedNonlandCardManaValue
+        | Amount::AurasYouControlledAttachedToDyingCreature
+        | Amount::SpellFirstTargetManaValue
+        | Amount::GreatestInstantOrSorceryManaValueCastThisTurn
+        | Amount::InstantsAndSorceriesCastThisTurn
+        | Amount::AurasAttachedToSource
+        | Amount::InstantOrSorceryCardsInYourGraveyard
+        | Amount::CombatDamageDealt
+        | Amount::TriggeringDamageDealt
+        | Amount::SpellsCastBeforeThisThisTurn
+        | Amount::OpponentsPoisonCounters
+        | Amount::ControllersPoisonCounters
+        | Amount::CardsDiscardedThisWay
+        | Amount::CreaturesSacrificedThisWay
+        | Amount::CountersRemovedThisWay
+        | Amount::DamageDealtToSourceThisTurnByOthersNamedTheSame
+        | Amount::DamageDealtThisWay
+        | Amount::DamageDealtByChosenSorceryThisTurn
+        | Amount::BlockersBeyondFirst { .. }
+        | Amount::CreaturesBlockingThatCreature { .. }
+        | Amount::Combine { .. } => None,
+    }
+}
+
+#[cfg(debug_assertions)]
+fn debug_stack_draw_count(amount: &Amount) -> Option<u32> {
+    let value = debug_stack_fixed_amount(amount)?;
+    (0..=DEBUG_STACK_SAFE_AMOUNT_MAX)
+        .contains(&value)
+        .then_some(value as u32)
+}
+
+#[cfg(debug_assertions)]
+fn debug_stack_mana_repeat(amount: &Amount) -> Option<u32> {
+    let value = debug_stack_fixed_amount(amount)?;
+    (0..=DEBUG_STACK_SAFE_AMOUNT_MAX)
+        .contains(&value)
+        .then_some(value as u32)
 }
 
 /// Fill a watch-others effect's context-dependent fields from the triggering context. Breena's
@@ -4190,6 +4356,166 @@ mod tests {
         assert_eq!(no_target.target(), TargetSpec::None);
     }
 
+    #[cfg(debug_assertions)]
+    #[test]
+    fn debug_stack_context_check_rejects_contextual_amounts_in_life_loss() {
+        for amount in [
+            Amount::DyingEnchantedCreatureToughness,
+            Amount::TriggeringSpellManaValue,
+        ] {
+            let effect = Effect::Life(LifeEffect::Lose {
+                who: PlayerSet::You,
+                amount,
+            });
+
+            assert!(!effect_is_context_free_for_debug_stack(&effect));
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn debug_stack_context_check_recurses_through_sequences() {
+        let effect = Effect::Sequence {
+            steps: arc_slice([
+                Effect::Draw(DrawEffect::Cards {
+                    who: PlayerSet::You,
+                    count: Amount::Fixed(1),
+                }),
+                Effect::Life(LifeEffect::Lose {
+                    who: PlayerSet::You,
+                    amount: Amount::TriggeringSpellManaValue,
+                }),
+            ]),
+        };
+
+        assert!(!effect_is_context_free_for_debug_stack(&effect));
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn debug_stack_context_check_accepts_the_supported_safe_leaves() {
+        let draw = Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::You,
+            count: Amount::Fixed(1),
+        });
+        let mana = Effect::add_colorless(1);
+
+        assert!(effect_is_context_free_for_debug_stack(&draw));
+        assert!(effect_is_context_free_for_debug_stack(&mana));
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn debug_stack_context_check_rejects_arithmetic_amounts_and_out_of_domain_fixed_counts() {
+        let arithmetic_hazards = [
+            Amount::Combine {
+                left: &Amount::Fixed(i32::MAX),
+                op: ArithOp::Add,
+                right: &Amount::Fixed(1),
+            },
+            Amount::Combine {
+                left: &Amount::Fixed(i32::MIN),
+                op: ArithOp::Subtract,
+                right: &Amount::Fixed(1),
+            },
+            Amount::Combine {
+                left: &Amount::Fixed(i32::MAX),
+                op: ArithOp::Multiply,
+                right: &Amount::Fixed(2),
+            },
+            Amount::Combine {
+                left: &Amount::Fixed(1),
+                op: ArithOp::DivideRoundingDown,
+                right: &Amount::Fixed(0),
+            },
+            Amount::Combine {
+                left: &Amount::Fixed(i32::MIN),
+                op: ArithOp::DivideRoundingUp,
+                right: &Amount::Fixed(-1),
+            },
+        ];
+        for count in arithmetic_hazards {
+            let draw = Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
+                count,
+            });
+            assert!(!effect_is_context_free_for_debug_stack(&draw));
+        }
+
+        for count in [-1, DEBUG_STACK_SAFE_AMOUNT_MAX + 1] {
+            let draw = Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
+                count: Amount::Fixed(count),
+            });
+            let mana = debug_stack_test_mana(Amount::Fixed(count), false, false);
+            assert!(!effect_is_context_free_for_debug_stack(&draw));
+            assert!(!effect_is_context_free_for_debug_stack(&mana));
+        }
+        for count in [0, DEBUG_STACK_SAFE_AMOUNT_MAX] {
+            let draw = Effect::Draw(DrawEffect::Cards {
+                who: PlayerSet::You,
+                count: Amount::Fixed(count),
+            });
+            let mana = debug_stack_test_mana(Amount::Fixed(count), false, false);
+            assert!(effect_is_context_free_for_debug_stack(&draw));
+            assert!(effect_is_context_free_for_debug_stack(&mana));
+        }
+
+        let opponent_draw = Effect::Draw(DrawEffect::Cards {
+            who: PlayerSet::AnOpponent,
+            count: Amount::Fixed(1),
+        });
+        assert!(!effect_is_context_free_for_debug_stack(&opponent_draw));
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn debug_stack_context_check_rejects_mana_activation_side_channels() {
+        assert!(!effect_is_context_free_for_debug_stack(&debug_stack_test_mana(
+            Amount::Fixed(1),
+            true,
+            false,
+        )));
+        assert!(!effect_is_context_free_for_debug_stack(&debug_stack_test_mana(
+            Amount::Fixed(1),
+            false,
+            true,
+        )));
+    }
+
+    #[cfg(debug_assertions)]
+    fn debug_stack_test_mana(
+        repeat: Amount,
+        single_color: bool,
+        track_provenance: bool,
+    ) -> Effect {
+        let Effect::Mana(ManaEffect::Add {
+            mana,
+            identity,
+            opponent_colors,
+            restriction,
+            target,
+            persist_until_end_of_turn,
+            recipient,
+            ..
+        }) = Effect::add_colorless(1)
+        else {
+            unreachable!()
+        };
+        Effect::Mana(ManaEffect::Add {
+            mana,
+            identity,
+            opponent_colors,
+            repeat,
+            restriction,
+            single_color,
+            track_provenance,
+            target,
+            persist_until_end_of_turn,
+            recipient,
+        })
+    }
+
     /// A trigger's context fills reach every effect the trigger can actually run, including the
     /// branch of a `Conditional` — a "that player discards" rider gated behind an
     /// intervening-if is still the damaged player's discard, and an unfilled `who` panics at
@@ -4231,4 +4557,72 @@ mod tests {
             })]
         );
     }
+
+    fn provenance_test_add(track_provenance: bool) -> Effect {
+        Effect::Mana(ManaEffect::Add {
+            mana: ManaPool::of(Mana::Color(Color::Green), 1),
+            repeat: Amount::Fixed(1),
+            single_color: false,
+            identity: 0,
+            opponent_colors: 0,
+            restriction: None,
+            target: TargetSpec::None,
+            persist_until_end_of_turn: false,
+            recipient: None,
+            track_provenance,
+        })
+    }
+
+    #[test]
+    fn direct_tracked_mana_add_tracks_provenance() {
+        assert!(provenance_test_add(true).tracks_mana_provenance());
+    }
+
+    #[test]
+    fn direct_untracked_mana_add_does_not_track_provenance() {
+        assert!(!provenance_test_add(false).tracks_mana_provenance());
+    }
+
+    #[test]
+    fn tracked_mana_add_in_sequence_does_not_track_provenance() {
+        let effect = Effect::Sequence {
+            steps: vec![provenance_test_add(true)].into(),
+        };
+
+        assert!(!effect.tracks_mana_provenance());
+    }
+
+    #[test]
+    fn tracked_mana_add_in_nested_conditional_does_not_track_provenance() {
+        let condition = Condition::Compare {
+            left: &Amount::Fixed(1),
+            op: CompareOp::AtLeast,
+            right: &Amount::Fixed(1),
+        };
+        let conditional = Effect::Conditional {
+            condition,
+            then: vec![provenance_test_add(true)].into(),
+            negate: false,
+            otherwise: &[],
+        };
+        let effect = Effect::Sequence {
+            steps: vec![conditional].into(),
+        };
+
+        assert!(!effect.tracks_mana_provenance());
+    }
+
+    #[test]
+    fn tracked_mana_add_with_mana_emptying_does_not_track_provenance() {
+        let effect = Effect::Sequence {
+            steps: vec![
+                provenance_test_add(true),
+                Effect::Mana(ManaEffect::LoseAllUnspent { to_you: false }),
+            ]
+            .into(),
+        };
+
+        assert!(!effect.tracks_mana_provenance());
+    }
+
 }

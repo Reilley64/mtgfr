@@ -3080,3 +3080,503 @@ fn valid_public_ghost() -> PublicStackGhost {
         printed_sentences: vec![],
     }
 }
+
+fn known_spell_spec(
+    entry_id: u64,
+    from_object_id: ObjectId,
+    spell_object_id: ObjectId,
+) -> DebugStackEntrySpec {
+    DebugStackEntrySpec::KnownSpell {
+        entry_id: StackEntryId(entry_id),
+        from_object_id,
+        spell_object_id,
+        controller: P0,
+        targets: vec![],
+        targets_second: vec![],
+        x: 0,
+    }
+}
+
+#[test]
+fn debug_stack_mutation_replaces_with_six_real_spells_and_a_public_ghost() {
+    let mut game = Game::with_players(2, 7);
+    let names = [
+        "Dark Ritual",
+        "Vision Skeins",
+        "Night's Whisper",
+        "Harmonize",
+        "Fog",
+        "Time Walk",
+    ];
+    let cards: Vec<_> = names
+        .iter()
+        .map(|name| game.spawn_in_hand(P0, card(name)))
+        .collect();
+    let first_spell = game.next_object_id();
+    let mut specs: Vec<_> = cards
+        .iter()
+        .enumerate()
+        .map(|(index, &from)| {
+            known_spell_spec((10 + index) as u64, from, first_spell + index as ObjectId)
+        })
+        .collect();
+    specs.push(DebugStackEntrySpec::PublicGhost {
+        entry_id: StackEntryId(16),
+        controller: P1,
+        public: valid_public_ghost(),
+    });
+
+    let ids = replace_stack(&mut game, &specs).expect("supported stack replacement");
+    assert_eq!(ids, (10..=16).map(StackEntryId).collect::<Vec<_>>());
+    let stack = inspect(&game).stack;
+    assert_eq!(
+        stack.iter().map(|row| row.entry_id.0).collect::<Vec<_>>(),
+        (10..=16).collect::<Vec<_>>()
+    );
+    assert_eq!(stack[0].source_object_id, Some(first_spell));
+    assert_eq!(stack[6].source_object_id, None);
+    assert_eq!(stack[6].public_ghost, Some(valid_public_ghost()));
+    assert!(stack.iter().all(|row| row.targets.is_empty()));
+    assert_eq!(game.next_stack_entry_id.unwrap().get(), 17);
+
+    let p0_cards = vec![card("Forest"); 8];
+    let p1_cards = vec![card("Island"); 2];
+    let p0_library = game.stack_library(P0, &p0_cards);
+    let p1_library = game.stack_library(P1, &p1_cards);
+    let life_before = game.life(P0);
+    let spell_objects: Vec<_> = (first_spell..first_spell + names.len() as ObjectId).collect();
+
+    let mut events = vec![];
+    game.resolve_top(&mut events);
+    assert!(events.is_empty());
+    assert_eq!(game.stack().len(), 6);
+    while !game.stack().is_empty() {
+        game.resolve_top(&mut events);
+    }
+
+    assert!(game.stack().is_empty());
+    assert!(
+        spell_objects
+            .iter()
+            .all(|&object| !matches!(game.objects[object as usize], Object::Spell(_)))
+    );
+    assert_eq!(game.mana_in_pool(P0, crate::Color::Black), 3);
+    assert_eq!(game.life(P0), life_before - 2);
+    assert_eq!(game.players[0].library.len(), p0_library.len() - 7);
+    assert_eq!(game.players[1].library.len(), p1_library.len() - 2);
+}
+
+#[test]
+fn debug_stack_mutation_rejects_identity_object_shape_and_unsupported_spells_atomically() {
+    let cases = [
+        ("zero", 0, "Dark Ritual", ErrorReason::InvalidValue.into()),
+        ("old id", 0, "Dark Ritual", ErrorReason::InvalidValue.into()),
+        (
+            "modal",
+            1,
+            "Witherbloom Command",
+            StackEditReason::UnsupportedStackConstruction,
+        ),
+        (
+            "divided",
+            1,
+            "Magma Opus",
+            StackEditReason::UnsupportedStackConstruction,
+        ),
+        (
+            "additional cost",
+            1,
+            "Big Score",
+            StackEditReason::UnsupportedStackConstruction,
+        ),
+    ];
+    for (label, entry, name, reason) in cases {
+        let mut game = Game::with_players(2, 7);
+        if label == "old id" {
+            push_public_stack_ghost(&mut game, P0, valid_public_ghost()).unwrap();
+        }
+        let from = game.spawn_in_hand(P0, card(name));
+        let before = game.clone();
+        let spec = known_spell_spec(entry, from, game.next_object_id());
+        assert_eq!(
+            push_stack(&mut game, &spec),
+            Err(StackEditError {
+                entry_index: Some(0),
+                reason
+            }),
+            "{label}"
+        );
+        assert_eq!(inspect(&game), inspect(&before), "{label} must roll back");
+        assert_eq!(game.next_stack_entry_id, before.next_stack_entry_id);
+    }
+
+    let mut game = Game::with_players(2, 7);
+    let first = game.spawn_in_hand(P0, card("Dark Ritual"));
+    let second = game.spawn_in_hand(P0, card("Fog"));
+    let before = game.clone();
+    let next = game.next_object_id();
+    let specs = [
+        known_spell_spec(5, first, next),
+        known_spell_spec(5, second, next + 1),
+    ];
+    assert_eq!(
+        replace_stack(&mut game, &specs),
+        Err(StackEditError {
+            entry_index: Some(1),
+            reason: ErrorReason::DuplicateId.into()
+        })
+    );
+    assert_eq!(inspect(&game), inspect(&before));
+
+    let mut game = Game::with_players(2, 7);
+    let from = game.spawn_in_hand(P0, card("Dark Ritual"));
+    let spec = known_spell_spec(1, from, game.next_object_id() + 1);
+    assert_eq!(
+        push_stack(&mut game, &spec).unwrap_err().reason,
+        ErrorReason::InvalidValue.into()
+    );
+}
+
+#[test]
+fn debug_stack_mutation_constructs_public_authored_ability_and_validates_source() {
+    let mut game = Game::with_players(2, 7);
+    let source = game.spawn_on_battlefield(P0, card("Llanowar Elves"));
+    let spec = DebugStackEntrySpec::AuthoredAbility {
+        entry_id: StackEntryId(4),
+        controller: P0,
+        source_object_id: source,
+        ability_index: 0,
+        target: None,
+        targets_second: vec![],
+        x: 0,
+    };
+    push_stack(&mut game, &spec).expect("authored activated ability");
+    assert_eq!(inspect(&game).stack[0].source_object_id, Some(source));
+    assert!(
+        !game.permanent(source).tapped,
+        "debug construction does not pay the tap cost"
+    );
+    let mut events = vec![];
+    game.resolve_top(&mut events);
+    assert!(!game.permanent(source).tapped);
+    assert_eq!(game.mana_in_pool(P0, crate::Color::Green), 1);
+
+    let mut game = Game::with_players(2, 7);
+    game.stack_library(P0, &[card("Forest")]);
+    let triggered_source = game.spawn_in_graveyard(P0, card("Solemn Simulacrum"));
+    let triggered = DebugStackEntrySpec::AuthoredAbility {
+        entry_id: StackEntryId(5),
+        controller: P0,
+        source_object_id: triggered_source,
+        ability_index: 1,
+        target: None,
+        targets_second: vec![],
+        x: 0,
+    };
+    push_stack(&mut game, &triggered).expect("context-free authored triggered ability");
+    assert_eq!(
+        inspect(&game).stack[0].source_object_id,
+        Some(triggered_source)
+    );
+    game.resolve_top(&mut events);
+    assert!(game.stack().is_empty());
+    assert_eq!(game.hand(P0).len(), 1);
+
+    let mut game = Game::with_players(2, 7);
+    let source = game.spawn_on_battlefield(P0, card("Llanowar Elves"));
+    let hidden = game.spawn_in_hand(P0, card("Llanowar Elves"));
+    let hidden_spec = DebugStackEntrySpec::AuthoredAbility {
+        entry_id: StackEntryId(6),
+        controller: P0,
+        source_object_id: hidden,
+        ability_index: 0,
+        target: None,
+        targets_second: vec![],
+        x: 0,
+    };
+    assert_eq!(
+        push_stack(&mut game, &hidden_spec).unwrap_err().reason,
+        StackEditReason::UnsupportedStackConstruction
+    );
+
+    let bad = DebugStackEntrySpec::AuthoredAbility {
+        entry_id: StackEntryId(6),
+        controller: P0,
+        source_object_id: source,
+        ability_index: 99,
+        target: None,
+        targets_second: vec![],
+        x: 0,
+    };
+    assert_eq!(
+        push_stack(&mut game, &bad).unwrap_err().reason,
+        ErrorReason::UnknownEntity.into()
+    );
+}
+
+#[test]
+fn debug_stack_mutation_saturates_admitted_mana_when_the_pool_fills_before_resolution() {
+    for (initial, repeat) in [(1, 4096), (u8::MAX, 1)] {
+        let mut def = card("Llanowar Elves");
+        let mut abilities = def.abilities.to_vec();
+        let Effect::Mana(crate::ManaEffect::Add { repeat: count, .. }) = &mut abilities[0].effect
+        else {
+            panic!("Llanowar Elves has an add-mana ability");
+        };
+        *count = crate::Amount::Fixed(repeat);
+        def.abilities = abilities.into();
+
+        let mut game = Game::with_players(2, 7);
+        game.players[0]
+            .mana_pool
+            .add(crate::Mana::Color(crate::Color::Green), initial);
+        let source = game.spawn_on_battlefield(P0, def);
+        push_stack(&mut game, &authored_ability_spec(source, 0))
+            .expect("bounded authored mana ability is admitted");
+
+        let mut events = vec![];
+        game.resolve_top(&mut events);
+
+        assert_eq!(game.mana_in_pool(P0, crate::Color::Green), u8::MAX);
+    }
+}
+
+#[test]
+fn debug_stack_mutation_rejects_activated_mana_with_activation_side_channels() {
+    for (name, ability_index) in [
+        ("Lotus Field", 1),
+        ("Kami of Whispered Hopes", 1),
+        ("Glistening Sphere", 2),
+        ("Path of Ancestry", 0),
+    ] {
+        let mut game = Game::with_players(2, 7);
+        let source = game.spawn_on_battlefield(P0, card(name));
+        let spec = authored_ability_spec(source, ability_index);
+
+        assert_eq!(
+            push_stack(&mut game, &spec).unwrap_err().reason,
+            StackEditReason::UnsupportedStackConstruction,
+            "{name} ability {ability_index}"
+        );
+        assert!(game.stack().is_empty(), "{name} must not be admitted");
+    }
+}
+
+#[test]
+fn debug_stack_mutation_rejects_every_arithmetic_endpoint_before_resolution() {
+    let hazards = [
+        crate::Amount::Combine {
+            left: &crate::Amount::Fixed(i32::MAX),
+            op: crate::ArithOp::Add,
+            right: &crate::Amount::Fixed(1),
+        },
+        crate::Amount::Combine {
+            left: &crate::Amount::Fixed(i32::MIN),
+            op: crate::ArithOp::Subtract,
+            right: &crate::Amount::Fixed(1),
+        },
+        crate::Amount::Combine {
+            left: &crate::Amount::Fixed(i32::MAX),
+            op: crate::ArithOp::Multiply,
+            right: &crate::Amount::Fixed(2),
+        },
+        crate::Amount::Combine {
+            left: &crate::Amount::Fixed(1),
+            op: crate::ArithOp::DivideRoundingDown,
+            right: &crate::Amount::Fixed(0),
+        },
+        crate::Amount::Combine {
+            left: &crate::Amount::Fixed(i32::MIN),
+            op: crate::ArithOp::DivideRoundingUp,
+            right: &crate::Amount::Fixed(-1),
+        },
+    ];
+
+    for count in hazards {
+        let mut def = card("Llanowar Elves");
+        let mut abilities = def.abilities.to_vec();
+        abilities[0].effect = Effect::Draw(crate::DrawEffect::Cards {
+            who: crate::PlayerSet::You,
+            count,
+        });
+        def.abilities = abilities.into();
+
+        let mut game = Game::with_players(2, 7);
+        let source = game.spawn_on_battlefield(P0, def);
+        let spec = authored_ability_spec(source, 0);
+        assert_eq!(
+            push_stack(&mut game, &spec).unwrap_err().reason,
+            StackEditReason::UnsupportedStackConstruction
+        );
+        assert!(game.stack().is_empty());
+    }
+}
+
+fn authored_ability_spec(source_object_id: ObjectId, ability_index: usize) -> DebugStackEntrySpec {
+    DebugStackEntrySpec::AuthoredAbility {
+        entry_id: StackEntryId(1),
+        controller: P0,
+        source_object_id,
+        ability_index,
+        target: None,
+        targets_second: vec![],
+        x: 0,
+    }
+}
+
+#[test]
+fn debug_stack_mutation_rejects_trigger_effects_that_need_missing_event_context() {
+    let mut game = Game::with_players(2, 7);
+    let source = game.spawn_in_graveyard(P0, card("Creature Bond"));
+    let spec = DebugStackEntrySpec::AuthoredAbility {
+        entry_id: StackEntryId(1),
+        controller: P0,
+        source_object_id: source,
+        ability_index: 0,
+        target: None,
+        targets_second: vec![],
+        x: 0,
+    };
+
+    assert_eq!(
+        push_stack(&mut game, &spec).unwrap_err().reason,
+        StackEditReason::UnsupportedStackConstruction
+    );
+    assert!(game.stack().is_empty());
+}
+
+#[test]
+fn debug_stack_mutation_rejects_pending_and_pop_underflow_and_cleans_spells() {
+    let mut game = Game::with_players(2, 7);
+    assert_eq!(
+        pop_stack(&mut game, 0).unwrap_err().reason,
+        ErrorReason::InvalidValue.into()
+    );
+    assert_eq!(
+        pop_stack(&mut game, 1).unwrap_err().reason,
+        ErrorReason::InvalidValue.into()
+    );
+
+    let source = game.spawn_in_hand(P0, card("Dark Ritual"));
+    game.pending_choice = Some(PendingChoice::MayDrawUpTo {
+        player: P0,
+        max: 1,
+        effect: Effect::Draw(crate::DrawEffect::Cards {
+            who: crate::PlayerSet::You,
+            count: crate::Amount::Fixed(1),
+        }),
+        resume: crate::MayDrawUpToResume::TradeSecretsRepeat {
+            opponent: P1,
+            source,
+        },
+    });
+    let spec = known_spell_spec(1, source, game.next_object_id());
+    assert_eq!(
+        push_stack(&mut game, &spec).unwrap_err().reason,
+        StackEditReason::PendingOrchestration
+    );
+    clear_pending_orchestration(&mut game, true);
+    push_stack(&mut game, &spec).unwrap();
+    let spell = game.next_object_id() - 1;
+    pop_stack(&mut game, 1).unwrap();
+    assert!(matches!(
+        game.objects[spell as usize],
+        Object::Removed { .. }
+    ));
+}
+
+#[test]
+fn debug_stack_mutation_supports_checked_single_targets_x_and_explicit_id_gaps() {
+    let mut game = Game::with_players(2, 7);
+    let bolt = game.spawn_in_hand(P0, card("Lightning Bolt"));
+    let hurricane = game.spawn_in_hand(P0, card("Hurricane"));
+    let next = game.next_object_id();
+    let specs = [
+        DebugStackEntrySpec::KnownSpell {
+            entry_id: StackEntryId(20),
+            from_object_id: bolt,
+            spell_object_id: next,
+            controller: P0,
+            targets: vec![Target::Player(P1)],
+            targets_second: vec![],
+            x: 0,
+        },
+        DebugStackEntrySpec::KnownSpell {
+            entry_id: StackEntryId(24),
+            from_object_id: hurricane,
+            spell_object_id: next + 1,
+            controller: P0,
+            targets: vec![],
+            targets_second: vec![],
+            x: 3,
+        },
+    ];
+    replace_stack(&mut game, &specs).expect("single target and chosen X are represented exactly");
+    assert_eq!(inspect(&game).stack[0].targets, vec![Target::Player(P1)]);
+    assert_eq!(game.next_stack_entry_id.unwrap().get(), 25);
+}
+
+#[test]
+fn debug_stack_mutation_negative_matrix_rejects_bad_sources_targets_timing_and_exhaustion() {
+    let mut game = Game::with_players(2, 7);
+    let next = game.next_object_id();
+    let missing = known_spell_spec(1, 999, next);
+    assert_eq!(
+        push_stack(&mut game, &missing).unwrap_err().reason,
+        ErrorReason::UnknownEntity.into()
+    );
+
+    let permanent = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    let wrong_kind = known_spell_spec(1, permanent, game.next_object_id());
+    assert_eq!(
+        push_stack(&mut game, &wrong_kind).unwrap_err().reason,
+        ErrorReason::WrongObjectKind.into()
+    );
+
+    let ritual = game.spawn_in_hand(P0, card("Dark Ritual"));
+    let invalid_target = DebugStackEntrySpec::KnownSpell {
+        entry_id: StackEntryId(1),
+        from_object_id: ritual,
+        spell_object_id: game.next_object_id(),
+        controller: P0,
+        targets: vec![Target::Player(P1)],
+        targets_second: vec![],
+        x: 0,
+    };
+    assert_eq!(
+        push_stack(&mut game, &invalid_target).unwrap_err().reason,
+        ErrorReason::InvalidValue.into()
+    );
+
+    let source = game.spawn_on_battlefield(P0, card("Bonesplitter"));
+    let static_ability = DebugStackEntrySpec::AuthoredAbility {
+        entry_id: StackEntryId(1),
+        controller: P0,
+        source_object_id: source,
+        ability_index: 0,
+        target: None,
+        targets_second: vec![],
+        x: 0,
+    };
+    assert_eq!(
+        push_stack(&mut game, &static_ability).unwrap_err().reason,
+        ErrorReason::WrongObjectKind.into()
+    );
+
+    let ghost = DebugStackEntrySpec::PublicGhost {
+        entry_id: StackEntryId(u64::MAX),
+        controller: P0,
+        public: valid_public_ghost(),
+    };
+    push_stack(&mut game, &ghost).expect("the maximum identity is issued once");
+    assert!(game.next_stack_entry_id.is_none());
+    let another = DebugStackEntrySpec::PublicGhost {
+        entry_id: StackEntryId(u64::MAX),
+        controller: P0,
+        public: valid_public_ghost(),
+    };
+    assert_eq!(
+        push_stack(&mut game, &another).unwrap_err().reason,
+        ErrorReason::DuplicateId.into()
+    );
+}

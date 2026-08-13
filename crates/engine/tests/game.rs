@@ -18775,6 +18775,74 @@ fn study_hall_provenance_is_cleared_when_the_pool_empties() {
 }
 
 #[test]
+fn path_of_ancestry_full_bucket_does_not_tag_old_mana_as_newly_produced() {
+    let mut game = Game::new();
+    let mut green = [0u8; Color::COUNT];
+    green[Color::Green.index()] = 1;
+    game.designate_commander(PlayerId(0), one_mana_commander(&["Elf"], green));
+    let path = game.spawn_on_battlefield(
+        PlayerId(0),
+        CardDef {
+            enters_tapped: false,
+            ..card("Path of Ancestry")
+        },
+    );
+    for _ in 0..13 {
+        game.fund_mana(PlayerId(0));
+    }
+    assert_eq!(game.mana_in_pool(PlayerId(0), Color::Green), u8::MAX);
+    game.stack_library(PlayerId(0), &[VANILLA.clone(), VANILLA.clone()]);
+    let elf = game.spawn_in_hand(
+        PlayerId(0),
+        CardDef {
+            cost: Cost {
+                colored: green,
+                ..Cost::FREE
+            },
+            subtypes: arc_slice(["Elf"]),
+            ..creature("Elvish Warrior", 2, 2, &[])
+        },
+    );
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: path,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(game.mana_in_pool(PlayerId(0), Color::Green), u8::MAX);
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: elf,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "the full bucket accepted no Path mana, so spending old green mana must not scry"
+    );
+}
+
+#[test]
 fn path_of_ancestry_scries_on_a_typal_creature_spell() {
     // Path of Ancestry (msc): "{T}: Add one mana of any color in your commander's color identity.
     // When that mana is spent to cast a creature spell that shares a creature type with your

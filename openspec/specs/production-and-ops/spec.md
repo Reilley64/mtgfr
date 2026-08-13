@@ -189,7 +189,7 @@ CI SHALL build and scan the production-equivalent target (`server` package, rele
 
 The shared engine and production projection contract SHALL include stable stack-entry identities and an exhaustive source-independent public-ghost representation. Only a debug-assertion-only engine constructor MAY create that constrained source-less, targetless, no-op ghost; release builds SHALL retain the inert engine enum and wire/projection shape solely so projection is total, and SHALL NOT contain that constructor or an operational service that can create the ghost.
 
-The authoritative debug service SHALL NOT replace, push, or pop stack entries; construct known spells or abilities on the stack; override per-object printing or renderer metadata; expose arbitrary executable effects; edit mana pools or commander damage; allocate arbitrary arena identifiers; accept generic patches; add a checked stack-fixture authoring CLI workflow; or add a browser/BFF debug route. Stable identities and the inert public-ghost engine/wire shape SHALL NOT be treated as a release debug service or as authorization for any of those operations.
+The debug-assertion-only engine domain MAY expose checked stack replacement, push, and pop functions for a future ordered server transaction. The authoritative debug service SHALL NOT yet map or invoke those functions, construct known spells or abilities through protobuf, override per-object printing or renderer metadata, expose arbitrary executable effects, edit mana pools or commander damage, allocate arbitrary arena identifiers, accept generic patches, add a checked stack-fixture authoring CLI workflow, or add a browser/BFF debug route. Stable identities, the inert public-ghost engine/wire shape, and this engine-only editor SHALL NOT be treated as a release debug service or as authorization for any server operation.
 
 #### Scenario: Release artifacts exclude the authoritative debug service
 
@@ -199,7 +199,7 @@ The authoritative debug service SHALL NOT replace, push, or pop stack entries; c
 #### Scenario: Inert stack shape exposes no debug operation
 
 - **WHEN** a release build compiles the source-independent stack enum and production projection arms
-- **THEN** no caller can construct a public ghost or invoke stack replacement, push, pop, printing override, fixture authoring, or arbitrary-effect operations through a debug service
+- **THEN** no caller can construct a public ghost or invoke stack replacement, push, pop, printing override, fixture authoring, or arbitrary-effect operations through a debug service; the engine-only checked editor is absent with debug assertions disabled
 
 ### Requirement: Commit convention and release authorship
 

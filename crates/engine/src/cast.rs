@@ -2920,6 +2920,8 @@ impl Game {
             // mana ability to do *only* that) resolves both steps in order instead of hitting
             // the private mint's `Sequence => unreachable!()` guard; behavior-preserving for the
             // common bare-`AddMana` case, which still falls through `run`'s catch-all to mint+apply.
+            let mut provenance_pool = self.players[player.0 as usize].mana_pool;
+            let mana_event_start = events.len();
             self.run(
                 effect.clone(),
                 ResolveCtx {
@@ -2942,7 +2944,7 @@ impl Game {
             // `&self` mint `AddMana` arm) because this is where the source id and the
             // resolved `ManaAdded` events coexist.
             if effect.tracks_mana_provenance() {
-                for event in &events {
+                for event in &events[mana_event_start..] {
                     let Event::ManaAdded {
                         player: p,
                         mana,
@@ -2955,7 +2957,8 @@ impl Game {
                     if p != player {
                         continue;
                     }
-                    for _ in 0..amount {
+                    let accepted = provenance_pool.add(mana, amount);
+                    for _ in 0..accepted {
                         self.players[player.0 as usize]
                             .mana_provenance
                             .push((object, mana));

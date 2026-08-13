@@ -1277,6 +1277,8 @@ fn debug_service_maps_every_inspection_field_and_object_variant() {
             source_object_id: Some(12),
             controller: Some(engine::PlayerId(3)),
             label: "Secret Spell".into(),
+            targets: vec![],
+            public_ghost: None,
         },
         StackInspection {
             entry_id: engine::StackEntryId(2),
@@ -1285,6 +1287,8 @@ fn debug_service_maps_every_inspection_field_and_object_variant() {
             source_object_id: None,
             controller: None,
             label: "Secret Ability".into(),
+            targets: vec![],
+            public_ghost: None,
         },
     ];
     inspection.active_player = engine::PlayerId(2);
@@ -1591,6 +1595,8 @@ fn debug_service_inspection_preserves_absent_stack_controller() {
             source_object_id: Some(u32::MAX),
             controller: None,
             label: "corrupt stack entry".into(),
+            targets: vec![],
+            public_ghost: None,
         }],
         active_player: engine::PlayerId(0),
         step: engine::Step::Upkeep,

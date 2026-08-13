@@ -3123,7 +3123,7 @@ impl Game {
 
     /// Every "you may spend `from` mana as though it were `to` mana" substitution `player`
     /// controls (Sunglasses of Urza, CR 609.4b), as `(from, to)` color pairs. The payment path
-    /// hands these to [`ManaPool::substituted`] before planning — [`Game::plan_payment`] and
+    /// hands these to the exact widened planner — [`Game::plan_payment`] and
     /// [`Game::plan_auto_taps`] (so a cost can actually be paid and auto-tapped that way) and
     /// [`Game::available_mana`] (so the playability/`{X}`-ceiling estimate agrees with them).
     /// Empty — and so free — for every board without one.
