@@ -134,6 +134,19 @@ impl Table {
         }));
     }
 
+    /// Remove presentation overlays whose exact object identity is no longer live.
+    #[cfg(debug_assertions)]
+    pub(crate) fn prune_object_print_overrides(&mut self) {
+        let Some(game) = self.game.as_ref() else {
+            self.debug.object_prints.clear();
+            return;
+        };
+        let live = crate::debug::live_object_ids(game);
+        self.debug
+            .object_prints
+            .retain(|object_id, _| live.contains(object_id));
+    }
+
     /// Current exact-object presentation overlays. Live ownership is debug-only; release tables
     /// always project the shared empty map.
     pub(crate) fn current_object_print_overrides(&self) -> &schema::ObjectPrintOverrides {

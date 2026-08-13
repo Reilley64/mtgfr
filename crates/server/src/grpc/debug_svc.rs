@@ -11,7 +11,7 @@ use tonic::{Code, Request, Response, Status};
 use super::debug_pb as pb;
 use crate::debug::{
     CheckpointCommand, DebugAbortReason, DebugFailure, JournalKind, JournalRecord, MutateCommand,
-    ResourceLimit, RestoreCommand, checkpoint_table as checkpoint_domain,
+    ResourceLimit, RestoreCommand, TableMutation, checkpoint_table as checkpoint_domain,
     mutate_table as mutate_domain, restore_checkpoint as restore_domain,
 };
 use crate::{AppState, lock};
@@ -154,9 +154,12 @@ impl pb::debug_service_server::DebugService for DebugSvc {
             u32::try_from(request.operations.len()).map_err(|_| invalid_status(None))?;
         let mut operations = Vec::with_capacity(request.operations.len());
         for (operation_index, operation) in request.operations.into_iter().enumerate() {
-            let mapped =
-                map_mutation(operation).map_err(|_| invalid_status(Some(operation_index)))?;
-            operations.push(mapped);
+            let mapped = match map_mutation(operation) {
+                Ok(mapped) => mapped,
+                Err(error) if error.code() == Code::Unimplemented => return Err(error),
+                Err(_) => return Err(invalid_status(Some(operation_index))),
+            };
+            operations.push(TableMutation::Engine(mapped));
         }
         let receipt = mutate_domain(
             &self.state,
@@ -259,6 +262,19 @@ impl pb::debug_service_server::DebugService for DebugSvc {
 
 #[allow(clippy::result_large_err)]
 pub(crate) fn map_mutation(mutation: pb::Mutation) -> Result<Mutation, Status> {
+    use pb::mutation::Operation;
+
+    if matches!(
+        mutation.operation.as_ref(),
+        Some(
+            Operation::ReplaceStack(_)
+                | Operation::PushStack(_)
+                | Operation::PopStack(_)
+                | Operation::SetObjectPrintOverride(_)
+        )
+    ) {
+        return Err(Status::new(Code::Unimplemented, PRIVATE_FAILURE_MESSAGE));
+    }
     map_mutation_inner(mutation).map_err(|_| invalid_status(None))
 }
 
@@ -329,6 +345,10 @@ fn map_mutation_inner(mutation: pb::Mutation) -> Result<Mutation, MappingError> 
         Operation::ClearPendingOrchestration(edit) => Ok(Mutation::ClearPendingOrchestration {
             clear_queued_triggers: edit.clear_queued_triggers,
         }),
+        Operation::ReplaceStack(_)
+        | Operation::PushStack(_)
+        | Operation::PopStack(_)
+        | Operation::SetObjectPrintOverride(_) => Err(MappingError),
     }
 }
 
@@ -573,7 +593,10 @@ fn map_journal_record(record: JournalRecord) -> Result<pb::DebugJournalRecord, S
     let kind = match record.kind {
         JournalKind::MutationCommitted { operations } => {
             Kind::MutationCommitted(pb::MutationCommitted {
-                operations: operations.into_iter().map(map_domain_mutation).collect(),
+                operations: operations
+                    .into_iter()
+                    .map(map_table_mutation)
+                    .collect::<Result<Vec<_>, _>>()?,
             })
         }
         JournalKind::CheckpointCreated { name, replaced } => {
@@ -596,6 +619,106 @@ fn map_journal_record(record: JournalRecord) -> Result<pb::DebugJournalRecord, S
         encoded_request_bytes: u64::try_from(record.encoded_request_bytes)
             .map_err(|_| internal_status())?,
     })
+}
+
+#[allow(clippy::result_large_err)]
+fn map_table_mutation(operation: TableMutation) -> Result<pb::Mutation, Status> {
+    use pb::mutation::Operation;
+
+    let operation = match operation {
+        TableMutation::Engine(operation) => return Ok(map_domain_mutation(operation)),
+        TableMutation::ReplaceStack(entries) => Operation::ReplaceStack(pb::ReplaceStack {
+            entries: entries
+                .into_iter()
+                .map(map_stack_entry_spec)
+                .collect::<Result<Vec<_>, _>>()?,
+        }),
+        TableMutation::PushStack(entry) => Operation::PushStack(pb::PushStack {
+            entry: Some(map_stack_entry_spec(entry)?),
+        }),
+        TableMutation::PopStack { count } => Operation::PopStack(pb::PopStack {
+            count: u32::try_from(count).map_err(|_| internal_status())?,
+        }),
+        TableMutation::SetObjectPrintOverride {
+            object_id,
+            printing_id,
+        } => Operation::SetObjectPrintOverride(pb::SetObjectPrintOverride {
+            object_id,
+            printing_id,
+        }),
+    };
+    Ok(pb::Mutation {
+        operation: Some(operation),
+    })
+}
+
+#[allow(clippy::result_large_err)]
+fn map_stack_entry_spec(
+    entry: engine::debug::DebugStackEntrySpec,
+) -> Result<pb::StackEntrySpec, Status> {
+    use engine::debug::DebugStackEntrySpec;
+    use pb::stack_entry_spec::Kind;
+
+    let kind = match entry {
+        DebugStackEntrySpec::KnownSpell {
+            entry_id,
+            from_object_id,
+            spell_object_id,
+            controller,
+            targets,
+            targets_second,
+            x,
+        } => Kind::KnownSpell(pb::KnownSpellStackEntry {
+            entry_id: entry_id.0,
+            from_object_id,
+            spell_object_id,
+            controller: u32::from(controller.0),
+            targets: targets.into_iter().map(map_debug_target).collect(),
+            targets_second: targets_second.into_iter().map(map_debug_target).collect(),
+            x,
+        }),
+        DebugStackEntrySpec::AuthoredAbility {
+            entry_id,
+            controller,
+            source_object_id,
+            ability_index,
+            target,
+            targets_second,
+            x,
+        } => Kind::AuthoredAbility(pb::AuthoredAbilityStackEntry {
+            entry_id: entry_id.0,
+            controller: u32::from(controller.0),
+            source_object_id,
+            ability_index: u32::try_from(ability_index).map_err(|_| internal_status())?,
+            target: target.map(map_debug_target),
+            targets_second: targets_second.into_iter().map(map_debug_target).collect(),
+            x,
+        }),
+        DebugStackEntrySpec::PublicGhost {
+            entry_id,
+            controller,
+            public,
+        } => Kind::PublicGhost(pb::PublicGhostStackEntry {
+            entry_id: entry_id.0,
+            controller: u32::from(controller.0),
+            name: public.name,
+            label: public.label,
+            printing_id: public.printing_id,
+            card_id: public.card_id,
+            printed_sentences: public.printed_sentences,
+        }),
+    };
+    Ok(pb::StackEntrySpec { kind: Some(kind) })
+}
+
+fn map_debug_target(target: engine::Target) -> pb::DebugTarget {
+    use pb::debug_target::Kind;
+
+    let kind = match target {
+        engine::Target::Object(object_id) => Kind::ObjectId(object_id),
+        engine::Target::Player(player) => Kind::Player(u32::from(player.0)),
+    };
+    pb::DebugTarget { kind: Some(kind) }
 }
 
 fn map_domain_mutation(mutation: Mutation) -> pb::Mutation {
@@ -773,6 +896,15 @@ pub(crate) fn status(failure: DebugFailure) -> Status {
             Code::InvalidArgument,
             operation_index,
             map_error_reason(reason),
+            vec![],
+        ),
+        DebugFailure::UnsupportedStackConstruction {
+            operation_index,
+            entry_index: _,
+        } => (
+            Code::InvalidArgument,
+            Some(operation_index),
+            pb::DebugErrorReason::InvalidValue,
             vec![],
         ),
         DebugFailure::FailedPrecondition {

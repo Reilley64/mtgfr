@@ -32,7 +32,7 @@ fn command(table_id: &str, operations: Vec<Mutation>) -> MutateCommand {
         table_id: table_id.to_string(),
         expected_debug_revision: None,
         expected_table_seq: None,
-        operations,
+        operations: operations.into_iter().map(TableMutation::Engine).collect(),
         encoded_request_bytes: 13,
     }
 }
@@ -1036,7 +1036,7 @@ async fn checkpoint_creation_only_appends_audit_state_and_preserves_live_state_a
 
 #[tokio::test]
 async fn debug_restore_replaces_game_chrome_and_object_prints_monotonically() {
-    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    let state = state_with_game("table", game_with_object_slots(1)).await;
     {
         let mut registry = lock(&state.reg);
         let table = registry.get_mut("table").unwrap();
@@ -1047,7 +1047,7 @@ async fn debug_restore_replaces_game_chrome_and_object_prints_monotonically() {
         table
             .debug
             .object_prints
-            .insert(42, "checkpoint-print".to_string());
+            .insert(0, "checkpoint-print".to_string());
     }
     checkpoint_table(&state, checkpoint_command("baseline", 7)).unwrap();
     mutate_table(&state, command("table", vec![set_life(9)])).unwrap();
@@ -1056,7 +1056,7 @@ async fn debug_restore_replaces_game_chrome_and_object_prints_monotonically() {
         .unwrap()
         .debug
         .object_prints
-        .insert(42, "newer-live-print".to_string());
+        .insert(0, "newer-live-print".to_string());
     let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
 
     let receipt = restore_checkpoint(
@@ -1082,7 +1082,7 @@ async fn debug_restore_replaces_game_chrome_and_object_prints_monotonically() {
     assert_eq!(*table.chrome.turn_yields(), [false, true, false, false]);
     assert!(!table.chrome.any_dwell());
     assert_eq!(
-        table.debug.object_prints.get(&42).map(String::as_str),
+        table.debug.object_prints.get(&0).map(String::as_str),
         Some("checkpoint-print")
     );
     let update = rx.try_recv().expect("one replacement snapshot");
@@ -1092,7 +1092,7 @@ async fn debug_restore_replaces_game_chrome_and_object_prints_monotonically() {
     assert_eq!((snapshot.seq, snapshot.broadcast_seq), (2, 2));
     assert_eq!(snapshot.game.life(PlayerId(0)), 20);
     assert_eq!(
-        snapshot.object_print_overrides.get(&42).map(String::as_str),
+        snapshot.object_print_overrides.get(&0).map(String::as_str),
         Some("checkpoint-print")
     );
     assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
@@ -1197,7 +1197,9 @@ async fn successful_mutation_appends_operations_to_the_bounded_audit() {
     assert_eq!(table.debug.journal.len(), 1);
     assert_eq!(
         table.debug.journal.front().unwrap().kind,
-        JournalKind::MutationCommitted { operations }
+        JournalKind::MutationCommitted {
+            operations: operations.into_iter().map(TableMutation::Engine).collect(),
+        }
     );
 }
 
@@ -1772,4 +1774,529 @@ async fn debug_restore_missing_checkpoint_stale_seq_and_full_journal_leave_no_tr
     assert_eq!((table.seq, table.broadcast_seq), (1, 1));
     assert_eq!(table.game.as_ref().unwrap().life(PlayerId(0)), 20);
     assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+}
+
+fn table_command(table_id: &str, operations: Vec<TableMutation>) -> MutateCommand {
+    MutateCommand {
+        table_id: table_id.to_string(),
+        expected_debug_revision: None,
+        expected_table_seq: None,
+        operations,
+        encoded_request_bytes: 97,
+    }
+}
+
+fn create_hand_card(object_id: u32, name: &str) -> TableMutation {
+    TableMutation::Engine(Mutation::CreateCard {
+        object_id,
+        card_id: cards::get_by_name(name)
+            .expect("fixture card")
+            .id
+            .to_string(),
+        owner: PlayerId(0),
+        controller: PlayerId(0),
+        destination: DebugZone::Hand,
+        commander: false,
+        face_down: false,
+    })
+}
+
+fn known_spell(
+    entry_id: u64,
+    from_object_id: u32,
+    spell_object_id: u32,
+) -> engine::debug::DebugStackEntrySpec {
+    engine::debug::DebugStackEntrySpec::KnownSpell {
+        entry_id: engine::StackEntryId(entry_id),
+        from_object_id,
+        spell_object_id,
+        controller: PlayerId(0),
+        targets: vec![],
+        targets_second: vec![],
+        x: 0,
+    }
+}
+
+fn public_ghost(entry_id: u64) -> engine::debug::DebugStackEntrySpec {
+    engine::debug::DebugStackEntrySpec::PublicGhost {
+        entry_id: engine::StackEntryId(entry_id),
+        controller: PlayerId(1),
+        public: engine::PublicStackGhost {
+            name: "Public fixture".to_string(),
+            label: "Public no-op".to_string(),
+            printing_id: "ghost-print".to_string(),
+            card_id: None,
+            printed_sentences: vec!["This fixture does nothing.".to_string()],
+        },
+    }
+}
+
+#[tokio::test]
+async fn stack_and_print_transaction_publishes_one_private_filtered_snapshot_and_restores_together()
+{
+    let state = state_with_game("table", engine::Game::with_players(4, 0)).await;
+    checkpoint_table(&state, checkpoint_command("baseline", 7)).unwrap();
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    let mut owner_rx = table.tx.subscribe();
+    let mut opponent_rx = table.tx.subscribe();
+    let mut spectator_rx = table.tx.subscribe();
+    drop(registry);
+
+    let names = [
+        "Dark Ritual",
+        "Vision Skeins",
+        "Night's Whisper",
+        "Harmonize",
+        "Fog",
+        "Time Walk",
+    ];
+    let prints = [
+        "print-a", "print-b", "print-c", "print-d", "print-e", "print-f",
+    ];
+    let mut operations = vec![
+        create_hand_card(0, "Shock"),
+        TableMutation::Engine(Mutation::CreateCard {
+            object_id: 1,
+            card_id: cards::get_by_name("Plains").unwrap().id.to_string(),
+            owner: PlayerId(0),
+            controller: PlayerId(0),
+            destination: DebugZone::Library,
+            commander: false,
+            face_down: false,
+        }),
+    ];
+    operations.extend(
+        names
+            .iter()
+            .enumerate()
+            .map(|(index, name)| create_hand_card(2 + index as u32, name)),
+    );
+    operations.extend(prints.iter().enumerate().map(|(index, printing_id)| {
+        TableMutation::SetObjectPrintOverride {
+            object_id: 2 + index as u32,
+            printing_id: Some((*printing_id).to_string()),
+        }
+    }));
+    let mut entries = (0..names.len())
+        .map(|index| known_spell(10 + index as u64, 2 + index as u32, 8 + index as u32))
+        .collect::<Vec<_>>();
+    entries.push(public_ghost(16));
+    operations.push(TableMutation::ReplaceStack(entries));
+
+    let receipt = mutate_table(&state, table_command("table", operations.clone())).unwrap();
+    assert_eq!((receipt.debug_revision, receipt.table_seq), (1, 1));
+    assert_eq!(receipt.applied_operation_count, operations.len());
+
+    for (viewer, rx) in [
+        (Some(PlayerId(0)), &mut owner_rx),
+        (Some(PlayerId(1)), &mut opponent_rx),
+        (None, &mut spectator_rx),
+    ] {
+        let update = rx.try_recv().expect("one replacement snapshot");
+        let StreamFrame::Snapshot { state: visible, .. } = frame_for_update(viewer, &update) else {
+            panic!("debug commit publishes a snapshot");
+        };
+        assert_eq!(visible.stack.len(), 7);
+        assert_eq!(
+            visible
+                .stack
+                .iter()
+                .map(|entry| entry.entry_id)
+                .collect::<Vec<_>>(),
+            (10..=16).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            visible
+                .stack
+                .iter()
+                .map(|entry| entry.source)
+                .collect::<Vec<_>>(),
+            vec![
+                Some(8),
+                Some(9),
+                Some(10),
+                Some(11),
+                Some(12),
+                Some(13),
+                None
+            ]
+        );
+        assert_eq!(
+            visible
+                .stack
+                .iter()
+                .map(|entry| entry.print.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "print-a",
+                "print-b",
+                "print-c",
+                "print-d",
+                "print-e",
+                "print-f",
+                "ghost-print"
+            ]
+        );
+        let private_ids = visible
+            .objects
+            .iter()
+            .filter(|object| object.id <= 1)
+            .map(|object| object.id)
+            .collect::<Vec<_>>();
+        if viewer == Some(PlayerId(0)) {
+            assert_eq!(private_ids, vec![0]);
+        } else {
+            assert!(private_ids.is_empty());
+        }
+        assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+    }
+
+    {
+        let registry = lock(&state.reg);
+        let table = registry.get("table").unwrap();
+        assert_eq!(
+            (table.seq, table.broadcast_seq, table.debug.revision),
+            (1, 1, 1)
+        );
+        assert_eq!(table.debug.journal.len(), 2);
+        assert_eq!(
+            table.debug.object_prints,
+            prints
+                .iter()
+                .enumerate()
+                .map(|(index, print)| (8 + index as u32, (*print).to_string()))
+                .collect()
+        );
+        assert_eq!(
+            table.debug.journal.back().unwrap().kind,
+            JournalKind::MutationCommitted { operations }
+        );
+    }
+
+    restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".to_string(),
+            name: "baseline".to_string(),
+            expected_debug_revision: Some(1),
+            expected_table_seq: Some(1),
+            encoded_request_bytes: 11,
+        },
+    )
+    .unwrap();
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert!(
+        engine::debug::inspect(table.game.as_ref().unwrap())
+            .stack
+            .is_empty()
+    );
+    assert!(table.debug.object_prints.is_empty());
+    assert_eq!(
+        (table.seq, table.broadcast_seq, table.debug.revision),
+        (2, 2, 2)
+    );
+    drop(registry);
+    for rx in [&mut owner_rx, &mut opponent_rx, &mut spectator_rx] {
+        let update = rx.try_recv().expect("one restore snapshot");
+        let PublishedUpdate::Snapshot(snapshot) = update.as_ref() else {
+            panic!("restore publishes a snapshot");
+        };
+        assert!(snapshot.object_print_overrides.is_empty());
+        assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+    }
+}
+
+#[tokio::test]
+async fn late_stack_or_print_failure_reports_global_index_and_preserves_full_fingerprint() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    checkpoint_table(&state, checkpoint_command("baseline", 5)).unwrap();
+    let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
+    let before = table_transaction_fingerprint(&state, "table");
+    let operations = vec![
+        create_hand_card(0, "Dark Ritual"),
+        TableMutation::SetObjectPrintOverride {
+            object_id: 0,
+            printing_id: Some("source-print".to_string()),
+        },
+        TableMutation::ReplaceStack(vec![known_spell(1, 0, 1)]),
+        TableMutation::SetObjectPrintOverride {
+            object_id: 999,
+            printing_id: Some("missing".to_string()),
+        },
+    ];
+
+    assert_eq!(
+        mutate_table(&state, table_command("table", operations)),
+        Err(DebugFailure::NotFound {
+            operation_index: Some(3),
+        })
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+
+    let late_engine = vec![
+        create_hand_card(0, "Dark Ritual"),
+        TableMutation::SetObjectPrintOverride {
+            object_id: 0,
+            printing_id: Some("source-print".to_string()),
+        },
+        TableMutation::Engine(Mutation::SetController {
+            object_id: 999,
+            controller: PlayerId(0),
+        }),
+    ];
+    assert_eq!(
+        mutate_table(&state, table_command("table", late_engine)),
+        Err(DebugFailure::NotFound {
+            operation_index: Some(2),
+        })
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+
+    let bad_stack = vec![
+        TableMutation::Engine(set_life(19)),
+        TableMutation::ReplaceStack(vec![public_ghost(0)]),
+    ];
+    assert_eq!(
+        mutate_table(&state, table_command("table", bad_stack)),
+        Err(DebugFailure::Invalid {
+            operation_index: Some(1),
+            reason: ErrorReason::InvalidValue,
+        })
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+}
+
+#[tokio::test]
+async fn print_override_validation_cleanup_and_checkpoint_slots_are_exact() {
+    let oversized = "x".repeat(MAX_OBJECT_PRINT_ID_BYTES + 1);
+    for invalid in ["", "   ", oversized.as_str()] {
+        let state = state_with_object_slots("table", 1).await;
+        let before = table_transaction_fingerprint(&state, "table");
+        let error = mutate_table(
+            &state,
+            table_command(
+                "table",
+                vec![TableMutation::SetObjectPrintOverride {
+                    object_id: 0,
+                    printing_id: Some(invalid.to_string()),
+                }],
+            ),
+        );
+        assert_eq!(
+            error,
+            Err(DebugFailure::Invalid {
+                operation_index: Some(0),
+                reason: ErrorReason::InvalidValue,
+            })
+        );
+        assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    }
+
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    mutate_table(
+        &state,
+        table_command(
+            "table",
+            vec![
+                create_hand_card(0, "Dark Ritual"),
+                TableMutation::SetObjectPrintOverride {
+                    object_id: 0,
+                    printing_id: Some("spell-print".to_string()),
+                },
+                TableMutation::PushStack(known_spell(1, 0, 1)),
+            ],
+        ),
+    )
+    .unwrap();
+    {
+        let table = lock(&state.reg);
+        assert_eq!(
+            table.get("table").unwrap().debug.object_prints,
+            [(1, "spell-print".to_string())].into_iter().collect()
+        );
+    }
+    let checkpoint = checkpoint_table(
+        &state,
+        CheckpointCommand {
+            table_id: "table".to_string(),
+            name: "with-print".to_string(),
+            replace_existing: false,
+            expected_table_seq: Some(1),
+            encoded_request_bytes: 5,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        checkpoint.object_slots, 3,
+        "two arena slots plus one exact print"
+    );
+    assert_eq!(
+        lock(&state.reg)
+            .get("table")
+            .unwrap()
+            .debug
+            .checkpoint_object_slots,
+        3
+    );
+
+    mutate_table(
+        &state,
+        table_command("table", vec![TableMutation::PopStack { count: 1 }]),
+    )
+    .unwrap();
+    assert!(
+        lock(&state.reg)
+            .get("table")
+            .unwrap()
+            .debug
+            .object_prints
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn ordinary_spell_resolution_prunes_inherited_print_before_print_only_mutation_and_checkpoint()
+ {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    mutate_table(
+        &state,
+        table_command(
+            "table",
+            vec![
+                create_hand_card(0, "Dark Ritual"),
+                TableMutation::Engine(Mutation::CreateCard {
+                    object_id: 1,
+                    card_id: cards::get_by_name("Plains").unwrap().id.to_string(),
+                    owner: PlayerId(0),
+                    controller: PlayerId(0),
+                    destination: DebugZone::Hand,
+                    commander: false,
+                    face_down: false,
+                }),
+                TableMutation::SetObjectPrintOverride {
+                    object_id: 0,
+                    printing_id: Some("spell-print".to_string()),
+                },
+                TableMutation::PushStack(known_spell(1, 0, 2)),
+            ],
+        ),
+    )
+    .unwrap();
+    assert_eq!(
+        lock(&state.reg).get("table").unwrap().debug.object_prints,
+        [(2, "spell-print".to_string())].into_iter().collect()
+    );
+
+    {
+        let mut registry = lock(&state.reg);
+        let table = registry.get_mut("table").unwrap();
+        for _ in 0..4 {
+            if engine::debug::inspect(table.game.as_ref().unwrap())
+                .stack
+                .is_empty()
+            {
+                break;
+            }
+            let holder = table.game.as_ref().unwrap().priority_holder();
+            let (result, _) =
+                TableSession::new(table).submit_system(Intent::PassPriority { player: holder });
+            assert!(result.accepted);
+        }
+        assert!(
+            engine::debug::inspect(table.game.as_ref().unwrap())
+                .stack
+                .is_empty(),
+            "ordinary priority passes resolve the debug-created spell"
+        );
+        assert!(
+            table.debug.object_prints.is_empty(),
+            "the exact spell override is pruned at the accepted-intent publication boundary"
+        );
+    }
+
+    mutate_table(
+        &state,
+        table_command(
+            "table",
+            vec![TableMutation::SetObjectPrintOverride {
+                object_id: 1,
+                printing_id: Some("plains-print".to_string()),
+            }],
+        ),
+    )
+    .expect("a later print-only transaction is not poisoned by the resolved spell");
+    checkpoint_table(
+        &state,
+        CheckpointCommand {
+            table_id: "table".to_string(),
+            name: "after-resolution".to_string(),
+            replace_existing: false,
+            expected_table_seq: None,
+            encoded_request_bytes: 10,
+        },
+    )
+    .expect("a later checkpoint validates the exact-live override map");
+}
+
+#[tokio::test]
+async fn print_only_mutation_prunes_preexisting_stale_overrides_before_validation() {
+    let state = state_with_object_slots("table", 1).await;
+    lock(&state.reg)
+        .get_mut("table")
+        .unwrap()
+        .debug
+        .object_prints
+        .insert(99, "stale-print".to_string());
+
+    mutate_table(
+        &state,
+        table_command(
+            "table",
+            vec![TableMutation::SetObjectPrintOverride {
+                object_id: 0,
+                printing_id: Some("live-print".to_string()),
+            }],
+        ),
+    )
+    .expect("print-only transactions self-heal stale inherited state");
+    assert_eq!(
+        lock(&state.reg).get("table").unwrap().debug.object_prints,
+        [(0, "live-print".to_string())].into_iter().collect()
+    );
+}
+
+#[tokio::test]
+async fn clearing_a_stale_print_override_is_idempotent_recovery() {
+    let state = state_with_object_slots("table", 1).await;
+    lock(&state.reg)
+        .get_mut("table")
+        .unwrap()
+        .debug
+        .object_prints
+        .insert(99, "stale-print".to_string());
+
+    mutate_table(
+        &state,
+        table_command(
+            "table",
+            vec![TableMutation::SetObjectPrintOverride {
+                object_id: 99,
+                printing_id: None,
+            }],
+        ),
+    )
+    .expect("clearing an already-dead exact object is allowed");
+    assert!(
+        lock(&state.reg)
+            .get("table")
+            .unwrap()
+            .debug
+            .object_prints
+            .is_empty()
+    );
 }

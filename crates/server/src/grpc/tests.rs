@@ -1615,7 +1615,7 @@ fn debug_service_inspection_preserves_absent_stack_controller() {
 #[cfg(debug_assertions)]
 #[tokio::test]
 async fn debug_journal_maps_all_eleven_domain_mutations_with_exact_wire_fields() {
-    use crate::debug::{JournalKind, JournalRecord};
+    use crate::debug::{JournalKind, JournalRecord, TableMutation};
     use debug_pb::debug_service_server::DebugService;
     use debug_pb::mutation::Operation;
     use engine::debug::{DebugZone, Mutation};
@@ -1745,7 +1745,9 @@ async fn debug_journal_maps_all_eleven_domain_mutations_with_exact_wire_fields()
             debug_revision: 11,
             table_seq: 13,
             encoded_request_bytes: 1_337,
-            kind: JournalKind::MutationCommitted { operations },
+            kind: JournalKind::MutationCommitted {
+                operations: operations.into_iter().map(TableMutation::Engine).collect(),
+            },
         });
 
     let response = debug_svc::DebugSvc::new(state)
@@ -1775,6 +1777,130 @@ async fn debug_journal_maps_all_eleven_domain_mutations_with_exact_wire_fields()
     for (actual, expected) in actual.iter().zip(expected) {
         assert_eq!(actual.operation.as_ref(), Some(&expected));
     }
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_journal_maps_committed_stack_and_print_operations_without_panicking() {
+    use crate::debug::{MutateCommand, TableMutation, mutate_table};
+    use debug_pb::debug_service_server::DebugService;
+    use debug_pb::mutation::Operation;
+    use engine::debug::{DebugStackEntrySpec, DebugZone, Mutation};
+    use engine::{PlayerId, PublicStackGhost, StackEntryId};
+
+    let ghost = |entry_id, name: &str| DebugStackEntrySpec::PublicGhost {
+        entry_id: StackEntryId(entry_id),
+        controller: PlayerId(0),
+        public: PublicStackGhost {
+            name: name.to_string(),
+            label: format!("{name} label"),
+            printing_id: format!("{name}-print"),
+            card_id: None,
+            printed_sentences: vec![format!("{name} does nothing.")],
+        },
+    };
+    let operations = vec![
+        TableMutation::Engine(Mutation::CreateCard {
+            object_id: 0,
+            card_id: cards::get_by_name("Plains").unwrap().id.to_string(),
+            owner: PlayerId(0),
+            controller: PlayerId(0),
+            destination: DebugZone::Battlefield,
+            commander: false,
+            face_down: false,
+        }),
+        TableMutation::ReplaceStack(vec![ghost(1, "bottom")]),
+        TableMutation::PushStack(ghost(2, "top")),
+        TableMutation::PopStack { count: 1 },
+        TableMutation::SetObjectPrintOverride {
+            object_id: 0,
+            printing_id: Some("plains-print".to_string()),
+        },
+    ];
+    let state = test_state().await;
+    insert_debug_game(&state, "table", engine::Game::with_players(2, 0), 0, 0);
+    mutate_table(
+        &state,
+        MutateCommand {
+            table_id: "table".to_string(),
+            expected_debug_revision: Some(0),
+            expected_table_seq: Some(0),
+            operations,
+            encoded_request_bytes: 55,
+        },
+    )
+    .expect("non-engine operations commit");
+
+    let response = debug_svc::DebugSvc::new(state)
+        .get_debug_journal(Request::new(debug_pb::GetDebugJournalRequest {
+            table_id: "table".into(),
+        }))
+        .await
+        .expect("the committed journal remains readable")
+        .into_inner();
+    let committed = match response.records[0].kind.as_ref().unwrap() {
+        debug_pb::debug_journal_record::Kind::MutationCommitted(committed) => committed,
+        other => panic!("expected mutation commit, got {other:?}"),
+    };
+    let wire_ghost = |entry_id, name: &str| debug_pb::StackEntrySpec {
+        kind: Some(debug_pb::stack_entry_spec::Kind::PublicGhost(
+            debug_pb::PublicGhostStackEntry {
+                entry_id,
+                controller: 0,
+                name: name.to_string(),
+                label: format!("{name} label"),
+                printing_id: format!("{name}-print"),
+                card_id: None,
+                printed_sentences: vec![format!("{name} does nothing.")],
+            },
+        )),
+    };
+    assert_eq!(
+        committed.operations[1].operation,
+        Some(Operation::ReplaceStack(debug_pb::ReplaceStack {
+            entries: vec![wire_ghost(1, "bottom")],
+        }))
+    );
+    assert_eq!(
+        committed.operations[2].operation,
+        Some(Operation::PushStack(debug_pb::PushStack {
+            entry: Some(wire_ghost(2, "top")),
+        }))
+    );
+    assert_eq!(
+        committed.operations[3].operation,
+        Some(Operation::PopStack(debug_pb::PopStack { count: 1 }))
+    );
+    assert_eq!(
+        committed.operations[4].operation,
+        Some(Operation::SetObjectPrintOverride(
+            debug_pb::SetObjectPrintOverride {
+                object_id: 0,
+                printing_id: Some("plains-print".to_string()),
+            }
+        ))
+    );
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_stack_request_ingress_remains_unimplemented_until_task_six() {
+    use debug_pb::debug_service_server::DebugService;
+    use debug_pb::mutation::Operation;
+
+    let state = test_state().await;
+    insert_debug_game(&state, "table", engine::Game::with_players(2, 0), 0, 0);
+    let error = debug_svc::DebugSvc::new(state)
+        .mutate_table(Request::new(debug_pb::MutateTableRequest {
+            table_id: "table".to_string(),
+            operations: vec![debug_pb::Mutation {
+                operation: Some(Operation::PopStack(debug_pb::PopStack { count: 1 })),
+            }],
+            ..Default::default()
+        }))
+        .await
+        .expect_err("Task 5 only exposes the operation types for faithful journal output");
+    assert_eq!(error.code(), tonic::Code::Unimplemented);
 }
 
 #[cfg(debug_assertions)]

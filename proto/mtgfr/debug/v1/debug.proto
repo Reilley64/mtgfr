@@ -168,6 +168,10 @@ message Mutation {
     SetLibraryOrder set_library_order = 9;
     RemoveCard remove_card = 10;
     ClearPendingOrchestration clear_pending_orchestration = 11;
+    ReplaceStack replace_stack = 12;
+    PushStack push_stack = 13;
+    PopStack pop_stack = 14;
+    SetObjectPrintOverride set_object_print_override = 15;
   }
 }
 message SetLife {
@@ -224,6 +228,59 @@ message RemoveCard {
 }
 message ClearPendingOrchestration {
   bool clear_queued_triggers = 1;
+}
+message DebugTarget {
+  oneof kind {
+    uint32 object_id = 1;
+    uint32 player = 2;
+  }
+}
+message StackEntrySpec {
+  oneof kind {
+    KnownSpellStackEntry known_spell = 1;
+    AuthoredAbilityStackEntry authored_ability = 2;
+    PublicGhostStackEntry public_ghost = 3;
+  }
+}
+message KnownSpellStackEntry {
+  uint64 entry_id = 1;
+  uint32 from_object_id = 2;
+  uint32 spell_object_id = 3;
+  uint32 controller = 4;
+  repeated DebugTarget targets = 5;
+  repeated DebugTarget targets_second = 6;
+  uint32 x = 7;
+}
+message AuthoredAbilityStackEntry {
+  uint64 entry_id = 1;
+  uint32 controller = 2;
+  uint32 source_object_id = 3;
+  uint32 ability_index = 4;
+  optional DebugTarget target = 5;
+  repeated DebugTarget targets_second = 6;
+  uint32 x = 7;
+}
+message PublicGhostStackEntry {
+  uint64 entry_id = 1;
+  uint32 controller = 2;
+  string name = 3;
+  string label = 4;
+  string printing_id = 5;
+  optional string card_id = 6;
+  repeated string printed_sentences = 7;
+}
+message ReplaceStack {
+  repeated StackEntrySpec entries = 1;
+}
+message PushStack {
+  StackEntrySpec entry = 1;
+}
+message PopStack {
+  uint32 count = 1;
+}
+message SetObjectPrintOverride {
+  uint32 object_id = 1;
+  optional string printing_id = 2;
 }
 message MutateTableResponse {
   uint64 debug_revision = 1;

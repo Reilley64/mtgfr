@@ -266,6 +266,8 @@ impl<'a> TableSession<'a> {
             Ok(Ok(result)) => result,
         };
 
+        #[cfg(debug_assertions)]
+        self.table.prune_object_print_overrides();
         self.table.seq += 1;
         self.table.broadcast_seq += 1;
         let seq = self.table.seq;
