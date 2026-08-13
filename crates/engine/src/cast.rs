@@ -1277,7 +1277,7 @@ impl Game {
             player,
             tapped,
         }];
-        self.apply_all(&mut events);
+        self.apply_all_recorded(&mut events);
         // A land's own as-enters static (CR 616.1 — Vivid Crag's "enters with two charge
         // counters"): no spell/target context at this special action, unlike the cast-resolution
         // choke `push_enters_with_counters` also serves.
@@ -2553,7 +2553,7 @@ impl Game {
         let target = match ability.effect.target() {
             spec @ (TargetSpec::ThisPermanent | TargetSpec::EnchantedCreature) => {
                 // An activated ability carries no {X} (mirrors `run`'s "abilities (CR 602, CR 113)
-                // carry no X" for `StackItem::Ability`).
+                // carry no X" for `StackPayload::Ability`).
                 let legal = self.legal_targets_for(spec, object, player, source_colors, 0);
                 match legal.first() {
                     Some(&fixed) => Some(fixed),

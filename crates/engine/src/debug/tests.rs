@@ -1,5 +1,5 @@
 use super::*;
-use crate::{Effect, Game, Object, PendingChoice, PlayerId, StackItem, Step, TargetCount};
+use crate::{Effect, Game, Object, PendingChoice, PlayerId, StackRenderSource, Step, TargetCount};
 
 const P0: PlayerId = PlayerId(0);
 const P1: PlayerId = PlayerId(1);
@@ -59,19 +59,23 @@ fn inspect_returns_raw_arena_zones_stack_and_orchestration_facts() {
         def: removed_def,
         owner: P1,
     };
-    game.stack.push(StackItem::Ability {
-        controller: P1,
-        source: permanent,
-        effect: Effect::Draw(crate::DrawEffect::Cards {
-            who: crate::PlayerSet::You,
-            count: crate::Amount::Fixed(1),
-        }),
-        activated: false,
-        target: None,
-        targets_second: Default::default(),
-        x: 0,
-        spent_mana: [0; 6],
-    });
+    game.push_stack_item(
+        StackRenderSource::Object(permanent),
+        StackPayload::Ability {
+            controller: P1,
+            source: permanent,
+            effect: Effect::Draw(crate::DrawEffect::Cards {
+                who: crate::PlayerSet::You,
+                count: crate::Amount::Fixed(1),
+            }),
+            activated: false,
+            target: None,
+            targets_second: Default::default(),
+            x: 0,
+            spent_mana: [0; 6],
+        },
+    )
+    .unwrap();
     game.active_player = P1;
     game.step = Step::End;
     game.priority = P0;
@@ -122,6 +126,8 @@ fn inspect_returns_raw_arena_zones_stack_and_orchestration_facts() {
         ObjectInspection::Removed { object_id, owner: P1, .. } if *object_id == removed
     )));
     assert_eq!(inspection.stack.len(), 2);
+    assert_eq!(inspection.stack[0].entry_id, game.stack[0].entry_id);
+    assert_eq!(inspection.stack[1].entry_id, game.stack[1].entry_id);
     assert_eq!(inspection.stack[0].position_from_bottom, 0);
     assert_eq!(inspection.stack[0].kind, "spell");
     assert_eq!(inspection.stack[0].controller, Some(P0));
@@ -228,7 +234,11 @@ fn validator_reports_attachment_cycle() {
 fn validator_reports_stack_spell_without_matching_spell_object() {
     let mut game = Game::with_players(2, 0);
     let permanent = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
-    game.stack.push(StackItem::Spell(permanent));
+    game.push_stack_item(
+        StackRenderSource::Object(permanent),
+        StackPayload::Spell(permanent),
+    )
+    .unwrap();
     assert!(codes(&game).contains(&"stack_pairing"));
 }
 
@@ -496,19 +506,23 @@ fn validator_rejects_non_attachment_and_accepts_legal_aura_and_equipment() {
 fn validator_reports_nested_player_references_and_pass_count() {
     let mut game = Game::with_players(2, 0);
     let source = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
-    game.stack.push(StackItem::Ability {
-        controller: P0,
-        source,
-        effect: Effect::Draw(crate::DrawEffect::Cards {
-            who: crate::PlayerSet::You,
-            count: crate::Amount::Fixed(1),
-        }),
-        activated: false,
-        target: Some(crate::Target::Player(PlayerId(8))),
-        targets_second: Default::default(),
-        x: 0,
-        spent_mana: [0; 6],
-    });
+    game.push_stack_item(
+        StackRenderSource::Object(source),
+        StackPayload::Ability {
+            controller: P0,
+            source,
+            effect: Effect::Draw(crate::DrawEffect::Cards {
+                who: crate::PlayerSet::You,
+                count: crate::Amount::Fixed(1),
+            }),
+            activated: false,
+            target: Some(crate::Target::Player(PlayerId(8))),
+            targets_second: Default::default(),
+            x: 0,
+            spent_mana: [0; 6],
+        },
+    )
+    .unwrap();
     game.pending_choice = Some(PendingChoice::ChooseTarget {
         player: P0,
         controller: PlayerId(7),
@@ -602,7 +616,8 @@ fn validator_returns_exact_deterministic_first_sixteen_library_violations() {
 #[test]
 fn corrupt_stack_spell_inspection_reports_unknown_controller() {
     let mut game = Game::with_players(2, 0);
-    game.stack.push(StackItem::Spell(99));
+    game.push_stack_item(StackRenderSource::Object(99), StackPayload::Spell(99))
+        .unwrap();
     assert_eq!(inspect(&game).stack[0].controller, None);
 }
 
@@ -655,7 +670,7 @@ fn scalar_life_extrema_remain_safe_under_ordinary_changes() {
         let mut game = Game::with_players(2, 0);
         apply_one(&mut game, Mutation::SetLife { player: P0, life }).expect("life edit");
 
-        game.apply(&crate::Event::LifeChanged {
+        game.apply_recorded(&crate::Event::LifeChanged {
             player: P0,
             amount,
             source: None,
@@ -685,7 +700,7 @@ fn wide_life_changes_clamp_at_endpoints_and_tally_each_logical_event() {
         )
         .expect("life edit");
 
-        game.apply(&crate::Event::LifeChanged {
+        game.apply_recorded(&crate::Event::LifeChanged {
             player: P0,
             amount,
             source: None,
@@ -927,7 +942,7 @@ fn scalar_permanent_extrema_remain_safe_for_characteristics_and_damage() {
 
     assert_eq!(game.power(object_id), i32::MAX);
     assert_eq!(game.toughness(object_id), i32::MAX);
-    game.apply(&crate::Event::DamageMarked {
+    game.apply_recorded(&crate::Event::DamageMarked {
         object: object_id,
         amount: 1,
         cant_be_regenerated: false,
@@ -942,7 +957,7 @@ fn debug_set_plus_counters_keeps_all_counter_readers_and_provenance_coherent() {
     let mut game = Game::with_players(2, 0);
     let object_id = game.spawn_on_battlefield(P0, card("Steelbane Hydra"));
     game.fund_mana(P0);
-    game.apply(&crate::Event::CountersPlaced {
+    game.apply_recorded(&crate::Event::CountersPlaced {
         object: object_id,
         count: 2,
         source_name: "ordinary source",
@@ -1002,7 +1017,7 @@ fn endpoint_plus_counter_placement_and_removal_keep_ledger_and_raw_total_coheren
     )
     .expect("counter edit");
 
-    game.apply(&crate::Event::CountersPlaced {
+    game.apply_recorded(&crate::Event::CountersPlaced {
         object: object_id,
         count: 1,
         source_name: "clamped placement",
@@ -1010,7 +1025,7 @@ fn endpoint_plus_counter_placement_and_removal_keep_ledger_and_raw_total_coheren
     assert_eq!(game.plus_counters(object_id), i32::MAX);
     assert_eq!(game.permanent(object_id).plus_counters, i32::MAX);
 
-    game.apply(&crate::Event::CountersPlaced {
+    game.apply_recorded(&crate::Event::CountersPlaced {
         object: object_id,
         count: -1,
         source_name: "remove one",
@@ -1018,14 +1033,14 @@ fn endpoint_plus_counter_placement_and_removal_keep_ledger_and_raw_total_coheren
     assert_eq!(game.plus_counters(object_id), i32::MAX - 1);
     assert_eq!(game.permanent(object_id).plus_counters, i32::MAX - 1);
 
-    game.apply(&crate::Event::KindCountersPlaced {
+    game.apply_recorded(&crate::Event::KindCountersPlaced {
         object: object_id,
         kind: crate::CounterKind::Charge,
         count: 1,
     });
     let (mut events, removed) = game.remove_counters_events(object_id, true, 0);
     assert_eq!(removed, i32::MAX);
-    game.apply_all(&mut events);
+    game.apply_all_recorded(&mut events);
     assert_eq!(game.plus_counters(object_id), 0);
     assert_eq!(game.permanent(object_id).plus_counters, 0);
     assert_eq!(
@@ -1660,7 +1675,7 @@ fn move_dirty_permanents_to_every_destination_gets_fresh_destination_state() {
 fn move_clears_ordinary_modifier_provenance_from_departing_permanent() {
     let mut game = Game::with_players(2, 0);
     let old = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
-    game.apply(&crate::Event::TempBoost {
+    game.apply_recorded(&crate::Event::TempBoost {
         object: old,
         power: 2,
         toughness: 2,
@@ -1701,7 +1716,7 @@ fn detach_then_move_control_aura_clears_its_control_timestamp() {
     let mut game = Game::with_players(2, 0);
     let aura = game.spawn_on_battlefield(P0, card("Control Magic"));
     let host = game.spawn_on_battlefield(P1, card("Grizzly Bears"));
-    game.apply(&crate::Event::AttachedTo {
+    game.apply_recorded(&crate::Event::AttachedTo {
         object: aura,
         host: Some(host),
     });
@@ -1959,7 +1974,7 @@ fn move_rejects_spell_moved_and_removed_sources() {
         false,
     )
     .unwrap();
-    let StackItem::Spell(live_spell) = game.stack[0] else {
+    let StackPayload::Spell(live_spell) = game.stack[0].payload else {
         panic!("cast did not create a spell");
     };
     for source in [moved, removed, live_spell] {
@@ -2095,7 +2110,7 @@ fn remove_card_tombstones_only_unreferenced_live_nonbattlefield_cards() {
         false,
     )
     .unwrap();
-    let StackItem::Spell(spell) = game.stack[0] else {
+    let StackPayload::Spell(spell) = game.stack[0].payload else {
         panic!("cast did not create a spell");
     };
     assert_operation_error(

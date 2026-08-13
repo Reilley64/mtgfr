@@ -95,13 +95,13 @@ impl Game {
         // every `Event::Discarded` by `discard_ids` so Psychic Purge can ask whether "a spell or
         // ability an opponent controls" made you discard it. Armed here, per stack item, because
         // the discards that pause for a choice are answered outside any resolution call.
-        self.resolution_frame.discard_cause = Some(match &top {
-            StackItem::Spell(object) => self.spell(*object).controller,
-            StackItem::Ability { controller, .. } => *controller,
+        self.resolution_frame.discard_cause = Some(match &top.payload {
+            StackPayload::Spell(object) => self.spell(*object).controller,
+            StackPayload::Ability { controller, .. } => *controller,
         });
-        match top {
-            StackItem::Spell(object) => self.resolve_spell(object, events),
-            StackItem::Ability {
+        match top.payload {
+            StackPayload::Spell(object) => self.resolve_spell(object, events),
+            StackPayload::Ability {
                 controller,
                 source,
                 effect,

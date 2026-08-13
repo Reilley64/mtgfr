@@ -151,7 +151,7 @@ impl Game {
                 _ => None,
             })
             .sum();
-        self.apply_all(&mut evs);
+        self.apply_all_recorded(&mut evs);
         events.extend(evs);
     }
 }

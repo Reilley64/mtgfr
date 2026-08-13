@@ -1008,8 +1008,8 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
     let stack = game
         .stack()
         .into_iter()
-        .map(|entry| match entry {
-            engine::StackEntry::Spell(id) => {
+        .map(|entry| match entry.kind {
+            engine::StackEntryKind::Spell(id) => {
                 let targets: Vec<WireTarget> = game
                     .spell_targets(id)
                     .into_iter()
@@ -1028,7 +1028,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     name,
                 }
             }
-            engine::StackEntry::Ability {
+            engine::StackEntryKind::Ability {
                 controller,
                 source,
                 effect,

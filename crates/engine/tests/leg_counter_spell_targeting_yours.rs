@@ -32,9 +32,9 @@ fn top_spell(game: &Game) -> ObjectId {
     game.stack()
         .iter()
         .rev()
-        .find_map(|entry| match *entry {
-            StackEntry::Spell(id) => Some(id),
-            StackEntry::Ability { .. } => None,
+        .find_map(|entry| match entry.kind.clone() {
+            StackEntryKind::Spell(id) => Some(id),
+            StackEntryKind::Ability { .. } => None,
         })
         .expect("a spell is on the stack")
 }

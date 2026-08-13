@@ -1271,6 +1271,7 @@ fn debug_service_maps_every_inspection_field_and_object_variant() {
     ];
     inspection.stack = vec![
         StackInspection {
+            entry_id: engine::StackEntryId(1),
             position_from_bottom: 0,
             kind: "spell",
             source_object_id: Some(12),
@@ -1278,6 +1279,7 @@ fn debug_service_maps_every_inspection_field_and_object_variant() {
             label: "Secret Spell".into(),
         },
         StackInspection {
+            entry_id: engine::StackEntryId(2),
             position_from_bottom: 1,
             kind: "ability",
             source_object_id: None,
@@ -1583,6 +1585,7 @@ fn debug_service_inspection_preserves_absent_stack_controller() {
         players: vec![],
         objects: vec![],
         stack: vec![engine::debug::StackInspection {
+            entry_id: engine::StackEntryId(1),
             position_from_bottom: 0,
             kind: "spell",
             source_object_id: Some(u32::MAX),

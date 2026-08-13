@@ -477,7 +477,7 @@ impl Game {
         let mut evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
         self.resolution_frame.destroyed_this_way.clear();
         self.record_destroyed_this_way(&evs);
-        self.apply_all(&mut evs);
+        self.apply_all_recorded(&mut evs);
         events.extend(evs);
     }
 
@@ -649,7 +649,7 @@ impl Game {
                 _ => {}
             }
         }
-        self.apply_all(&mut evs);
+        self.apply_all_recorded(&mut evs);
         events.extend(evs);
     }
 }

@@ -224,7 +224,7 @@ impl Game {
             player,
             tapped: revealed.is_none(),
         });
-        self.apply_all(&mut events);
+        self.apply_all_recorded(&mut events);
         self.push_enters_with_counters(&printed, permanent, player, None, 0, &mut events);
         Ok(events)
     }
@@ -415,7 +415,7 @@ impl Game {
                 true => self.counter_spell(spell),
                 false => vec![Event::AbilityCountered { source: spell }],
             };
-            self.apply_all(&mut evs);
+            self.apply_all_recorded(&mut evs);
             // Power Sink's "if that player doesn't, they tap all lands with mana abilities they
             // control and lose all unspent mana" — the penalty rides on this decline, which is why
             // it lives here and not as a following resolution step. A plain tap, not a tap for
@@ -432,7 +432,7 @@ impl Game {
                     })
                     .map(|object| Event::Tapped { object })
                     .collect();
-                self.apply_all(&mut taps);
+                self.apply_all_recorded(&mut taps);
                 evs.extend(taps);
                 let drain = Event::ManaEmptied {
                     player,

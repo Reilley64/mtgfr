@@ -14088,8 +14088,8 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
     assert_eq!(stack.len(), 2, "trigger (bottom) + Shock (top)");
     assert!(
         matches!(
-            stack[0],
-            StackEntry::Ability {
+            stack[0].kind,
+            StackEntryKind::Ability {
                 effect: Effect::Draw(DrawEffect::Cards {
                     who: PlayerSet::You,
                     count: Amount::Fixed(1)
@@ -14100,8 +14100,8 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         "bottom of stack is the ETB draw trigger; got {:?}",
         stack[0]
     );
-    match &stack[1] {
-        StackEntry::Spell(id) => {
+    match &stack[1].kind {
+        StackEntryKind::Spell(id) => {
             assert_eq!(game.def_of(*id).name, "Shock", "top of stack is Shock")
         }
         other => panic!("expected Shock spell on top; got {other:?}"),
@@ -26561,7 +26561,7 @@ fn animar_grows_when_you_cast_a_creature_spell() {
         "the cast trigger stacks above the creature spell it watched"
     );
     assert!(
-        matches!(g.stack()[1], StackEntry::Ability { .. }),
+        matches!(g.stack()[1].kind, StackEntryKind::Ability { .. }),
         "the triggered ability is on top, resolving first"
     );
 
@@ -26958,9 +26958,9 @@ fn top_spell(game: &Game) -> ObjectId {
     game.stack()
         .iter()
         .rev()
-        .find_map(|entry| match *entry {
-            StackEntry::Spell(id) => Some(id),
-            StackEntry::Ability { .. } => None,
+        .find_map(|entry| match entry.kind.clone() {
+            StackEntryKind::Spell(id) => Some(id),
+            StackEntryKind::Ability { .. } => None,
         })
         .expect("a spell is on the stack")
 }
@@ -30773,9 +30773,9 @@ fn mirrorwing_dragon_copies_spell_targeting_only_it_per_other_creature() {
     );
     let ids: Vec<ObjectId> = spells
         .iter()
-        .map(|entry| match *entry {
-            StackEntry::Spell(id) => id,
-            StackEntry::Ability { .. } => panic!("no ability should remain on the stack"),
+        .map(|entry| match entry.kind.clone() {
+            StackEntryKind::Spell(id) => id,
+            StackEntryKind::Ability { .. } => panic!("no ability should remain on the stack"),
         })
         .collect();
     let original = ids[0];
@@ -36007,7 +36007,10 @@ fn augusta_attack_exiles_each_graveyard_and_counters_target_per_nonland() {
     // The reflexive trigger is a real, respondable stack object between the fan-out and the counter
     // placement — it has not resolved yet, so no counters are on the attacker.
     assert!(
-        matches!(game.stack().last(), Some(StackEntry::Ability { .. })),
+        matches!(
+            game.stack().last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability { .. })
+        ),
         "the reflexive counter trigger is on the stack, awaiting a response window"
     );
     assert_eq!(
@@ -46967,7 +46970,10 @@ fn kinetic_ooze_x10_doubling_targets_are_chosen_at_placement() {
         1,
         "the ETB ability is on the stack, not yet resolved"
     );
-    assert!(matches!(game.stack()[0], StackEntry::Ability { .. }));
+    assert!(matches!(
+        game.stack()[0].kind,
+        StackEntryKind::Ability { .. }
+    ));
 
     resolve_top_of_stack(&mut game); // destroy, draw, and doubling all apply to their targets.
 
@@ -60696,8 +60702,8 @@ fn modal_dies_trigger_chooses_its_mode_at_placement_then_resolves_the_branch() {
 
     // The chosen branch — a concrete Treasures ability, not a "choose one" — is now on the stack,
     // public before any response window, and has not resolved yet.
-    match game.stack().last() {
-        Some(StackEntry::Ability { effect, .. }) => assert!(
+    match game.stack().last().map(|entry| &entry.kind) {
+        Some(StackEntryKind::Ability { effect, .. }) => assert!(
             matches!(effect, Effect::Token(TokenEffect::CreateTreasure { .. })),
             "the chosen Treasures branch is what's on the stack, got {effect:?}"
         ),
@@ -64765,9 +64771,9 @@ fn take_action_activates_viscera_seer_with_a_creature_sacrifice() {
         "the chosen creature was sacrificed as an activation cost",
     );
     assert!(
-        game.stack()
-            .iter()
-            .any(|entry| matches!(entry, StackEntry::Ability { source, .. } if *source == seer)),
+        game.stack().iter().any(
+            |entry| matches!(&entry.kind, StackEntryKind::Ability { source, .. } if *source == seer)
+        ),
         "the non-mana activated ability was put on the stack",
     );
 }
@@ -73317,7 +73323,10 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
     .expect("Hydroid Krasis is castable");
     let hydroid_on_stack = top_spell(&game);
     assert!(
-        matches!(game.stack().last(), Some(StackEntry::Ability { .. })),
+        matches!(
+            game.stack().last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability { .. })
+        ),
         "the cast trigger is placed above the spell"
     );
 
@@ -78116,8 +78125,8 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
     );
     assert!(
         matches!(
-            stack.last(),
-            Some(StackEntry::Ability {
+            stack.last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability {
                 effect: Effect::Dig(DigEffect::Cascade { .. }),
                 ..
             })
@@ -78296,8 +78305,8 @@ fn throes_of_chaos_cascades_on_cast() {
     assert_eq!(stack.len(), 2, "cascade trigger + Throes of Chaos");
     assert!(
         matches!(
-            stack.last(),
-            Some(StackEntry::Ability {
+            stack.last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability {
                 effect: Effect::Dig(DigEffect::Cascade { .. }),
                 ..
             })
@@ -78356,8 +78365,8 @@ fn demonstrate_declined_copies_nothing() {
     assert_eq!(stack.len(), 2, "demonstrate trigger (top) + the cast spell");
     assert!(
         matches!(
-            stack.last(),
-            Some(StackEntry::Ability {
+            stack.last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability {
                 effect: Effect::Copy(CopyEffect::Demonstrate { .. }),
                 ..
             })
@@ -84571,8 +84580,8 @@ fn draw_triggers_on_stack(game: &Game) -> usize {
         .iter()
         .filter(|e| {
             matches!(
-                e,
-                StackEntry::Ability {
+                &e.kind,
+                StackEntryKind::Ability {
                     effect: Effect::Draw(DrawEffect::Cards { .. }),
                     ..
                 }
@@ -84633,8 +84642,8 @@ fn harmonic_prodigy_does_not_double_its_own_prowess() {
         .iter()
         .filter(|e| {
             matches!(
-                e,
-                StackEntry::Ability {
+                &e.kind,
+                StackEntryKind::Ability {
                     effect: Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn { .. }),
                     ..
                 }

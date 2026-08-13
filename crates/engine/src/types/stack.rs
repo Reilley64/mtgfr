@@ -2401,9 +2401,27 @@ pub(crate) struct TriggerGroup {
 /// An item waiting to resolve on the stack: a cast spell, or a triggered ability.
 // ponytail: Effect is ~CR 957B; boxing the large variant would add indirection without buying much.
 // Size is acceptable; revisit only if Effect itself shrinks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StackEntryId(pub u64);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StackEntryIdExhausted;
+
+/// The public object whose characteristics render an ordinary stack entry.
+///
+/// Kept separate from [`StackPayload`] so a later source-independent renderer can be added
+/// without changing executable spell/ability semantics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StackRenderSource {
+    Object(ObjectId),
+}
+
+/// Executable state carried by one stack entry.
+// ponytail: Effect is ~957B; boxing the large variant would add indirection without buying much.
+// Size is acceptable; revisit only if Effect itself shrinks.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum StackItem {
+pub(crate) enum StackPayload {
     Spell(ObjectId),
     Ability {
         controller: PlayerId,
@@ -2416,21 +2434,21 @@ pub(crate) enum StackItem {
         activated: bool,
         /// The chosen target of the ability's first target clause, if it targets.
         target: Option<Target>,
-        /// The chosen targets of a *second* independent target clause (CR 603.3d — Kinetic Ooze's
-        /// X≥10 "double ... any number of other target creatures"), chosen as the trigger went on
-        /// the stack. Empty for the ubiquitous single-clause ability. Read at resolution by
-        /// [`Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures)`].
+        /// The chosen targets of a second independent target clause.
         targets_second: TargetList,
-        /// The chosen `{X}` for an activated ability whose cost contains `{X}` (or a copy of one,
-        /// CR 707.10c); `0` for every triggered ability. Read at resolution for `Amount::X`.
+        /// The chosen `{X}` for an activated ability; zero for triggered abilities.
         x: u32,
-        /// The multiset of mana actually spent activating this ability
-        /// ([`ManaPool::spent_counts`]'s shape) — Illusionary Mask's CR 107.3 "the mana you spent
-        /// on {X}" test reads it at resolution. All zeroes for every triggered ability, and for a
-        /// CR 707.10c copy (a copy is created, not activated, so no mana was spent on it —
-        /// converge's own copy ruling shape).
+        /// The multiset of mana actually spent activating this ability.
         spent_mana: [u8; 6],
     },
+}
+
+/// One identity-stable stack entry. Identity is independent of both stack row and object source.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StackItem {
+    pub(crate) entry_id: StackEntryId,
+    pub(crate) render_source: StackRenderSource,
+    pub(crate) payload: StackPayload,
 }
 
 /// A public, read-only view of one stack item, for rendering the stack. Mirrors
@@ -2438,9 +2456,16 @@ pub(crate) enum StackItem {
 /// bottom, the last element is the top (resolves first).
 // ponytail: Effect is ~957B; boxing the large variant would add indirection without buying much.
 // Size is acceptable; revisit only if Effect itself shrinks.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StackEntry {
+    pub entry_id: StackEntryId,
+    pub kind: StackEntryKind,
+}
+
+/// The renderable kind and public payload of a [`StackEntry`].
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum StackEntry {
+pub enum StackEntryKind {
     /// A cast spell waiting to resolve, identified by its stack-object id.
     Spell(ObjectId),
     /// A triggered/activated ability waiting to resolve.
@@ -2651,18 +2676,18 @@ pub enum Event {
         targets_second: TargetList,
         x: u32,
         /// The multiset of mana actually spent activating the ability, carried onto
-        /// [`StackItem::Ability::spent_mana`] (Illusionary Mask's CR 107.3 test). All zeroes for
+        /// [`StackPayload::Ability::spent_mana`] (Illusionary Mask's CR 107.3 test). All zeroes for
         /// every triggered ability and for a CR 707.10c copy.
         spent_mana: [u8; 6],
         /// Whether this is an *activated* ability (CR 602) rather than a triggered one (CR 603) —
-        /// carried onto [`StackItem::Ability::activated`] so "counter target activated ability"
+        /// carried onto [`StackPayload::Ability::activated`] so "counter target activated ability"
         /// (Azorius Guildmage) can tell the two apart. `false` for every triggered ability.
         activated: bool,
     },
     /// The top ability of the stack finished resolving and left the stack.
     AbilityResolved { source: ObjectId },
     /// An activated ability on the stack was countered (CR 701.5c / 112.7a — Azorius Guildmage):
-    /// the topmost `StackItem::Ability` with this `source` is removed and ceases to exist. Unlike
+    /// the topmost `StackPayload::Ability` with this `source` is removed and ceases to exist. Unlike
     /// a countered spell there is no card to move to a graveyard.
     AbilityCountered { source: ObjectId },
     /// A new step began (also carries the active player, which changes each turn).
@@ -3756,6 +3781,8 @@ pub enum Reject {
     /// (unknown, stale, or another player's action). Every refresh mints fresh ids, so a stale
     /// id is impossible-by-construction to mistake for a live one — it simply isn't found.
     UnknownAction,
+    /// The game has issued every nonzero stable stack-entry identity.
+    StackEntryIdExhausted,
 }
 
 /// One *meaningful action* — a play worth stopping priority for (turn-priority-and-stack spec). Enumerated by

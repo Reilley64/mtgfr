@@ -357,7 +357,7 @@ impl Game {
         let object = expect_object_target(target, "a remove-counters effect");
         let (mut evs, removed) = self.remove_counters_events(object, all_kinds, keep as i32);
         self.resolution_frame.counters_removed_this_way = removed.max(0) as u32;
-        self.apply_all(&mut evs);
+        self.apply_all_recorded(&mut evs);
         events.extend(evs);
     }
 

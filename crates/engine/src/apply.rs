@@ -6,6 +6,20 @@
 
 use crate::*;
 
+impl Event {
+    fn inserts_stack_entry(&self) -> bool {
+        matches!(
+            self,
+            Event::SpellCast { .. }
+                | Event::AdventureSpellCast { .. }
+                | Event::SplitHalfSpellCast { .. }
+                | Event::SpellCopied { .. }
+                | Event::PreparedSpellCast { .. }
+                | Event::TriggeredAbilityOnStack { .. }
+        )
+    }
+}
+
 impl Game {
     /// Record `amount` damage dealt by `source` to `recipient` in the turn-scoped ledger
     /// ([`Game::damage_dealt_this_turn`]) and in this resolution's "dealt this way" tally
@@ -346,7 +360,7 @@ impl Game {
                 }
                 return;
             }
-            self.apply_all(&mut sba);
+            self.apply_all_recorded(&mut sba);
             events.extend(sba);
         }
         // Reaching here means SBAs never converged — a real engine bug producing wrong state, not
@@ -551,15 +565,62 @@ impl Game {
 
     /// Normalize and apply a batch of events in order. The vector is the authoritative batch
     /// returned to callers, so normalization happens before any event is exposed.
-    pub(crate) fn apply_all(&mut self, events: &mut Vec<Event>) {
+    pub(crate) fn apply_all(
+        &mut self,
+        events: &mut Vec<Event>,
+    ) -> Result<(), StackEntryIdExhausted> {
+        let insertions = events
+            .iter()
+            .filter(|event| event.inserts_stack_entry())
+            .count() as u64;
+        let available = self
+            .next_stack_entry_id
+            .map_or(0, |next| u64::MAX - next.get() + 1);
+        if insertions <= available {
+            return self.apply_all_unchecked(events);
+        }
+
+        // Normalization can depend on preceding events, so pre-counting is deliberately only a
+        // fast-path guard. Near exhaustion, replay the whole batch on a candidate and commit only
+        // after every normalized insertion succeeds.
+        let mut candidate = self.clone();
+        candidate.stack_entry_id_error = None;
+        let mut candidate_events = events.clone();
+        let result = candidate.apply_all_unchecked(&mut candidate_events);
+        if result.is_ok() {
+            *self = candidate;
+            *events = candidate_events;
+        }
+        result
+    }
+
+    /// Apply an internal batch and latch any allocator error for the outer submit transaction.
+    pub(crate) fn apply_all_recorded(&mut self, events: &mut Vec<Event>) {
+        if self.apply_all(events).is_err() {
+            self.stack_entry_id_error = Some(StackEntryIdExhausted);
+        }
+    }
+
+    /// Apply one internal event and latch any allocator error for the outer submit transaction.
+    pub(crate) fn apply_recorded(&mut self, event: &Event) {
+        if self.apply(event).is_err() {
+            self.stack_entry_id_error = Some(StackEntryIdExhausted);
+        }
+    }
+
+    fn apply_all_unchecked(
+        &mut self,
+        events: &mut Vec<Event>,
+    ) -> Result<(), StackEntryIdExhausted> {
         let requested = std::mem::take(events);
         for event in requested {
             let Some(event) = self.normalize_event(event) else {
                 continue;
             };
-            self.apply(&event);
+            self.apply(&event)?;
             events.push(event);
         }
+        Ok(())
     }
 
     /// Bump `player`'s per-draw-step draw tally when the draw they just took happened inside
@@ -577,7 +638,7 @@ impl Game {
     /// Remove a spell object from the stack (it resolved or left the stack).
     pub(crate) fn remove_spell_from_stack(&mut self, object: ObjectId) {
         self.stack
-            .retain(|item| !matches!(item, StackItem::Spell(o) if *o == object));
+            .retain(|item| !matches!(&item.payload, StackPayload::Spell(o) if *o == object));
     }
 
     /// Drop inspect-ledger batches for `object` (it left the battlefield). Aggregates on a still-live
@@ -668,7 +729,13 @@ impl Game {
     /// `CombatState::attackers_declared` and `blocked_by` (set directly by the declaration
     /// intents, cleared by [`Event::CombatCleared`]): they're bookkeeping over the
     /// already-event-sourced attacks/blocks, not facts of their own.
-    pub(crate) fn apply(&mut self, event: &Event) {
+    pub(crate) fn apply(&mut self, event: &Event) -> Result<(), StackEntryIdExhausted> {
+        // Reserve identity before touching any board fact. A failed direct replay of an insertion
+        // event is therefore atomic even without the outer submit transaction.
+        let stack_entry_id = event
+            .inserts_stack_entry()
+            .then(|| self.allocate_stack_entry_id())
+            .transpose()?;
         self.invalidate_characteristics_cache(event);
         match event.clone() {
             Event::SpellCast {
@@ -767,7 +834,11 @@ impl Game {
                     self.players[controller.0 as usize].graveyard_play_used_this_turn = true;
                 }
                 assert_eq!(id, spell);
-                self.stack.push(StackItem::Spell(spell));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(spell),
+                    StackPayload::Spell(spell),
+                );
                 // A card cast from exile "on an adventure" (CR 715.3d) consumes its permission —
                 // it's no longer in exile at this id.
                 self.play_permissions
@@ -873,7 +944,11 @@ impl Game {
                     }),
                 );
                 assert_eq!(id, spell);
-                self.stack.push(StackItem::Spell(spell));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(spell),
+                    StackPayload::Spell(spell),
+                );
                 // Remember the creature front face to restore to exile when this spell resolves.
                 self.play_permissions.adventure_fronts.push((spell, front));
                 // Casting the adventure is casting a spell — the same bookkeeping `SpellCast` does.
@@ -963,7 +1038,11 @@ impl Game {
                     }),
                 );
                 assert_eq!(id, spell);
-                self.stack.push(StackItem::Spell(spell));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(spell),
+                    StackPayload::Spell(spell),
+                );
                 self.play_permissions
                     .split_halves_on_stack
                     .push((spell, fused));
@@ -1071,7 +1150,11 @@ impl Game {
                     }),
                 );
                 assert_eq!(id, copy);
-                self.stack.push(StackItem::Spell(copy));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(copy),
+                    StackPayload::Spell(copy),
+                );
             }
             Event::SpellCeasedToExist { spell } => {
                 self.remove_spell_from_stack(spell);
@@ -1213,7 +1296,11 @@ impl Game {
                     }),
                 );
                 assert_eq!(id, spell);
-                self.stack.push(StackItem::Spell(spell));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(spell),
+                    StackPayload::Spell(spell),
+                );
                 // Casting a copy is still casting a spell (feeds `spells_cast_this_turn`).
                 // ponytail: the broader cast-spell *triggers* (magecraft, CR 700's "whenever you
                 // cast") aren't fired for the prepared copy — those hang off `Event::SpellCast`,
@@ -1234,20 +1321,24 @@ impl Game {
                 spent_mana,
                 activated,
             } => {
-                self.stack.push(StackItem::Ability {
-                    controller,
-                    source,
-                    effect,
-                    activated,
-                    target,
-                    targets_second,
-                    x,
-                    spent_mana,
-                });
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(source),
+                    StackPayload::Ability {
+                        controller,
+                        source,
+                        effect,
+                        activated,
+                        target,
+                        targets_second,
+                        x,
+                        spent_mana,
+                    },
+                );
             }
             Event::AbilityResolved { .. } => {
                 // The resolving ability is always the top of the stack.
-                debug_assert!(matches!(self.stack.last(), Some(StackItem::Ability { .. })));
+                debug_assert!(matches!(self.stack.last().map(|item| &item.payload), Some(StackPayload::Ability { .. })));
                 self.stack.pop();
             }
             // CR 701.5c/112.7a: a countered activated ability ceases to exist — remove the
@@ -1255,7 +1346,7 @@ impl Game {
             // see `TargetSpec::ActivatedAbilityOnStack`'s identity ponytail). No card moves.
             Event::AbilityCountered { source } => {
                 if let Some(i) = self.stack.iter().rposition(
-                    |item| matches!(item, StackItem::Ability { source: s, .. } if *s == source),
+                    |item| matches!(&item.payload, StackPayload::Ability { source: s, .. } if *s == source),
                 ) {
                     self.stack.remove(i);
                 }
@@ -3190,9 +3281,9 @@ impl Game {
                 // field borrows: the closure reads `objects`, retain mutates other fields).
                 let objects = &self.objects;
                 let removed = |o: ObjectId| matches!(objects[o as usize], Object::Removed { .. });
-                self.stack.retain(|item| match item {
-                    StackItem::Spell(id) => !removed(*id),
-                    StackItem::Ability { source, .. } => !removed(*source),
+                self.stack.retain(|item| match &item.payload {
+                    StackPayload::Spell(id) => !removed(*id),
+                    StackPayload::Ability { source, .. } => !removed(*source),
                 });
                 self.combat.attackers.retain(|&a| !removed(a));
                 // Counter and boost batches leave with the object they describe — an object that
@@ -3333,6 +3424,7 @@ impl Game {
                 self.players[player.0 as usize].library.insert(0, id);
             }
         }
+        Ok(())
     }
 
     /// The next living seat after `player`, wrapping around the table and skipping any

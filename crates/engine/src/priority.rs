@@ -123,7 +123,7 @@ impl Game {
             .then(|| self.pending_choice.take())
             .flatten();
         let mut events = vec![Event::PlayerLost { player }];
-        self.apply_all(&mut events);
+        self.apply_all_recorded(&mut events);
         // The combat damage step's turn-based action is not the quitter's to forfeit, though: it
         // belongs to the game, and the other seats' attackers and blockers are waiting on it. Finish
         // the batch for whoever is left rather than skipping every point of damage in it (CR 510.1).
@@ -194,7 +194,7 @@ impl Game {
                 persist: false,
             });
         }
-        self.apply_all(&mut events);
+        self.apply_all_recorded(&mut events);
         // Fertile Ground / Mirari's Wake fire off the same tap (CR 605.3 — inline, no stack).
         self.land_tapped_for_mana(object, player, &mut events);
         Ok(events)
@@ -350,7 +350,7 @@ impl Game {
                 persist: false,
             },
         ];
-        self.apply_all(&mut events);
+        self.apply_all_recorded(&mut events);
         Ok(events)
     }
 
@@ -1518,7 +1518,7 @@ impl Game {
         }
 
         let mut events = vec![Event::PriorityPassed { player }];
-        self.apply_all(&mut events);
+        self.apply_all_recorded(&mut events);
         self.consecutive_passes += 1;
         self.priority = self.next_player(player);
 
@@ -1537,7 +1537,10 @@ impl Game {
         let Some(event) = self.normalize_event(event) else {
             return;
         };
-        self.apply(&event);
+        if self.apply(&event).is_err() {
+            self.stack_entry_id_error = Some(StackEntryIdExhausted);
+            return;
+        }
         events.push(event);
     }
 
@@ -2165,7 +2168,7 @@ impl Game {
                 _ => false,
             })
             .count() as i32;
-        self.apply_all(&mut milled);
+        self.apply_all_recorded(&mut milled);
         events.extend(milled);
         if nonland == 0 {
             return;
@@ -2317,7 +2320,7 @@ mod tests {
     fn an_eliminated_active_player_skips_their_turn_based_actions() {
         let mut game = Game::with_players(4, 0);
         game.spawn_in_library(P0, forest());
-        game.apply(&Event::PlayerLost { player: P0 });
+        game.apply_recorded(&Event::PlayerLost { player: P0 });
 
         let mut events = Vec::new();
         game.perform_turn_based_actions(Step::Draw, P0, &mut events);

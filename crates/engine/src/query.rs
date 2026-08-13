@@ -1080,8 +1080,8 @@ impl Game {
             TargetSpec::InstantOrSorcerySpellOnStack => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Spell(id)
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Spell(id)
                         if matches!(self.def_of(*id).kind, CardKind::Spell { .. }) =>
                     {
                         Some(Target::Object(*id))
@@ -1095,8 +1095,8 @@ impl Game {
             TargetSpec::SpellOnStack(filter) => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Spell(id) => Some(*id),
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Spell(id) => Some(*id),
                     _ => None,
                 })
                 .filter(|&id| {
@@ -1165,8 +1165,8 @@ impl Game {
             TargetSpec::SpellOrPermanent => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Spell(id) => Some(*id),
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Spell(id) => Some(*id),
                     _ => None,
                 })
                 .chain(self.battlefield())
@@ -1178,8 +1178,8 @@ impl Game {
             TargetSpec::SingleTargetSpellOnStack => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Spell(id) => Some(*id),
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Spell(id) => Some(*id),
                     _ => None,
                 })
                 .filter(|&id| self.spell_has_single_target(id))
@@ -1193,8 +1193,8 @@ impl Game {
             TargetSpec::ActivatedAbilityOnStack { artifact_source } => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Ability {
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Ability {
                         source,
                         activated: true,
                         ..

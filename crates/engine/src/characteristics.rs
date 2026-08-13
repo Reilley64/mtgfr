@@ -3552,7 +3552,7 @@ impl Game {
 
     /// Test/setup helper: place a +1/+1 counter on a permanent (raw — bypasses replacements).
     pub fn add_plus_counter(&mut self, object: ObjectId) {
-        self.apply(&Event::CountersPlaced {
+        self.apply_recorded(&Event::CountersPlaced {
             object,
             count: 1,
             source_name: self.def_of(object).name,
@@ -3561,7 +3561,7 @@ impl Game {
 
     /// Test/setup helper: place one named counter on a permanent (raw — bypasses replacements).
     pub fn add_kind_counter(&mut self, object: ObjectId, kind: CounterKind) {
-        self.apply(&Event::KindCountersPlaced {
+        self.apply_recorded(&Event::KindCountersPlaced {
             object,
             kind,
             count: 1,
@@ -3852,7 +3852,7 @@ mod cache_tests {
         let bear = game.spawn_on_battlefield(PlayerId(0), creature(2, 2));
         assert_eq!(game.power(bear), 2);
 
-        game.apply(&Event::CountersPlaced {
+        game.apply_recorded(&Event::CountersPlaced {
             object: bear,
             count: 1,
             source_name: "Test",
@@ -3910,7 +3910,7 @@ mod cache_tests {
             }),
         );
         let permanent = game.objects.len() as ObjectId;
-        game.apply(&Event::PermanentEntered {
+        game.apply_recorded(&Event::PermanentEntered {
             permanent,
             from: spell,
         });
@@ -3928,7 +3928,7 @@ mod cache_tests {
                 .read(|cache| cache.keywords(bear).is_some())
         );
 
-        game.apply(&Event::TempBoost {
+        game.apply_recorded(&Event::TempBoost {
             object: bear,
             power: 0,
             toughness: 0,
@@ -4028,7 +4028,7 @@ mod cache_tests {
         assert_eq!(game.power(bear), 2);
         let from = game.spawn_in_hand(PlayerId(0), forest());
         let permanent = game.next_object_id();
-        game.apply(&Event::LandPlayed {
+        game.apply_recorded(&Event::LandPlayed {
             player: PlayerId(0),
             from,
             permanent,
@@ -4047,7 +4047,7 @@ mod cache_tests {
         let bear = game.spawn_on_battlefield(PlayerId(0), creature(2, 2));
         assert_eq!(game.power(bear), 2);
         let token = game.next_object_id();
-        game.apply(&Event::TokenCreated {
+        game.apply_recorded(&Event::TokenCreated {
             token,
             controller: PlayerId(0),
             def: intern_card_def(creature(1, 1)),
@@ -4065,7 +4065,7 @@ mod cache_tests {
         let mut game = Game::with_players(2, 0);
         let bear = game.spawn_on_battlefield(PlayerId(0), creature(2, 2));
         assert_eq!(game.power(bear), 2);
-        game.apply(&Event::CombatCleared);
+        game.apply_recorded(&Event::CombatCleared);
         assert!(
             game.characteristics_cache
                 .read(|cache| cache.power(bear).is_none()),

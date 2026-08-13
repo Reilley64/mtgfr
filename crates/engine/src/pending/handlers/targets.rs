@@ -191,7 +191,7 @@ impl Game {
             // instance per target, each independently re-checked for legality at its own
             // resolution (CR 608.2b) — the triggered-ability twin of how a multi-target *spell*
             // is decomposed (`multi_target_steps`).
-            // ponytail: N separate `StackItem::Ability` entries rather than one ability holding a
+            // ponytail: N separate `StackPayload::Ability` entries rather than one ability holding a
             // `TargetList` for this (first) clause — fine while nothing in the pool "counters
             // target ability" against a multi-target trigger; give the primary clause a real
             // `TargetList` (like `targets_second` already is) if one ever does.

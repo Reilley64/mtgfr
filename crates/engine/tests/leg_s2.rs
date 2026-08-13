@@ -49,8 +49,8 @@ fn cast_and_resolve(game: &mut Game, object: ObjectId, target: Option<Target>) {
 
 /// The topmost spell on the stack (the one just cast).
 fn top_spell(game: &Game) -> ObjectId {
-    match game.stack().last().expect("a spell is on the stack") {
-        StackEntry::Spell(id) => *id,
+    match &game.stack().last().expect("a spell is on the stack").kind {
+        StackEntryKind::Spell(id) => *id,
         other => panic!("expected a spell on top of the stack, got {other:?}"),
     }
 }

@@ -7,7 +7,8 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     Card, CardId, CounterKind, EffectMessage, Game, Object, ObjectId, PlayerCounterKind, PlayerId,
-    StackItem, Step, Target, Zone, card_def, fresh_permanent, intern_card_def,
+    StackItem, StackPayload, StackRenderSource, Step, Target, Zone, card_def, fresh_permanent,
+    intern_card_def,
 };
 
 const MAX_VIOLATIONS: usize = 16;
@@ -80,6 +81,7 @@ pub enum ObjectInspection {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StackInspection {
+    pub entry_id: crate::StackEntryId,
     pub position_from_bottom: usize,
     pub kind: &'static str,
     pub source_object_id: Option<ObjectId>,
@@ -379,8 +381,9 @@ fn inspect_stack_item(
     position_from_bottom: usize,
     item: &StackItem,
 ) -> StackInspection {
-    match item {
-        StackItem::Spell(object_id) => StackInspection {
+    match &item.payload {
+        StackPayload::Spell(object_id) => StackInspection {
+            entry_id: item.entry_id,
             position_from_bottom,
             kind: "spell",
             source_object_id: Some(*object_id),
@@ -393,12 +396,13 @@ fn inspect_stack_item(
                 _ => format!("spell object {object_id}"),
             },
         },
-        StackItem::Ability {
+        StackPayload::Ability {
             controller,
             source,
             effect,
             ..
         } => StackInspection {
+            entry_id: item.entry_id,
             position_from_bottom,
             kind: "ability",
             source_object_id: Some(*source),
@@ -1098,9 +1102,9 @@ fn all_player_references(game: &Game) -> Vec<(PlayerId, &'static str)> {
     }
 
     for item in &game.stack {
-        match item {
-            StackItem::Spell(_) => {}
-            StackItem::Ability {
+        match &item.payload {
+            StackPayload::Spell(_) => {}
+            StackPayload::Ability {
                 controller,
                 target,
                 targets_second,
@@ -1722,10 +1726,31 @@ fn validate_owners_and_scalars(game: &Game, violations: &mut ViolationCollector)
 }
 
 fn validate_stack(game: &Game, violations: &mut ViolationCollector) {
+    if game.stack_entry_id_error.is_some() {
+        violations.push(
+            "stack_identity",
+            "stack entry identity allocation failed".to_string(),
+        );
+    }
+    let mut stack_entry_ids = HashSet::new();
     let mut stack_spells = HashSet::new();
     for (position, item) in game.stack.iter().enumerate() {
-        match item {
-            StackItem::Spell(object_id) => {
+        if item.entry_id.0 == 0 || !stack_entry_ids.insert(item.entry_id) {
+            violations.push(
+                "stack_identity",
+                format!("stack position {position} has a zero or duplicate entry id"),
+            );
+        }
+        match (&item.render_source, &item.payload) {
+            (StackRenderSource::Object(render_source), StackPayload::Spell(object_id)) => {
+                if render_source != object_id {
+                    violations.push(
+                        "stack_pairing",
+                        format!(
+                            "stack position {position} renders object {render_source} but executes spell {object_id}"
+                        ),
+                    );
+                }
                 if !matches!(
                     game.objects.get(*object_id as usize),
                     Some(Object::Spell(_))
@@ -1742,7 +1767,20 @@ fn validate_stack(game: &Game, violations: &mut ViolationCollector) {
                     );
                 }
             }
-            StackItem::Ability { controller, .. } => {
+            (
+                StackRenderSource::Object(render_source),
+                StackPayload::Ability {
+                    controller, source, ..
+                },
+            ) => {
+                if render_source != source {
+                    violations.push(
+                        "stack_pairing",
+                        format!(
+                            "stack position {position} renders object {render_source} but executes ability source {source}"
+                        ),
+                    );
+                }
                 if controller.0 as usize >= game.players.len() {
                     violations.push(
                         "controller_range",
@@ -1910,9 +1948,9 @@ fn all_references(game: &Game) -> Vec<(ObjectId, ReferenceSite)> {
         }
     }
     for item in &game.stack {
-        match item {
-            StackItem::Spell(object_id) => push(*object_id, "stack_spell"),
-            StackItem::Ability {
+        match &item.payload {
+            StackPayload::Spell(object_id) => push(*object_id, "stack_spell"),
+            StackPayload::Ability {
                 source,
                 target,
                 targets_second,

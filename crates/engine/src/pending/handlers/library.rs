@@ -799,7 +799,7 @@ impl Game {
             // Dredge: mill exactly N, then return the dredger to hand instead of drawing.
             Some((id, n)) => {
                 let mut mill = self.mill_events(player, n as u32);
-                self.apply_all(&mut mill);
+                self.apply_all_recorded(&mut mill);
                 events.extend(mill);
                 let returned = Event::ReturnedToHand {
                     card: self.next_object_id(),
@@ -810,7 +810,7 @@ impl Game {
             // Declined: the normal single draw happens.
             None => {
                 let mut drawn = self.draw_events(player, 1);
-                self.apply_all(&mut drawn);
+                self.apply_all_recorded(&mut drawn);
                 events.extend(drawn);
             }
         }

@@ -248,23 +248,29 @@ mod tests {
         assert_eq!(
             game.stack(),
             vec![
-                StackEntry::Ability {
-                    controller: P0,
-                    source,
-                    effect: Effect::Draw(DrawEffect::Cards {
-                        who: PlayerSet::You,
-                        count: Amount::Fixed(2)
-                    }),
-                    target: None,
+                StackEntry {
+                    entry_id: StackEntryId(1),
+                    kind: StackEntryKind::Ability {
+                        controller: P0,
+                        source,
+                        effect: Effect::Draw(DrawEffect::Cards {
+                            who: PlayerSet::You,
+                            count: Amount::Fixed(2)
+                        }),
+                        target: None,
+                    },
                 },
-                StackEntry::Ability {
-                    controller: P0,
-                    source,
-                    effect: Effect::Draw(DrawEffect::Cards {
-                        who: PlayerSet::You,
-                        count: Amount::Fixed(1)
-                    }),
-                    target: None,
+                StackEntry {
+                    entry_id: StackEntryId(2),
+                    kind: StackEntryKind::Ability {
+                        controller: P0,
+                        source,
+                        effect: Effect::Draw(DrawEffect::Cards {
+                            who: PlayerSet::You,
+                            count: Amount::Fixed(1)
+                        }),
+                        target: None,
+                    },
                 },
             ]
         );
