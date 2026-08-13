@@ -1594,8 +1594,226 @@ fn debug_service_inspection_preserves_absent_stack_controller() {
 }
 
 #[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_journal_maps_all_eleven_domain_mutations_with_exact_wire_fields() {
+    use crate::debug::{JournalKind, JournalRecord};
+    use debug_pb::debug_service_server::DebugService;
+    use debug_pb::mutation::Operation;
+    use engine::debug::{DebugZone, Mutation};
+    use engine::{PlayerCounterKind, PlayerId, Step};
+
+    let operations = vec![
+        Mutation::SetLife {
+            player: PlayerId(3),
+            life: -41,
+        },
+        Mutation::SetPlayerCounter {
+            player: PlayerId(2),
+            counter: PlayerCounterKind::Rad,
+            value: 17,
+        },
+        Mutation::SetTurnState {
+            active_player: PlayerId(1),
+            step: Step::FirstStrikeCombatDamage,
+            priority_player: PlayerId(3),
+            consecutive_passes: 2,
+        },
+        Mutation::SetPermanentState {
+            object_id: 101,
+            tapped: Some(false),
+            marked_damage: Some(-17),
+            plus_one_counters: None,
+        },
+        Mutation::SetController {
+            object_id: 102,
+            controller: PlayerId(2),
+        },
+        Mutation::SetAttachment {
+            object_id: 103,
+            attached_to: Some(203),
+        },
+        Mutation::CreateCard {
+            object_id: 104,
+            card_id: "created-card".into(),
+            owner: PlayerId(1),
+            controller: PlayerId(3),
+            destination: DebugZone::Exile,
+            commander: true,
+            face_down: false,
+        },
+        Mutation::MoveCard {
+            object_id: 105,
+            new_object_id: 205,
+            destination: DebugZone::Command,
+            controller: PlayerId(2),
+            face_down: true,
+        },
+        Mutation::SetLibraryOrder {
+            player: PlayerId(3),
+            object_ids: vec![301, 302, 303],
+        },
+        Mutation::RemoveCard { object_id: 106 },
+        Mutation::ClearPendingOrchestration {
+            clear_queued_triggers: true,
+        },
+    ];
+    let expected = vec![
+        Operation::SetLife(debug_pb::SetLife {
+            player: 3,
+            life: -41,
+        }),
+        Operation::SetPlayerCounter(debug_pb::SetPlayerCounter {
+            player: 2,
+            counter: debug_pb::PlayerCounter::Rad as i32,
+            value: 17,
+        }),
+        Operation::SetTurnState(debug_pb::SetTurnState {
+            active_player: 1,
+            step: debug_pb::Step::FirstStrikeCombatDamage as i32,
+            priority_player: 3,
+            consecutive_passes: 2,
+        }),
+        Operation::SetPermanentState(debug_pb::SetPermanentState {
+            object_id: 101,
+            tapped: Some(false),
+            marked_damage: Some(-17),
+            plus_one_counters: None,
+        }),
+        Operation::SetController(debug_pb::SetController {
+            object_id: 102,
+            controller: 2,
+        }),
+        Operation::SetAttachment(debug_pb::SetAttachment {
+            object_id: 103,
+            attached_to: Some(203),
+        }),
+        Operation::CreateCard(debug_pb::CreateCard {
+            object_id: 104,
+            card_id: "created-card".into(),
+            owner: 1,
+            controller: 3,
+            destination: debug_pb::Zone::Exile as i32,
+            commander: true,
+            face_down: false,
+        }),
+        Operation::MoveCard(debug_pb::MoveCard {
+            object_id: 105,
+            new_object_id: 205,
+            destination: debug_pb::Zone::Command as i32,
+            controller: 2,
+            face_down: true,
+        }),
+        Operation::SetLibraryOrder(debug_pb::SetLibraryOrder {
+            player: 3,
+            object_ids: vec![301, 302, 303],
+        }),
+        Operation::RemoveCard(debug_pb::RemoveCard { object_id: 106 }),
+        Operation::ClearPendingOrchestration(debug_pb::ClearPendingOrchestration {
+            clear_queued_triggers: true,
+        }),
+    ];
+
+    let state = test_state().await;
+    insert_debug_game(&state, "table", engine::Game::with_players(4, 0), 0, 0);
+    crate::lock(&state.reg)
+        .get_mut("table")
+        .unwrap()
+        .debug
+        .journal
+        .push_back(JournalRecord {
+            ordinal: 7,
+            timestamp_unix_ms: 1_700_000_123_456,
+            debug_revision: 11,
+            table_seq: 13,
+            encoded_request_bytes: 1_337,
+            kind: JournalKind::MutationCommitted { operations },
+        });
+
+    let response = debug_svc::DebugSvc::new(state)
+        .get_debug_journal(Request::new(debug_pb::GetDebugJournalRequest {
+            table_id: "table".into(),
+        }))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(response.records.len(), 1);
+    let record = &response.records[0];
+    assert_eq!(
+        (
+            record.ordinal,
+            record.timestamp_unix_ms,
+            record.debug_revision,
+            record.table_seq,
+            record.encoded_request_bytes
+        ),
+        (7, 1_700_000_123_456, 11, 13, 1_337),
+    );
+    let actual = match record.kind.as_ref().unwrap() {
+        debug_pb::debug_journal_record::Kind::MutationCommitted(committed) => &committed.operations,
+        other => panic!("expected mutation_committed oneof, got {other:?}"),
+    };
+    assert_eq!(actual.len(), expected.len());
+    for (actual, expected) in actual.iter().zip(expected) {
+        assert_eq!(actual.operation.as_ref(), Some(&expected));
+    }
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_inspection_maps_distinguishable_chrome_pending_and_phase_a_flags() {
+    use debug_pb::debug_service_server::DebugService;
+
+    let state = test_state().await;
+    insert_debug_game(&state, "table", engine::Game::with_players(4, 0), 21, 34);
+    let mut inspection = empty_debug_inspection();
+    inspection.has_pending_choice = true;
+    inspection.has_deferred_resume = true;
+    let service = debug_svc::DebugSvc::with_inspection_state_for_test(
+        state,
+        inspection,
+        crate::chrome::DebugChromeSnapshot {
+            yields: [true, false, true, false],
+            turn_yields: [false, true, false, true],
+            hold_requested: true,
+        },
+        engine::debug::PendingOrchestrationInspection {
+            has_pending_choice: true,
+            has_resume: true,
+            has_resolution_frame: true,
+            has_resolution_finish: true,
+            pending_enter_bonus_counters: 2,
+            pending_trigger_groups: 3,
+            pending_obligations: 4,
+        },
+    );
+
+    let response = service
+        .inspect_table(Request::new(debug_pb::InspectTableRequest {
+            table_id: "table".into(),
+        }))
+        .await
+        .unwrap()
+        .into_inner();
+    let game = response.game.unwrap();
+    assert!(game.has_pending_choice);
+    assert!(game.has_deferred_resume);
+    let chrome = response.chrome.unwrap();
+    assert_eq!(chrome.yields, [true, false, true, false]);
+    assert_eq!(chrome.turn_yields, [false, true, false, true]);
+    assert!(chrome.hold_requested);
+    let pending = response.pending_orchestration.unwrap();
+    assert!(pending.has_pending_choice);
+    assert!(pending.has_resume);
+    assert!(pending.has_resolution_frame);
+    assert!(pending.has_resolution_finish);
+    assert_eq!(pending.pending_enter_bonus_counters, 2);
+    assert_eq!(pending.pending_trigger_groups, 3);
+    assert_eq!(pending.pending_obligations, 4);
+}
+
+#[cfg(debug_assertions)]
 #[test]
-fn debug_service_maps_all_phase_a_mutations_without_truncation() {
+fn debug_service_maps_all_eleven_mutations_without_truncation() {
     use debug_pb::mutation::Operation;
     use engine::debug::{DebugZone, Mutation};
     use engine::{PlayerCounterKind, PlayerId, Step};
@@ -1743,6 +1961,14 @@ fn debug_service_maps_all_phase_a_mutations_without_truncation() {
             }),
             Mutation::RemoveCard {
                 object_id: u32::MAX,
+            },
+        ),
+        (
+            Operation::ClearPendingOrchestration(debug_pb::ClearPendingOrchestration {
+                clear_queued_triggers: true,
+            }),
+            Mutation::ClearPendingOrchestration {
+                clear_queued_triggers: true,
             },
         ),
     ];
@@ -2268,13 +2494,82 @@ async fn debug_service_is_registered_without_auth() {
         .await
         .expect("InspectTable needs no metadata");
     debug
-        .mutate_table(debug_pb::MutateTableRequest {
+        .checkpoint_table(debug_pb::CheckpointTableRequest {
             table_id: "bound-table".into(),
-            operations: vec![debug_set_life(0, 18)],
+            name: "baseline".into(),
+            expected_table_seq: Some(0),
             ..Default::default()
         })
         .await
+        .expect("CheckpointTable needs no metadata");
+    debug
+        .mutate_table(debug_pb::MutateTableRequest {
+            table_id: "bound-table".into(),
+            expected_debug_revision: Some(0),
+            expected_table_seq: Some(0),
+            operations: vec![debug_set_life(0, 18)],
+        })
+        .await
         .expect("MutateTable needs no metadata");
+    debug
+        .restore_checkpoint(debug_pb::RestoreCheckpointRequest {
+            table_id: "bound-table".into(),
+            name: "baseline".into(),
+            expected_debug_revision: Some(1),
+            expected_table_seq: Some(1),
+        })
+        .await
+        .expect("RestoreCheckpoint needs no metadata");
+    let journal = debug
+        .get_debug_journal(debug_pb::GetDebugJournalRequest {
+            table_id: "bound-table".into(),
+        })
+        .await
+        .expect("GetDebugJournal needs no metadata")
+        .into_inner();
+    assert_eq!(journal.records.len(), 3);
+    assert_eq!(
+        journal
+            .records
+            .iter()
+            .map(|record| record.ordinal)
+            .collect::<Vec<_>>(),
+        vec![0, 1, 2]
+    );
+    assert_eq!(
+        journal
+            .records
+            .iter()
+            .map(|record| record.debug_revision)
+            .collect::<Vec<_>>(),
+        vec![0, 1, 2]
+    );
+    assert_eq!(
+        journal
+            .records
+            .iter()
+            .map(|record| record.table_seq)
+            .collect::<Vec<_>>(),
+        vec![0, 1, 2]
+    );
+    assert!(
+        journal
+            .records
+            .iter()
+            .all(|record| record.encoded_request_bytes > 0)
+    );
+    assert!(matches!(
+        journal.records[0].kind,
+        Some(debug_pb::debug_journal_record::Kind::CheckpointCreated(_))
+    ));
+    assert!(matches!(
+        journal.records[1].kind,
+        Some(debug_pb::debug_journal_record::Kind::MutationCommitted(_))
+    ));
+    assert!(matches!(
+        journal.records[2].kind,
+        Some(debug_pb::debug_journal_record::Kind::CheckpointRestored(_))
+    ));
 
     let channel = tonic::transport::Endpoint::from_shared(endpoint)
         .expect("valid endpoint")
@@ -2303,4 +2598,438 @@ async fn debug_service_is_registered_without_auth() {
         .expect("server shuts down")
         .expect("server task does not panic")
         .expect("server exits cleanly");
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_checkpoint_restore_and_journal_are_plain_requests_with_exact_wire_facts() {
+    use debug_pb::debug_service_server::DebugService;
+    use prost::Message;
+
+    let state = test_state().await;
+    let mut game = engine::Game::with_players(2, 0);
+    game.spawn_in_hand(engine::PlayerId(0), cards::get_by_name("Island").unwrap());
+    insert_debug_game(&state, "table", game, 0, 0);
+    let service = debug_svc::DebugSvc::new(state.clone());
+
+    let checkpoint = debug_pb::CheckpointTableRequest {
+        table_id: "table".into(),
+        name: "z-last".into(),
+        replace_existing: false,
+        expected_table_seq: Some(0),
+    };
+    let checkpoint_bytes = checkpoint.encoded_len();
+    let created = service
+        .checkpoint_table(Request::new(checkpoint))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!((created.debug_revision, created.table_seq), (0, 0));
+    assert_eq!(created.object_slots, 1);
+    assert!(!created.replaced);
+
+    let second_checkpoint = debug_pb::CheckpointTableRequest {
+        table_id: "table".into(),
+        name: "a-first".into(),
+        ..Default::default()
+    };
+    let second_checkpoint_bytes = second_checkpoint.encoded_len();
+    service
+        .checkpoint_table(Request::new(second_checkpoint))
+        .await
+        .unwrap();
+
+    let replacement = debug_pb::CheckpointTableRequest {
+        table_id: "table".into(),
+        name: "z-last".into(),
+        replace_existing: true,
+        expected_table_seq: Some(0),
+    };
+    let replacement_bytes = replacement.encoded_len();
+    let replaced = service
+        .checkpoint_table(Request::new(replacement))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(replaced.object_slots, 1);
+    assert!(replaced.replaced);
+
+    let mutation = debug_pb::MutateTableRequest {
+        table_id: "table".into(),
+        expected_debug_revision: Some(0),
+        expected_table_seq: Some(0),
+        operations: vec![debug_set_life(0, 7)],
+    };
+    let mutation_bytes = mutation.encoded_len();
+    service.mutate_table(Request::new(mutation)).await.unwrap();
+
+    let restore = debug_pb::RestoreCheckpointRequest {
+        table_id: "table".into(),
+        name: "z-last".into(),
+        expected_debug_revision: Some(1),
+        expected_table_seq: Some(1),
+    };
+    let restore_bytes = restore.encoded_len();
+    let restored = service
+        .restore_checkpoint(Request::new(restore))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(
+        (
+            restored.debug_revision,
+            restored.table_seq,
+            restored.restored_source_table_seq
+        ),
+        (2, 2, 0)
+    );
+
+    let inspected = service
+        .inspect_table(Request::new(debug_pb::InspectTableRequest {
+            table_id: "table".into(),
+        }))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(inspected.checkpoint_names, vec!["a-first", "z-last"]);
+
+    let journal = service
+        .get_debug_journal(Request::new(debug_pb::GetDebugJournalRequest {
+            table_id: "table".into(),
+        }))
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(journal.records.len(), 5);
+    assert_eq!(
+        journal
+            .records
+            .iter()
+            .map(|record| (
+                record.ordinal,
+                record.debug_revision,
+                record.table_seq,
+                record.encoded_request_bytes,
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (0, 0, 0, u64::try_from(checkpoint_bytes).unwrap()),
+            (1, 0, 0, u64::try_from(second_checkpoint_bytes).unwrap()),
+            (2, 0, 0, u64::try_from(replacement_bytes).unwrap()),
+            (3, 1, 1, u64::try_from(mutation_bytes).unwrap()),
+            (4, 2, 2, u64::try_from(restore_bytes).unwrap()),
+        ]
+    );
+    assert!(
+        journal
+            .records
+            .iter()
+            .all(|record| record.timestamp_unix_ms > 0)
+    );
+    assert_eq!(
+        journal.records[0].kind,
+        Some(debug_pb::debug_journal_record::Kind::CheckpointCreated(
+            debug_pb::CheckpointCreated {
+                name: "z-last".into(),
+                replaced: false
+            }
+        ))
+    );
+    assert_eq!(
+        journal.records[1].kind,
+        Some(debug_pb::debug_journal_record::Kind::CheckpointCreated(
+            debug_pb::CheckpointCreated {
+                name: "a-first".into(),
+                replaced: false
+            }
+        ))
+    );
+    assert_eq!(
+        journal.records[2].kind,
+        Some(debug_pb::debug_journal_record::Kind::CheckpointCreated(
+            debug_pb::CheckpointCreated {
+                name: "z-last".into(),
+                replaced: true
+            }
+        ))
+    );
+    let operations = match journal.records[3].kind.as_ref().unwrap() {
+        debug_pb::debug_journal_record::Kind::MutationCommitted(record) => &record.operations,
+        other => panic!("expected mutation_committed, got {other:?}"),
+    };
+    assert_eq!(operations, &[debug_set_life(0, 7)]);
+    assert_eq!(
+        journal.records[4].kind,
+        Some(debug_pb::debug_journal_record::Kind::CheckpointRestored(
+            debug_pb::CheckpointRestored {
+                name: "z-last".into(),
+                source_table_seq: 0
+            }
+        ))
+    );
+
+    let before = {
+        let registry = crate::lock(&state.reg);
+        let debug = &registry.get("table").unwrap().debug;
+        (debug.journal.len(), debug.journal_request_bytes)
+    };
+    service
+        .get_debug_journal(Request::new(debug_pb::GetDebugJournalRequest {
+            table_id: "table".into(),
+        }))
+        .await
+        .unwrap();
+    let registry = crate::lock(&state.reg);
+    let debug = &registry.get("table").unwrap().debug;
+    assert_eq!(
+        (debug.journal.len(), debug.journal_request_bytes),
+        before,
+        "journal reads are neither journaled nor charged request capacity"
+    );
+}
+
+#[cfg(debug_assertions)]
+#[test]
+fn debug_checkpoint_failure_statuses_use_exact_additive_reasons() {
+    use crate::debug::{DebugFailure, ResourceLimit};
+    let cases = [
+        (
+            DebugFailure::CheckpointNotFound,
+            tonic::Code::NotFound,
+            debug_pb::DebugErrorReason::CheckpointNotFound,
+        ),
+        (
+            DebugFailure::CheckpointAlreadyExists,
+            tonic::Code::AlreadyExists,
+            debug_pb::DebugErrorReason::CheckpointExists,
+        ),
+        (
+            DebugFailure::InvalidCheckpointName,
+            tonic::Code::InvalidArgument,
+            debug_pb::DebugErrorReason::CheckpointNameInvalid,
+        ),
+        (
+            DebugFailure::ResourceExhausted {
+                reason: ResourceLimit::CheckpointCount,
+            },
+            tonic::Code::ResourceExhausted,
+            debug_pb::DebugErrorReason::CheckpointCountLimit,
+        ),
+        (
+            DebugFailure::ResourceExhausted {
+                reason: ResourceLimit::CheckpointObjectSlots,
+            },
+            tonic::Code::ResourceExhausted,
+            debug_pb::DebugErrorReason::CheckpointObjectLimit,
+        ),
+        (
+            DebugFailure::ResourceExhausted {
+                reason: ResourceLimit::JournalRecords,
+            },
+            tonic::Code::ResourceExhausted,
+            debug_pb::DebugErrorReason::JournalLimit,
+        ),
+        (
+            DebugFailure::ResourceExhausted {
+                reason: ResourceLimit::JournalRequestBytes,
+            },
+            tonic::Code::ResourceExhausted,
+            debug_pb::DebugErrorReason::JournalLimit,
+        ),
+    ];
+    for (failure, code, reason) in cases {
+        let status = debug_svc::status(failure);
+        assert_eq!(status.code(), code);
+        let detail = decode_debug_detail(&status);
+        assert_eq!(detail.reason, reason as i32);
+        assert_eq!(detail.operation_index, None);
+    }
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_checkpoint_and_restore_direct_error_matrix_is_stable() {
+    use crate::debug::{MAX_CHECKPOINTS_PER_TABLE, MAX_JOURNAL_REQUEST_BYTES};
+    use debug_pb::debug_service_server::DebugService;
+
+    fn assert_status(error: Status, code: tonic::Code, reason: debug_pb::DebugErrorReason) {
+        assert_eq!(error.code(), code);
+        assert_eq!(error.message(), "debug request rejected");
+        let detail = decode_debug_detail(&error);
+        assert_eq!(detail.reason, reason as i32);
+        assert_eq!(detail.operation_index, None);
+    }
+
+    let state = test_state().await;
+    let mut game = engine::Game::with_players(2, 0);
+    game.spawn_in_hand(engine::PlayerId(0), cards::get_by_name("Island").unwrap());
+    insert_debug_game(&state, "table", game, 0, 0);
+    let service = debug_svc::DebugSvc::new(state.clone());
+
+    let invalid = service
+        .checkpoint_table(Request::new(debug_pb::CheckpointTableRequest {
+            table_id: "table".into(),
+            name: "bad/name".into(),
+            ..Default::default()
+        }))
+        .await
+        .unwrap_err();
+    assert_status(
+        invalid,
+        tonic::Code::InvalidArgument,
+        debug_pb::DebugErrorReason::CheckpointNameInvalid,
+    );
+
+    service
+        .checkpoint_table(Request::new(debug_pb::CheckpointTableRequest {
+            table_id: "table".into(),
+            name: "saved".into(),
+            ..Default::default()
+        }))
+        .await
+        .unwrap();
+    let duplicate = service
+        .checkpoint_table(Request::new(debug_pb::CheckpointTableRequest {
+            table_id: "table".into(),
+            name: "saved".into(),
+            ..Default::default()
+        }))
+        .await
+        .unwrap_err();
+    assert_status(
+        duplicate,
+        tonic::Code::AlreadyExists,
+        debug_pb::DebugErrorReason::CheckpointExists,
+    );
+    let replaced = service
+        .checkpoint_table(Request::new(debug_pb::CheckpointTableRequest {
+            table_id: "table".into(),
+            name: "saved".into(),
+            replace_existing: true,
+            ..Default::default()
+        }))
+        .await
+        .unwrap()
+        .into_inner();
+    assert!(replaced.replaced);
+
+    let stale_checkpoint = service
+        .checkpoint_table(Request::new(debug_pb::CheckpointTableRequest {
+            table_id: "table".into(),
+            name: "stale".into(),
+            expected_table_seq: Some(9),
+            ..Default::default()
+        }))
+        .await
+        .unwrap_err();
+    assert_status(
+        stale_checkpoint,
+        tonic::Code::Aborted,
+        debug_pb::DebugErrorReason::StaleTableSeq,
+    );
+    let stale_restore = service
+        .restore_checkpoint(Request::new(debug_pb::RestoreCheckpointRequest {
+            table_id: "table".into(),
+            name: "saved".into(),
+            expected_table_seq: Some(9),
+            ..Default::default()
+        }))
+        .await
+        .unwrap_err();
+    assert_status(
+        stale_restore,
+        tonic::Code::Aborted,
+        debug_pb::DebugErrorReason::StaleTableSeq,
+    );
+    let missing = service
+        .restore_checkpoint(Request::new(debug_pb::RestoreCheckpointRequest {
+            table_id: "table".into(),
+            name: "absent".into(),
+            ..Default::default()
+        }))
+        .await
+        .unwrap_err();
+    assert_status(
+        missing,
+        tonic::Code::NotFound,
+        debug_pb::DebugErrorReason::CheckpointNotFound,
+    );
+
+    {
+        let mut registry = crate::lock(&state.reg);
+        let table = registry.get_mut("table").unwrap();
+        let template = table.debug.checkpoints.get("saved").unwrap().clone();
+        table.debug.checkpoints.clear();
+        for index in 0..MAX_CHECKPOINTS_PER_TABLE {
+            table
+                .debug
+                .checkpoints
+                .insert(format!("cp-{index}"), template.clone());
+        }
+    }
+    let count = service
+        .checkpoint_table(Request::new(debug_pb::CheckpointTableRequest {
+            table_id: "table".into(),
+            name: "overflow".into(),
+            ..Default::default()
+        }))
+        .await
+        .unwrap_err();
+    assert_status(
+        count,
+        tonic::Code::ResourceExhausted,
+        debug_pb::DebugErrorReason::CheckpointCountLimit,
+    );
+
+    {
+        let mut registry = crate::lock(&state.reg);
+        let table = registry.get_mut("table").unwrap();
+        table.debug.checkpoints.clear();
+        table.debug.checkpoint_object_slots = crate::debug::MAX_OBJECT_SLOTS_ACROSS_CHECKPOINTS;
+    }
+    let objects = service
+        .checkpoint_table(Request::new(debug_pb::CheckpointTableRequest {
+            table_id: "table".into(),
+            name: "objects".into(),
+            ..Default::default()
+        }))
+        .await
+        .unwrap_err();
+    assert_status(
+        objects,
+        tonic::Code::ResourceExhausted,
+        debug_pb::DebugErrorReason::CheckpointObjectLimit,
+    );
+
+    {
+        let mut registry = crate::lock(&state.reg);
+        let table = registry.get_mut("table").unwrap();
+        table.debug.checkpoint_object_slots = 0;
+        table.debug.journal_request_bytes = MAX_JOURNAL_REQUEST_BYTES;
+    }
+    let journal = service
+        .checkpoint_table(Request::new(debug_pb::CheckpointTableRequest {
+            table_id: "table".into(),
+            name: "journal".into(),
+            ..Default::default()
+        }))
+        .await
+        .unwrap_err();
+    assert_status(
+        journal,
+        tonic::Code::ResourceExhausted,
+        debug_pb::DebugErrorReason::JournalLimit,
+    );
+
+    let empty_journal = service
+        .get_debug_journal(Request::new(debug_pb::GetDebugJournalRequest {
+            table_id: String::new(),
+        }))
+        .await
+        .unwrap_err();
+    assert_status(
+        empty_journal,
+        tonic::Code::InvalidArgument,
+        debug_pb::DebugErrorReason::InvalidValue,
+    );
 }

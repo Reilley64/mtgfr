@@ -121,11 +121,10 @@ impl ChromeState {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, debug_assertions))]
 mod tests {
     use super::*;
 
-    #[cfg(debug_assertions)]
     #[test]
     fn debug_snapshot_preserves_logical_flags_but_restore_drops_timer_and_dwell() {
         let now = tokio::time::Instant::now();

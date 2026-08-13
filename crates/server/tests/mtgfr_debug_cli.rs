@@ -38,6 +38,27 @@ impl pb::debug_service_server::DebugService for RecordingService {
     ) -> Result<tonic::Response<pb::MutateTableResponse>, tonic::Status> {
         unreachable!("environment test only invokes tables")
     }
+
+    async fn checkpoint_table(
+        &self,
+        _: tonic::Request<pb::CheckpointTableRequest>,
+    ) -> Result<tonic::Response<pb::CheckpointTableResponse>, tonic::Status> {
+        unreachable!("environment test only invokes tables")
+    }
+
+    async fn restore_checkpoint(
+        &self,
+        _: tonic::Request<pb::RestoreCheckpointRequest>,
+    ) -> Result<tonic::Response<pb::RestoreCheckpointResponse>, tonic::Status> {
+        unreachable!("environment test only invokes tables")
+    }
+
+    async fn get_debug_journal(
+        &self,
+        _: tonic::Request<pb::GetDebugJournalRequest>,
+    ) -> Result<tonic::Response<pb::GetDebugJournalResponse>, tonic::Status> {
+        unreachable!("environment test only invokes tables")
+    }
 }
 
 async fn bind_recording_service() -> (String, RecordingService, tokio::sync::oneshot::Sender<()>) {

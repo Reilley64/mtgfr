@@ -697,6 +697,7 @@ mod debug_cli {
                     table_seq: 3,
                     debug_mutated: false,
                     game: None,
+                    ..Default::default()
                 }))
             }
 
@@ -715,6 +716,27 @@ mod debug_cli {
                     table_seq: 5,
                     applied_operation_count: request.operations.len() as u32,
                 }))
+            }
+
+            async fn checkpoint_table(
+                &self,
+                _: tonic::Request<pb::CheckpointTableRequest>,
+            ) -> Result<tonic::Response<pb::CheckpointTableResponse>, tonic::Status> {
+                Err(tonic::Status::unimplemented("not used by this test"))
+            }
+
+            async fn restore_checkpoint(
+                &self,
+                _: tonic::Request<pb::RestoreCheckpointRequest>,
+            ) -> Result<tonic::Response<pb::RestoreCheckpointResponse>, tonic::Status> {
+                Err(tonic::Status::unimplemented("not used by this test"))
+            }
+
+            async fn get_debug_journal(
+                &self,
+                _: tonic::Request<pb::GetDebugJournalRequest>,
+            ) -> Result<tonic::Response<pb::GetDebugJournalResponse>, tonic::Status> {
+                Err(tonic::Status::unimplemented("not used by this test"))
             }
         }
 

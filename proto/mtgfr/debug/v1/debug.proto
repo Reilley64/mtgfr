@@ -6,6 +6,9 @@ service DebugService {
   rpc ListTables(ListTablesRequest) returns (ListTablesResponse);
   rpc InspectTable(InspectTableRequest) returns (InspectTableResponse);
   rpc MutateTable(MutateTableRequest) returns (MutateTableResponse);
+  rpc CheckpointTable(CheckpointTableRequest) returns (CheckpointTableResponse);
+  rpc RestoreCheckpoint(RestoreCheckpointRequest) returns (RestoreCheckpointResponse);
+  rpc GetDebugJournal(GetDebugJournalRequest) returns (GetDebugJournalResponse);
 }
 
 message ListTablesRequest {}
@@ -27,6 +30,23 @@ message InspectTableResponse {
   uint64 table_seq = 3;
   bool debug_mutated = 4;
   GameInspection game = 5;
+  repeated string checkpoint_names = 6;
+  LogicalChromeView chrome = 7;
+  PendingOrchestrationView pending_orchestration = 8;
+}
+message LogicalChromeView {
+  repeated bool yields = 1;
+  repeated bool turn_yields = 2;
+  bool hold_requested = 3;
+}
+message PendingOrchestrationView {
+  bool has_pending_choice = 1;
+  bool has_resume = 2;
+  bool has_resolution_frame = 3;
+  bool has_resolution_finish = 4;
+  uint32 pending_enter_bonus_counters = 5;
+  uint32 pending_trigger_groups = 6;
+  uint32 pending_obligations = 7;
 }
 message GameInspection {
   repeated PlayerInspection players = 1;
@@ -147,6 +167,7 @@ message Mutation {
     MoveCard move_card = 8;
     SetLibraryOrder set_library_order = 9;
     RemoveCard remove_card = 10;
+    ClearPendingOrchestration clear_pending_orchestration = 11;
   }
 }
 message SetLife {
@@ -201,10 +222,66 @@ message SetLibraryOrder {
 message RemoveCard {
   uint32 object_id = 1;
 }
+message ClearPendingOrchestration {
+  bool clear_queued_triggers = 1;
+}
 message MutateTableResponse {
   uint64 debug_revision = 1;
   uint64 table_seq = 2;
   uint32 applied_operation_count = 3;
+}
+
+message CheckpointTableRequest {
+  string table_id = 1;
+  string name = 2;
+  bool replace_existing = 3;
+  optional uint64 expected_table_seq = 4;
+}
+message CheckpointTableResponse {
+  uint64 debug_revision = 1;
+  uint64 table_seq = 2;
+  uint32 object_slots = 3;
+  bool replaced = 4;
+}
+message RestoreCheckpointRequest {
+  string table_id = 1;
+  string name = 2;
+  optional uint64 expected_debug_revision = 3;
+  optional uint64 expected_table_seq = 4;
+}
+message RestoreCheckpointResponse {
+  uint64 debug_revision = 1;
+  uint64 table_seq = 2;
+  uint64 restored_source_table_seq = 3;
+}
+message GetDebugJournalRequest {
+  string table_id = 1;
+}
+message GetDebugJournalResponse {
+  repeated DebugJournalRecord records = 1;
+}
+message DebugJournalRecord {
+  uint64 ordinal = 1;
+  uint64 timestamp_unix_ms = 2;
+  uint64 debug_revision = 3;
+  uint64 table_seq = 4;
+  oneof kind {
+    MutationCommitted mutation_committed = 5;
+    CheckpointCreated checkpoint_created = 6;
+    CheckpointRestored checkpoint_restored = 7;
+  }
+  uint64 encoded_request_bytes = 8;
+}
+message MutationCommitted {
+  repeated Mutation operations = 1;
+}
+message CheckpointCreated {
+  string name = 1;
+  bool replaced = 2;
+}
+message CheckpointRestored {
+  string name = 1;
+  uint64 source_table_seq = 2;
 }
 
 enum DebugErrorReason {
@@ -220,6 +297,12 @@ enum DebugErrorReason {
   DEBUG_ERROR_REASON_ATTACHMENT_CYCLE = 9;
   DEBUG_ERROR_REASON_PROJECTION_FAILED = 10;
   DEBUG_ERROR_REASON_EMPTY_BATCH = 11;
+  DEBUG_ERROR_REASON_CHECKPOINT_NOT_FOUND = 12;
+  DEBUG_ERROR_REASON_CHECKPOINT_EXISTS = 13;
+  DEBUG_ERROR_REASON_CHECKPOINT_NAME_INVALID = 14;
+  DEBUG_ERROR_REASON_CHECKPOINT_COUNT_LIMIT = 15;
+  DEBUG_ERROR_REASON_CHECKPOINT_OBJECT_LIMIT = 16;
+  DEBUG_ERROR_REASON_JOURNAL_LIMIT = 17;
 }
 message Violation {
   string code = 1;

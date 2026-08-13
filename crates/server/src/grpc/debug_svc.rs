@@ -9,7 +9,11 @@ use prost::Message;
 use tonic::{Code, Request, Response, Status};
 
 use super::debug_pb as pb;
-use crate::debug::{DebugAbortReason, DebugFailure, MutateCommand, mutate_table as mutate_domain};
+use crate::debug::{
+    CheckpointCommand, DebugAbortReason, DebugFailure, JournalKind, JournalRecord, MutateCommand,
+    ResourceLimit, RestoreCommand, checkpoint_table as checkpoint_domain,
+    mutate_table as mutate_domain, restore_checkpoint as restore_domain,
+};
 use crate::{AppState, lock};
 
 const MAX_STATUS_VIOLATIONS: usize = 16;
@@ -27,6 +31,10 @@ pub(crate) struct DebugSvc {
     state: AppState,
     #[cfg(test)]
     inspection_override: Option<Inspection>,
+    #[cfg(test)]
+    chrome_override: Option<crate::chrome::DebugChromeSnapshot>,
+    #[cfg(test)]
+    pending_override: Option<engine::debug::PendingOrchestrationInspection>,
 }
 
 impl DebugSvc {
@@ -36,6 +44,10 @@ impl DebugSvc {
             state,
             #[cfg(test)]
             inspection_override: None,
+            #[cfg(test)]
+            chrome_override: None,
+            #[cfg(test)]
+            pending_override: None,
         }
     }
 
@@ -44,6 +56,23 @@ impl DebugSvc {
         Self {
             state,
             inspection_override: Some(inspection),
+            chrome_override: None,
+            pending_override: None,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_inspection_state_for_test(
+        state: AppState,
+        inspection: Inspection,
+        chrome: crate::chrome::DebugChromeSnapshot,
+        pending: engine::debug::PendingOrchestrationInspection,
+    ) -> Self {
+        Self {
+            state,
+            inspection_override: Some(inspection),
+            chrome_override: Some(chrome),
+            pending_override: Some(pending),
         }
     }
 }
@@ -89,12 +118,25 @@ impl pb::debug_service_server::DebugService for DebugSvc {
         let inspection = engine::debug::inspect(game);
         #[cfg(test)]
         let inspection = self.inspection_override.clone().unwrap_or(inspection);
+        let pending = engine::debug::inspect_pending_orchestration(game);
+        #[cfg(test)]
+        let pending = self.pending_override.clone().unwrap_or(pending);
+        let chrome = table.chrome.debug_snapshot();
+        #[cfg(test)]
+        let chrome = self.chrome_override.unwrap_or(chrome);
         let response = pb::InspectTableResponse {
             table_id: request.table_id,
             debug_revision: table.debug.revision,
             table_seq: table.seq,
             debug_mutated: table.debug.debug_mutated,
             game: Some(map_inspection(inspection)?),
+            checkpoint_names: table.debug.checkpoints.keys().cloned().collect(),
+            chrome: Some(pb::LogicalChromeView {
+                yields: chrome.yields.to_vec(),
+                turn_yields: chrome.turn_yields.to_vec(),
+                hold_requested: chrome.hold_requested,
+            }),
+            pending_orchestration: Some(map_pending_orchestration(pending)?),
         };
         Ok(Response::new(response))
     }
@@ -133,6 +175,85 @@ impl pb::debug_service_server::DebugService for DebugSvc {
             table_seq: receipt.table_seq,
             applied_operation_count: operation_count,
         }))
+    }
+
+    async fn checkpoint_table(
+        &self,
+        request: Request<pb::CheckpointTableRequest>,
+    ) -> Result<Response<pb::CheckpointTableResponse>, Status> {
+        let encoded_request_bytes = request.get_ref().encoded_len();
+        let request = request.into_inner();
+        if request.table_id.is_empty() {
+            return Err(invalid_status(None));
+        }
+        let receipt = checkpoint_domain(
+            &self.state,
+            CheckpointCommand {
+                table_id: request.table_id,
+                name: request.name,
+                replace_existing: request.replace_existing,
+                expected_table_seq: request.expected_table_seq,
+                encoded_request_bytes,
+            },
+        )
+        .map_err(status)?;
+        Ok(Response::new(pb::CheckpointTableResponse {
+            debug_revision: receipt.debug_revision,
+            table_seq: receipt.table_seq,
+            object_slots: receipt.object_slots,
+            replaced: receipt.replaced,
+        }))
+    }
+
+    async fn restore_checkpoint(
+        &self,
+        request: Request<pb::RestoreCheckpointRequest>,
+    ) -> Result<Response<pb::RestoreCheckpointResponse>, Status> {
+        let encoded_request_bytes = request.get_ref().encoded_len();
+        let request = request.into_inner();
+        if request.table_id.is_empty() {
+            return Err(invalid_status(None));
+        }
+        let receipt = restore_domain(
+            &self.state,
+            RestoreCommand {
+                table_id: request.table_id,
+                name: request.name,
+                expected_debug_revision: request.expected_debug_revision,
+                expected_table_seq: request.expected_table_seq,
+                encoded_request_bytes,
+            },
+        )
+        .map_err(status)?;
+        Ok(Response::new(pb::RestoreCheckpointResponse {
+            debug_revision: receipt.debug_revision,
+            table_seq: receipt.table_seq,
+            restored_source_table_seq: receipt.restored_source_table_seq,
+        }))
+    }
+
+    async fn get_debug_journal(
+        &self,
+        request: Request<pb::GetDebugJournalRequest>,
+    ) -> Result<Response<pb::GetDebugJournalResponse>, Status> {
+        let request = request.into_inner();
+        if request.table_id.is_empty() {
+            return Err(invalid_status(None));
+        }
+        let registry = lock(&self.state.reg);
+        let Some(table) = registry.get(&request.table_id) else {
+            return Err(status(DebugFailure::NotFound {
+                operation_index: None,
+            }));
+        };
+        let records = table
+            .debug
+            .journal
+            .iter()
+            .cloned()
+            .map(map_journal_record)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Response::new(pb::GetDebugJournalResponse { records }))
     }
 }
 
@@ -204,6 +325,9 @@ fn map_mutation_inner(mutation: pb::Mutation) -> Result<Mutation, MappingError> 
         }),
         Operation::RemoveCard(edit) => Ok(Mutation::RemoveCard {
             object_id: edit.object_id,
+        }),
+        Operation::ClearPendingOrchestration(edit) => Ok(Mutation::ClearPendingOrchestration {
+            clear_queued_triggers: edit.clear_queued_triggers,
         }),
     }
 }
@@ -424,32 +548,201 @@ fn map_step(step: Step) -> pb::Step {
     }
 }
 
+#[allow(clippy::result_large_err)]
+fn map_pending_orchestration(
+    pending: engine::debug::PendingOrchestrationInspection,
+) -> Result<pb::PendingOrchestrationView, Status> {
+    Ok(pb::PendingOrchestrationView {
+        has_pending_choice: pending.has_pending_choice,
+        has_resume: pending.has_resume,
+        has_resolution_frame: pending.has_resolution_frame,
+        has_resolution_finish: pending.has_resolution_finish,
+        pending_enter_bonus_counters: u32::try_from(pending.pending_enter_bonus_counters)
+            .map_err(|_| internal_status())?,
+        pending_trigger_groups: u32::try_from(pending.pending_trigger_groups)
+            .map_err(|_| internal_status())?,
+        pending_obligations: u32::try_from(pending.pending_obligations)
+            .map_err(|_| internal_status())?,
+    })
+}
+
+#[allow(clippy::result_large_err)]
+fn map_journal_record(record: JournalRecord) -> Result<pb::DebugJournalRecord, Status> {
+    use pb::debug_journal_record::Kind;
+
+    let kind = match record.kind {
+        JournalKind::MutationCommitted { operations } => {
+            Kind::MutationCommitted(pb::MutationCommitted {
+                operations: operations.into_iter().map(map_domain_mutation).collect(),
+            })
+        }
+        JournalKind::CheckpointCreated { name, replaced } => {
+            Kind::CheckpointCreated(pb::CheckpointCreated { name, replaced })
+        }
+        JournalKind::CheckpointRestored {
+            name,
+            source_table_seq,
+        } => Kind::CheckpointRestored(pb::CheckpointRestored {
+            name,
+            source_table_seq,
+        }),
+    };
+    Ok(pb::DebugJournalRecord {
+        ordinal: record.ordinal,
+        timestamp_unix_ms: record.timestamp_unix_ms,
+        debug_revision: record.debug_revision,
+        table_seq: record.table_seq,
+        kind: Some(kind),
+        encoded_request_bytes: u64::try_from(record.encoded_request_bytes)
+            .map_err(|_| internal_status())?,
+    })
+}
+
+fn map_domain_mutation(mutation: Mutation) -> pb::Mutation {
+    use pb::mutation::Operation;
+
+    let operation = match mutation {
+        Mutation::SetLife { player, life } => Operation::SetLife(pb::SetLife {
+            player: u32::from(player.0),
+            life,
+        }),
+        Mutation::SetPlayerCounter {
+            player,
+            counter,
+            value,
+        } => Operation::SetPlayerCounter(pb::SetPlayerCounter {
+            player: u32::from(player.0),
+            counter: match counter {
+                PlayerCounterKind::Poison => pb::PlayerCounter::Poison as i32,
+                PlayerCounterKind::Rad => pb::PlayerCounter::Rad as i32,
+            },
+            value: u32::from(value),
+        }),
+        Mutation::SetTurnState {
+            active_player,
+            step,
+            priority_player,
+            consecutive_passes,
+        } => Operation::SetTurnState(pb::SetTurnState {
+            active_player: u32::from(active_player.0),
+            step: map_step(step) as i32,
+            priority_player: u32::from(priority_player.0),
+            consecutive_passes: u32::from(consecutive_passes),
+        }),
+        Mutation::SetPermanentState {
+            object_id,
+            tapped,
+            marked_damage,
+            plus_one_counters,
+        } => Operation::SetPermanentState(pb::SetPermanentState {
+            object_id,
+            tapped,
+            marked_damage,
+            plus_one_counters,
+        }),
+        Mutation::SetController {
+            object_id,
+            controller,
+        } => Operation::SetController(pb::SetController {
+            object_id,
+            controller: u32::from(controller.0),
+        }),
+        Mutation::SetAttachment {
+            object_id,
+            attached_to,
+        } => Operation::SetAttachment(pb::SetAttachment {
+            object_id,
+            attached_to,
+        }),
+        Mutation::CreateCard {
+            object_id,
+            card_id,
+            owner,
+            controller,
+            destination,
+            commander,
+            face_down,
+        } => Operation::CreateCard(pb::CreateCard {
+            object_id,
+            card_id,
+            owner: u32::from(owner.0),
+            controller: u32::from(controller.0),
+            destination: map_debug_zone(destination) as i32,
+            commander,
+            face_down,
+        }),
+        Mutation::MoveCard {
+            object_id,
+            new_object_id,
+            destination,
+            controller,
+            face_down,
+        } => Operation::MoveCard(pb::MoveCard {
+            object_id,
+            new_object_id,
+            destination: map_debug_zone(destination) as i32,
+            controller: u32::from(controller.0),
+            face_down,
+        }),
+        Mutation::SetLibraryOrder { player, object_ids } => {
+            Operation::SetLibraryOrder(pb::SetLibraryOrder {
+                player: u32::from(player.0),
+                object_ids,
+            })
+        }
+        Mutation::RemoveCard { object_id } => Operation::RemoveCard(pb::RemoveCard { object_id }),
+        Mutation::ClearPendingOrchestration {
+            clear_queued_triggers,
+        } => Operation::ClearPendingOrchestration(pb::ClearPendingOrchestration {
+            clear_queued_triggers,
+        }),
+    };
+    pb::Mutation {
+        operation: Some(operation),
+    }
+}
+
+fn map_debug_zone(zone: DebugZone) -> pb::Zone {
+    match zone {
+        DebugZone::Library => pb::Zone::Library,
+        DebugZone::Hand => pb::Zone::Hand,
+        DebugZone::Battlefield => pb::Zone::Battlefield,
+        DebugZone::Graveyard => pb::Zone::Graveyard,
+        DebugZone::Exile => pb::Zone::Exile,
+        DebugZone::Command => pb::Zone::Command,
+    }
+}
+
 pub(crate) fn status(failure: DebugFailure) -> Status {
     let (code, operation_index, reason, violations) = match failure {
-        // Task 5 adds dedicated protobuf reasons. Until then, keep the adapter exhaustive while
-        // exposing only the existing bounded, non-secret status vocabulary.
         DebugFailure::CheckpointNotFound => (
             Code::NotFound,
             None,
-            pb::DebugErrorReason::UnknownEntity,
+            pb::DebugErrorReason::CheckpointNotFound,
             vec![],
         ),
         DebugFailure::CheckpointAlreadyExists => (
             Code::AlreadyExists,
             None,
-            pb::DebugErrorReason::DuplicateId,
+            pb::DebugErrorReason::CheckpointExists,
             vec![],
         ),
         DebugFailure::InvalidCheckpointName => (
             Code::InvalidArgument,
             None,
-            pb::DebugErrorReason::InvalidValue,
+            pb::DebugErrorReason::CheckpointNameInvalid,
             vec![],
         ),
-        DebugFailure::ResourceExhausted { reason: _ } => (
+        DebugFailure::ResourceExhausted { reason } => (
             Code::ResourceExhausted,
             None,
-            pb::DebugErrorReason::InvalidValue,
+            match reason {
+                ResourceLimit::CheckpointCount => pb::DebugErrorReason::CheckpointCountLimit,
+                ResourceLimit::CheckpointObjectSlots => pb::DebugErrorReason::CheckpointObjectLimit,
+                ResourceLimit::JournalRecords | ResourceLimit::JournalRequestBytes => {
+                    pb::DebugErrorReason::JournalLimit
+                }
+            },
             vec![],
         ),
         DebugFailure::NotFound { operation_index } => (
