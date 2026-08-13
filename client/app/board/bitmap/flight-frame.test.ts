@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { testMessageRef } from "~/i18n/testMessageRef";
 import type { PlayerView } from "~/wire/types";
 import { BLANK_FACE } from "../../domain/card-render/frame";
 import { type RenderCard, ZONE } from "../geometry/layout";

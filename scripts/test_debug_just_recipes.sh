@@ -90,3 +90,22 @@ assert_args "${prefix[@]}" journal "$table"
 assert_args "${prefix[@]}" journal "$table" --out "$out" --endpoint "$endpoint"
 
 assert_clean
+
+# The server package also contains the debug CLI, so primary-server recipes must select their binary.
+python3 - "$root/justfile" <<'PY'
+import pathlib
+import sys
+
+justfile = pathlib.Path(sys.argv[1]).read_text()
+for ambiguous in (
+    "cargo run -p server --release -- serve",
+    "cargo run -p server -- migration apply",
+):
+    assert ambiguous not in justfile, f"ambiguous server command remains: {ambiguous}"
+
+for explicit in (
+    "cargo run -p server --bin server --release -- serve",
+    "cargo run -p server --bin server -- migration apply",
+):
+    assert explicit in justfile, f"explicit server command missing: {explicit}"
+PY

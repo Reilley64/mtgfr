@@ -39,7 +39,7 @@ server-build-prod:
 [group('server')]
 [doc("Run the server")]
 server-run: server-build-prod
-    cargo run -p server --release -- serve
+    cargo run -p server --bin server --release -- serve
 
 [group('server')]
 [doc("List tables through the debug-only authoritative API")]
@@ -186,7 +186,7 @@ client-run: client-build
 
 [doc("Apply Toasty migrations against DATABASE_URL (default: compose Postgres)")]
 migrate:
-    DATABASE_URL="${DATABASE_URL:-postgresql://mtgfr:mtgfr@localhost:5432/mtgfr}" cargo run -p server -- migration apply
+    DATABASE_URL="${DATABASE_URL:-postgresql://mtgfr:mtgfr@localhost:5432/mtgfr}" cargo run -p server --bin server -- migration apply
 
 # ── Workspace ────────────────────────────────────────────────────────────────────────
 
@@ -206,7 +206,7 @@ test *args:
 
 [doc("Server CI check (CR index + card DSL drift + pool validation, then fmt --check + clippy + migrate + nextest)")]
 server-check: engine-cr-index-check cards-schema-check cards-dsl-ref-check cards-toml-validate-pool server-format-check server-lint
-    cargo run -p server -- migration apply
+    cargo run -p server --bin server -- migration apply
     just server-test
 
 [doc("Client CI check (tokens + mana-oracle + codegen + format + lint + typecheck + vitest)")]
