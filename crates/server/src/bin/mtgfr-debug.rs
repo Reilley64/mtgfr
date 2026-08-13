@@ -49,6 +49,40 @@ mod debug_cli {
         /// Apply one protobuf-JSON mutation batch from a named file
         Mutate {
             request_json: PathBuf,
+            /// Override or confirm the protobuf JSON table-sequence guard
+            #[arg(long)]
+            expected_table_seq: Option<u64>,
+            /// Atomically write protobuf JSON instead of stdout
+            #[arg(long)]
+            out: Option<PathBuf>,
+        },
+        /// Save the current authoritative table under a checkpoint name
+        Checkpoint {
+            table: String,
+            name: String,
+            #[arg(long)]
+            replace: bool,
+            #[arg(long)]
+            expected_table_seq: Option<u64>,
+            /// Atomically write protobuf JSON instead of stdout
+            #[arg(long)]
+            out: Option<PathBuf>,
+        },
+        /// Restore one named checkpoint
+        Restore {
+            table: String,
+            name: String,
+            #[arg(long)]
+            expected_debug_revision: Option<u64>,
+            #[arg(long)]
+            expected_table_seq: Option<u64>,
+            /// Atomically write protobuf JSON instead of stdout
+            #[arg(long)]
+            out: Option<PathBuf>,
+        },
+        /// Read the successful debug-operation journal for one table
+        Journal {
+            table: String,
             /// Atomically write protobuf JSON instead of stdout
             #[arg(long)]
             out: Option<PathBuf>,
@@ -115,15 +149,61 @@ mod debug_cli {
         command: Command,
     ) -> Result<(String, Option<PathBuf>), CliError> {
         let command = match command {
-            Command::Mutate { request_json, out } => {
+            Command::Mutate {
+                request_json,
+                expected_table_seq,
+                out,
+            } => {
                 let bytes = fs::read(request_json)
                     .map_err(|_| CliError::Generic("failed to read mutation request file"))?;
-                let request = parse_mutation(&bytes)
+                let mut request = parse_mutation(&bytes)
                     .map_err(|_| CliError::Generic("invalid protobuf JSON mutation request"))?;
+                if let (Some(json), Some(flag)) = (request.expected_table_seq, expected_table_seq)
+                    && json != flag
+                {
+                    return Err(CliError::Generic("conflicting expected_table_seq values"));
+                }
+                if expected_table_seq.is_some() {
+                    request.expected_table_seq = expected_table_seq;
+                }
                 PreparedCommand::Mutate { request, out }
             }
             Command::Tables => PreparedCommand::Tables,
             Command::Inspect { table, out } => PreparedCommand::Inspect { table, out },
+            Command::Checkpoint {
+                table,
+                name,
+                replace,
+                expected_table_seq,
+                out,
+            } => PreparedCommand::Checkpoint {
+                request: pb::CheckpointTableRequest {
+                    table_id: table,
+                    name,
+                    replace_existing: replace,
+                    expected_table_seq,
+                },
+                out,
+            },
+            Command::Restore {
+                table,
+                name,
+                expected_debug_revision,
+                expected_table_seq,
+                out,
+            } => PreparedCommand::Restore {
+                request: pb::RestoreCheckpointRequest {
+                    table_id: table,
+                    name,
+                    expected_debug_revision,
+                    expected_table_seq,
+                },
+                out,
+            },
+            Command::Journal { table, out } => PreparedCommand::Journal {
+                request: pb::GetDebugJournalRequest { table_id: table },
+                out,
+            },
         };
         let mut client = pb::debug_service_client::DebugServiceClient::connect(endpoint.to_owned())
             .await
@@ -159,6 +239,36 @@ mod debug_cli {
                     .map_err(|_| CliError::Generic("failed to encode debug response"))?;
                 Ok((json, out))
             }
+            PreparedCommand::Checkpoint { request, out } => {
+                let response = client
+                    .checkpoint_table(request)
+                    .await
+                    .map_err(CliError::Status)?
+                    .into_inner();
+                let json = protobuf_json(&response)
+                    .map_err(|_| CliError::Generic("failed to encode debug response"))?;
+                Ok((json, out))
+            }
+            PreparedCommand::Restore { request, out } => {
+                let response = client
+                    .restore_checkpoint(request)
+                    .await
+                    .map_err(CliError::Status)?
+                    .into_inner();
+                let json = protobuf_json(&response)
+                    .map_err(|_| CliError::Generic("failed to encode debug response"))?;
+                Ok((json, out))
+            }
+            PreparedCommand::Journal { request, out } => {
+                let response = client
+                    .get_debug_journal(request)
+                    .await
+                    .map_err(CliError::Status)?
+                    .into_inner();
+                let json = protobuf_json(&response)
+                    .map_err(|_| CliError::Generic("failed to encode debug response"))?;
+                Ok((json, out))
+            }
         }
     }
 
@@ -170,6 +280,18 @@ mod debug_cli {
         },
         Mutate {
             request: pb::MutateTableRequest,
+            out: Option<PathBuf>,
+        },
+        Checkpoint {
+            request: pb::CheckpointTableRequest,
+            out: Option<PathBuf>,
+        },
+        Restore {
+            request: pb::RestoreCheckpointRequest,
+            out: Option<PathBuf>,
+        },
+        Journal {
+            request: pb::GetDebugJournalRequest,
             out: Option<PathBuf>,
         },
     }
@@ -360,7 +482,7 @@ mod debug_cli {
         use super::*;
 
         #[test]
-        fn parses_only_phase_a_commands_and_global_endpoint() {
+        fn parses_debug_commands_and_global_endpoint() {
             assert_eq!(
                 Cli::try_parse_from(["mtgfr-debug", "tables"]).unwrap(),
                 Cli {
@@ -392,6 +514,8 @@ mod debug_cli {
                     "mtgfr-debug",
                     "mutate",
                     "request.json",
+                    "--expected-table-seq",
+                    "42",
                     "--out",
                     "response.json"
                 ])
@@ -400,13 +524,65 @@ mod debug_cli {
                     endpoint: None,
                     command: Command::Mutate {
                         request_json: "request.json".into(),
+                        expected_table_seq: Some(42),
                         out: Some("response.json".into()),
                     },
                 }
             );
-            for unavailable in ["checkpoint", "restore", "journal"] {
-                assert!(Cli::try_parse_from(["mtgfr-debug", unavailable]).is_err());
-            }
+            assert_eq!(
+                Cli::try_parse_from([
+                    "mtgfr-debug",
+                    "checkpoint",
+                    "table-1",
+                    "baseline",
+                    "--replace",
+                    "--expected-table-seq",
+                    "42",
+                    "--out",
+                    "checkpoint.json",
+                ])
+                .unwrap()
+                .command,
+                Command::Checkpoint {
+                    table: "table-1".into(),
+                    name: "baseline".into(),
+                    replace: true,
+                    expected_table_seq: Some(42),
+                    out: Some("checkpoint.json".into()),
+                }
+            );
+            assert_eq!(
+                Cli::try_parse_from([
+                    "mtgfr-debug",
+                    "restore",
+                    "table-1",
+                    "baseline",
+                    "--expected-debug-revision",
+                    "7",
+                    "--expected-table-seq",
+                    "42",
+                ])
+                .unwrap()
+                .command,
+                Command::Restore {
+                    table: "table-1".into(),
+                    name: "baseline".into(),
+                    expected_debug_revision: Some(7),
+                    expected_table_seq: Some(42),
+                    out: None,
+                }
+            );
+            assert_eq!(
+                Cli::try_parse_from(
+                    ["mtgfr-debug", "journal", "table-1", "--out", "journal.json",]
+                )
+                .unwrap()
+                .command,
+                Command::Journal {
+                    table: "table-1".into(),
+                    out: Some("journal.json".into()),
+                }
+            );
             assert!(Cli::try_parse_from(["mtgfr-debug", "mutate"]).is_err());
         }
 
@@ -641,6 +817,7 @@ mod debug_cli {
                 "http://127.0.0.1:1",
                 Command::Mutate {
                     request_json: missing,
+                    expected_table_seq: None,
                     out: None,
                 },
             )
@@ -650,6 +827,39 @@ mod debug_cli {
                 error,
                 CliError::Generic("failed to read mutation request file")
             ));
+        }
+
+        #[tokio::test]
+        async fn conflicting_mutation_table_seq_is_rejected_before_connecting_without_echoes() {
+            let root = std::env::temp_dir().join(format!(
+                "mtgfr-debug-conflicting-request-{}",
+                std::process::id()
+            ));
+            let _ = fs::remove_dir_all(&root);
+            fs::create_dir_all(&root).unwrap();
+            let request = root.join("SECRET-request-path.json");
+            fs::write(
+                &request,
+                r#"{"tableId":"SECRET-table","expectedTableSeq":"7","operations":[]}"#,
+            )
+            .unwrap();
+
+            let error = execute(
+                "http://127.0.0.1:1",
+                Command::Mutate {
+                    request_json: request,
+                    expected_table_seq: Some(8),
+                    out: None,
+                },
+            )
+            .await
+            .unwrap_err();
+            let CliError::Generic(message) = error else {
+                panic!("expected generic local conflict")
+            };
+            assert_eq!(message, "conflicting expected_table_seq values");
+            assert!(!message.contains("SECRET"));
+            fs::remove_dir_all(root).unwrap();
         }
 
         #[derive(Clone, Default)]
@@ -707,9 +917,10 @@ mod debug_cli {
             ) -> Result<tonic::Response<pb::MutateTableResponse>, tonic::Status> {
                 let request = request.into_inner();
                 self.calls.lock().unwrap().push(format!(
-                    "mutate:{}:{}",
+                    "mutate:{}:{}:{:?}",
                     request.table_id,
-                    request.operations.len()
+                    request.operations.len(),
+                    request.expected_table_seq
                 ));
                 Ok(tonic::Response::new(pb::MutateTableResponse {
                     debug_revision: 4,
@@ -720,23 +931,67 @@ mod debug_cli {
 
             async fn checkpoint_table(
                 &self,
-                _: tonic::Request<pb::CheckpointTableRequest>,
+                request: tonic::Request<pb::CheckpointTableRequest>,
             ) -> Result<tonic::Response<pb::CheckpointTableResponse>, tonic::Status> {
-                Err(tonic::Status::unimplemented("not used by this test"))
+                let request = request.into_inner();
+                self.calls.lock().unwrap().push(format!(
+                    "checkpoint:{}:{}:{}:{:?}",
+                    request.table_id,
+                    request.name,
+                    request.replace_existing,
+                    request.expected_table_seq
+                ));
+                Ok(tonic::Response::new(pb::CheckpointTableResponse {
+                    debug_revision: 4,
+                    table_seq: 5,
+                    object_slots: 12,
+                    replaced: request.replace_existing,
+                }))
             }
 
             async fn restore_checkpoint(
                 &self,
-                _: tonic::Request<pb::RestoreCheckpointRequest>,
+                request: tonic::Request<pb::RestoreCheckpointRequest>,
             ) -> Result<tonic::Response<pb::RestoreCheckpointResponse>, tonic::Status> {
-                Err(tonic::Status::unimplemented("not used by this test"))
+                let request = request.into_inner();
+                self.calls.lock().unwrap().push(format!(
+                    "restore:{}:{}:{:?}:{:?}",
+                    request.table_id,
+                    request.name,
+                    request.expected_debug_revision,
+                    request.expected_table_seq
+                ));
+                Ok(tonic::Response::new(pb::RestoreCheckpointResponse {
+                    debug_revision: 5,
+                    table_seq: 6,
+                    restored_source_table_seq: 3,
+                }))
             }
 
             async fn get_debug_journal(
                 &self,
-                _: tonic::Request<pb::GetDebugJournalRequest>,
+                request: tonic::Request<pb::GetDebugJournalRequest>,
             ) -> Result<tonic::Response<pb::GetDebugJournalResponse>, tonic::Status> {
-                Err(tonic::Status::unimplemented("not used by this test"))
+                let request = request.into_inner();
+                self.calls
+                    .lock()
+                    .unwrap()
+                    .push(format!("journal:{}", request.table_id));
+                Ok(tonic::Response::new(pb::GetDebugJournalResponse {
+                    records: vec![pb::DebugJournalRecord {
+                        ordinal: 1,
+                        timestamp_unix_ms: 2,
+                        debug_revision: 4,
+                        table_seq: 5,
+                        kind: Some(pb::debug_journal_record::Kind::CheckpointCreated(
+                            pb::CheckpointCreated {
+                                name: "baseline".into(),
+                                replaced: false,
+                            },
+                        )),
+                        encoded_request_bytes: 9,
+                    }],
+                }))
             }
         }
 
@@ -762,13 +1017,17 @@ mod debug_cli {
         }
 
         #[tokio::test]
-        async fn execute_wires_tables_inspect_mutate_and_typed_rpc_errors() {
+        async fn execute_wires_all_six_rpcs_and_typed_rpc_errors() {
             let (endpoint, service, shutdown) = bind_recording_service().await;
             let root = std::env::temp_dir().join(format!("mtgfr-debug-rpc-{}", std::process::id()));
             let _ = fs::remove_dir_all(&root);
             fs::create_dir_all(&root).unwrap();
             let mutation = root.join("request.json");
-            fs::write(&mutation, r#"{"tableId":"table-a","operations":[]}"#).unwrap();
+            fs::write(
+                &mutation,
+                r#"{"tableId":"table-a","expectedTableSeq":"8","operations":[]}"#,
+            )
+            .unwrap();
 
             let (tables, _) = execute(&endpoint, Command::Tables).await.unwrap();
             assert!(tables.contains("table-a"));
@@ -786,12 +1045,49 @@ mod debug_cli {
                 &endpoint,
                 Command::Mutate {
                     request_json: mutation,
+                    expected_table_seq: Some(8),
                     out: None,
                 },
             )
             .await
             .unwrap();
             assert!(mutation_json.contains("debugRevision"));
+            let (checkpoint, _) = execute(
+                &endpoint,
+                Command::Checkpoint {
+                    table: "table-a".into(),
+                    name: "baseline".into(),
+                    replace: true,
+                    expected_table_seq: Some(5),
+                    out: None,
+                },
+            )
+            .await
+            .unwrap();
+            assert!(checkpoint.contains("objectSlots"));
+            let (restore, _) = execute(
+                &endpoint,
+                Command::Restore {
+                    table: "table-a".into(),
+                    name: "baseline".into(),
+                    expected_debug_revision: Some(4),
+                    expected_table_seq: Some(5),
+                    out: None,
+                },
+            )
+            .await
+            .unwrap();
+            assert!(restore.contains("restoredSourceTableSeq"));
+            let (journal, _) = execute(
+                &endpoint,
+                Command::Journal {
+                    table: "table-a".into(),
+                    out: None,
+                },
+            )
+            .await
+            .unwrap();
+            assert!(journal.contains("baseline"));
             let error = execute(
                 &endpoint,
                 Command::Inspect {
@@ -813,7 +1109,10 @@ mod debug_cli {
                 [
                     "tables",
                     "inspect:table-a",
-                    "mutate:table-a:0",
+                    "mutate:table-a:0:Some(8)",
+                    "checkpoint:table-a:baseline:true:Some(5)",
+                    "restore:table-a:baseline:Some(4):Some(5)",
+                    "journal:table-a",
                     "inspect:missing"
                 ]
             );
