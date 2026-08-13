@@ -21,6 +21,16 @@ pub const MAX_PUBLIC_STACK_GHOST_SENTENCE_BYTES: usize = 512;
 const MAX_VIOLATIONS: usize = 16;
 const MAX_VIOLATION_MESSAGE_BYTES: usize = 256;
 
+// Release-isolation evidence owned by this cfg-gated constructor/editor module. Keep this marker
+// out of profile-stable stack enums so its absence proves that the authoring call path is unlinked.
+#[used]
+static DEBUG_STACK_EDITOR_MARKER: [u8; 34] = *b"MTGFR_DEBUG_STACK_EDITOR_MARKER_V1";
+
+#[inline(never)]
+fn retain_debug_stack_editor_marker() {
+    std::hint::black_box(&DEBUG_STACK_EDITOR_MARKER);
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PublicStackGhostError {
     InvalidController,
@@ -44,6 +54,7 @@ pub fn push_public_stack_ghost(
     controller: PlayerId,
     public: PublicStackGhost,
 ) -> Result<StackEntryId, PublicStackGhostError> {
+    retain_debug_stack_editor_marker();
     validate_public_stack_ghost(game, controller, &public)?;
 
     let mut candidate = game.clone();
@@ -166,6 +177,7 @@ pub fn replace_stack(
     game: &mut Game,
     entries: &[DebugStackEntrySpec],
 ) -> Result<Vec<StackEntryId>, StackEditError> {
+    retain_debug_stack_editor_marker();
     require_stack_editable(game)?;
     let mut candidate = game.clone();
     while !candidate.stack.is_empty() {
@@ -180,6 +192,7 @@ pub fn push_stack(
     game: &mut Game,
     entry: &DebugStackEntrySpec,
 ) -> Result<Vec<StackEntryId>, StackEditError> {
+    retain_debug_stack_editor_marker();
     require_stack_editable(game)?;
     let mut candidate = game.clone();
     add_stack_entries(&mut candidate, std::slice::from_ref(entry))?;
@@ -188,6 +201,7 @@ pub fn push_stack(
 
 /// Atomically remove `count` entries from the top without fabricating zone events.
 pub fn pop_stack(game: &mut Game, count: usize) -> Result<Vec<StackEntryId>, StackEditError> {
+    retain_debug_stack_editor_marker();
     require_stack_editable(game)?;
     if count == 0 || count > game.stack.len() {
         return Err(StackEditError {

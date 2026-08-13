@@ -30,7 +30,7 @@ The contract SHALL expose Buf STANDARD `*Service` service names for authenticati
 
 ### Requirement: The debug protobuf package remains outside production wire surfaces
 
-The debug-only `mtgfr.debug.v1` package SHALL have separate generated Rust bindings and a separate descriptor; those bindings SHALL be linked and exposed only when debug assertions are enabled. The package SHALL NOT be included in the production descriptor or browser-generated clients. Its additive `DebugService` contract SHALL contain exactly six development RPCs (`ListTables`, `InspectTable`, `MutateTable`, `CheckpointTable`, `RestoreCheckpoint`, and `GetDebugJournal`) and the typed mutation union SHALL contain exactly fifteen arms: coherent pending-orchestration clearing remains arm eleven, and checked stack replacement, push, pop, and exact-object printing override occupy arms twelve through fifteen. Stack inspection SHALL append stable entry identity, authoritative targets, and optional public-ghost metadata, and typed error reasons SHALL remain stable through the appended unsupported-stack-construction reason at value eighteen. The service SHALL remain a direct development gRPC surface rather than weakening authentication on ordinary game, deck, rating, or seed services or adding a browser or BFF route.
+The debug-only `mtgfr.debug.v1` package SHALL have separate generated Rust bindings and a separate descriptor; those bindings SHALL be linked and exposed only when debug assertions are enabled. The package SHALL NOT be included in the production descriptor or browser-generated clients. Its additive `DebugService` contract SHALL contain exactly six development RPCs (`ListTables`, `InspectTable`, `MutateTable`, `CheckpointTable`, `RestoreCheckpoint`, and `GetDebugJournal`) and the typed mutation union SHALL contain exactly fifteen arms: the original arms one through eleven retain their values, coherent pending-orchestration clearing remains arm eleven, and `ReplaceStack`, `PushStack`, `PopStack`, and `SetObjectPrintOverride` are arms twelve, thirteen, fourteen, and fifteen respectively. Stack inspection SHALL append stable entry identity, authoritative targets, and optional public-ghost metadata, and the original typed error reasons zero through seventeen SHALL retain their values while unsupported-stack-construction is appended at value eighteen. The service SHALL remain a direct development gRPC surface rather than weakening authentication on ordinary game, deck, rating, or seed services or adding a browser or BFF route.
 
 #### Scenario: Browser generation excludes the expanded debug package
 
@@ -52,6 +52,10 @@ Browsers SHALL speak a same-origin RPC surface to the web backend. The backend S
 #### Scenario: Stream connect failure before first event
 - **WHEN** the backend cannot establish the game stream
 - **THEN** the failure is observable as an HTTP-shaped error before any stream event is delivered
+
+#### Scenario: Invalid decimal stack identity reconnects through the typed stream path
+- **WHEN** an SSE frame contains a non-canonical or out-of-range decimal `state.stack[*].entry_id`
+- **THEN** parsing returns the sanitized typed stream error without echoing the identifier, and the subscriber enters its ordinary reconnect path rather than narrowing or accepting the value
 
 ### Requirement: Per-viewer redaction happens before bytes leave the API
 The rules engine SHALL emit full-information events and game state and remain audience-unaware. A projection layer SHALL map those to a per-viewer visible state and visible events, stripping or blanking facts the viewer must not see, before any response leaves the API process. Spectators and eliminated or non-seated observers SHALL receive the public projection (viewer sentinel 255): public zones and counts only — no hand or library identities.

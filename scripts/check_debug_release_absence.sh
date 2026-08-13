@@ -21,6 +21,7 @@ debug_binary="$debug_target/debug/server"
 release_binary="$release_target/release/server"
 needles=(
   'MTGFR_DEBUG_IMPLEMENTATION_MARKER_V1'
+  'MTGFR_DEBUG_STACK_EDITOR_MARKER_V1'
   'mtgfr.debug.v1.DebugService'
   '/mtgfr.debug.v1.DebugService/'
 )
@@ -97,6 +98,11 @@ done <"$descriptor_list"
 if [[ "$descriptor_count" -ne 1 ]]; then
   printf 'expected exactly one production descriptor, inspected %d\n' "$descriptor_count" >&2
   exit 1
+fi
+
+# Docker uses this opt-in output so the runtime receives the exact binary scanned above.
+if [[ -n "${MTGFR_RELEASE_BINARY_OUTPUT:-}" ]]; then
+  install -m 0755 "$release_binary" "$MTGFR_RELEASE_BINARY_OUTPUT"
 fi
 
 printf 'release isolation passed: one server binary and one production descriptor contain no debug API bytes\n'

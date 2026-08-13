@@ -26,6 +26,7 @@ else
   mkdir -p "$CARGO_TARGET_DIR/debug"
   printf '%s\n' \
     MTGFR_DEBUG_IMPLEMENTATION_MARKER_V1 \
+    MTGFR_DEBUG_STACK_EDITOR_MARKER_V1 \
     mtgfr.debug.v1.DebugService \
     /mtgfr.debug.v1.DebugService/ >"$CARGO_TARGET_DIR/debug/server"
 fi
@@ -63,6 +64,15 @@ for run_root in run_roots:
     assert not run_root.exists(), run_root
 PY
 
+# The optional production-image output must be the exact release artifact that passed the gate.
+: >"$tmp/output-targets"
+MTGFR_RELEASE_BINARY_OUTPUT="$tmp/gated-server" \
+  FAKE_CARGO_TARGET_LOG="$tmp/output-targets" PATH="$release_bin:$PATH" \
+  "$root/scripts/check_debug_release_absence.sh" >"$tmp/output.log" 2>&1
+[[ -x "$tmp/gated-server" ]] || fail 'release gate did not emit the scanned release binary'
+grep -aFq 'ordinary release server' "$tmp/gated-server" \
+  || fail 'release gate output is not the scanned release binary'
+
 # A descriptor traversal that emits a plausible result and then errors must fail.
 find_bin="$tmp/find-bin"
 make_fake_cargo "$find_bin"
@@ -86,6 +96,15 @@ if MTGFR_EXTRA_RELEASE_BINARY="$tmp/controlled-leak" \
   FAKE_CARGO_TARGET_LOG="$tmp/hook-targets" PATH="$release_bin:$PATH" \
   "$root/scripts/check_debug_release_absence.sh" >"$tmp/hook.log" 2>&1; then
   fail 'release gate accepted its controlled leak test artifact'
+fi
+
+# The stack-editor marker is separately owned by the cfg-gated engine constructor/editor.
+printf 'MTGFR_DEBUG_STACK_EDITOR_MARKER_V1\n' >"$tmp/controlled-stack-editor-leak"
+: >"$tmp/stack-editor-hook-targets"
+if MTGFR_EXTRA_RELEASE_BINARY="$tmp/controlled-stack-editor-leak" \
+  FAKE_CARGO_TARGET_LOG="$tmp/stack-editor-hook-targets" PATH="$release_bin:$PATH" \
+  "$root/scripts/check_debug_release_absence.sh" >"$tmp/stack-editor-hook.log" 2>&1; then
+  fail 'release gate accepted a controlled stack-editor leak'
 fi
 
 # Exercise the TypeScript exclusion gate in a disposable repository fixture.
