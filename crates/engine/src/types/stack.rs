@@ -2411,9 +2411,32 @@ pub(crate) struct StackEntryIdExhausted;
 ///
 /// Kept separate from [`StackPayload`] so a later source-independent renderer can be added
 /// without changing executable spell/ability semantics.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StackRenderSource {
     Object(ObjectId),
+    #[allow(dead_code)] // Profile-stable; only cfg(debug_assertions) editor code constructs it.
+    InlinePublic(DebugStackRender),
+}
+
+/// Complete source-independent public renderer metadata for a stack ghost.
+///
+/// This type is profile-stable because ordinary projection must exhaustively represent every
+/// engine stack entry. Only debug-build constructors can put one into a [`Game`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicStackGhost {
+    pub name: String,
+    pub label: String,
+    pub printing_id: String,
+    pub card_id: Option<String>,
+    pub printed_sentences: Vec<String>,
+}
+
+/// Internal renderer wrapper. A no-op has no executable source, so its controller is public
+/// presentation metadata rather than an inferred object fact.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DebugStackRender {
+    pub(crate) controller: PlayerId,
+    pub(crate) public: PublicStackGhost,
 }
 
 /// Executable state carried by one stack entry.
@@ -2441,6 +2464,9 @@ pub(crate) enum StackPayload {
         /// The multiset of mana actually spent activating this ability.
         spent_mana: [u8; 6],
     },
+    /// Debug-authored, source-less presentation entry. Only cfg-gated editor code constructs it.
+    #[allow(dead_code)] // Profile-stable; deliberately unreachable from release constructors.
+    DebugNoOp,
 }
 
 /// One identity-stable stack entry. Identity is independent of both stack row and object source.
@@ -2475,6 +2501,22 @@ pub enum StackEntryKind {
         effect: Effect,
         target: Option<Target>,
     },
+    /// A source-less, targetless public stack entry with no executable Magic effect.
+    DebugNoOp {
+        controller: PlayerId,
+        public: PublicStackGhost,
+    },
+}
+
+impl StackEntryKind {
+    /// The object whose public characteristics render this entry, if it has one.
+    pub fn object_source(&self) -> Option<ObjectId> {
+        match self {
+            Self::Spell(object) => Some(*object),
+            Self::Ability { source, .. } => Some(*source),
+            Self::DebugNoOp { .. } => None,
+        }
+    }
 }
 
 /// A canonical, full-information record of something that happened. The *only* thing

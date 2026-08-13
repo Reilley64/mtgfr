@@ -232,7 +232,23 @@ A permanent MUST stay tapped through its controller's untap step while any conti
 ### Requirement: Priority and Stack
 Priority MUST begin with the active player on steps that grant it. After a player acts (cast, activate, play land) or a stack item resolves, priority MUST return to the active player. When consecutive passes equal the number of living players: if the stack is non-empty, resolve the top item, reset passes, and return priority to the active player; if the stack is empty, advance to the next step. Combat declaration steps MUST remain until a valid declaration is made (empty declarations legal when not forced by goad/must-attack). Mana abilities that produce mana and have no target MUST resolve immediately without using the stack and without changing priority or the pass counter.
 
+Every ordinary stack entry MUST receive a nonzero, monotonically increasing, engine-owned `u64` identity when inserted. An identity MUST NOT be reused after its entry leaves the stack. A copied spell or ability MUST receive a fresh identity, while an entry that survives another entry resolving or being countered MUST retain its identity. Stack-entry identity is presentation and orchestration identity only: spell and ability targeting, countering, and resolution semantics MUST remain keyed by source or stack `ObjectId` as applicable rather than by the stack-entry identity.
+
+The render descriptor for a stack entry MUST be structurally separate from its executable payload. Ordinary spells and abilities MUST pair an object-backed render descriptor with their existing source-keyed payload. A debug-assertion-only constructor MAY insert one constrained public ghost that pairs explicit source-independent renderer metadata with a debug no-op payload. Such a ghost MUST be source-less and targetless; MUST carry an existing controller, a nonblank name of at most 128 bytes, a nonblank label of at most 512 bytes, a nonblank printing id of at most 64 bytes, an optional nonblank known card id of at most 64 bytes, and at most eight nonblank printed sentences of at most 512 bytes each; and MUST resolve only by being removed from the stack without producing authoritative events. Structural validation MUST reject every render/payload mismatch. The ghost constructor MUST remain unavailable in release builds, while the engine types and production projection MUST exhaustively represent a ghost already present in a game.
+
 An activated ability on the stack MUST be targetable and counterable in its own right, independently of the permanent that produced it: countering it MUST remove it from the stack without touching its source, and a targeting restriction naming its source's card type MUST be enforced when targets are chosen. A counter-unless-pays form MUST offer the payment to the *ability's* controller, and MUST counter the ability only when that player declines.
+
+#### Scenario: Stack identity survives unrelated removal
+- **WHEN** the top entry resolves or is countered while a lower entry remains on the stack
+- **THEN** the lower entry retains its nonzero identity, and a later insertion receives a greater identity rather than reusing the removed identity
+
+#### Scenario: Stack copy receives fresh identity without changing target semantics
+- **WHEN** a spell or ability is copied on the stack
+- **THEN** the copy receives a fresh stack-entry identity while target and counter operations continue to name the applicable source or stack object
+
+#### Scenario: Debug public ghost is inert and structurally paired
+- **WHEN** a debug build inserts valid bounded public ghost metadata and that entry resolves
+- **THEN** it has no source or targets, is paired only with the debug no-op payload, leaves the stack without authoritative events, and remains projectable through the production-visible stack shape
 
 #### Scenario: An activated ability is countered on the stack
 - **WHEN** a spell that counters a target activated ability from an artifact source resolves against an artifact's ability

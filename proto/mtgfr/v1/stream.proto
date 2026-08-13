@@ -100,8 +100,8 @@ message ObjectView {
 message StackObjectView {
   // "spell" or "ability".
   string kind = 1;
-  // The spell's stack-object id, or the ability's source permanent.
-  uint32 source = 2;
+  // The spell's stack-object id or ability source; absent for source-less entries.
+  optional uint32 source = 2;
   uint32 controller = 3;
   reserved 4;
   // The chosen target, if any.
@@ -118,6 +118,10 @@ message StackObjectView {
   string card_id = 9;
   // Source card's display name for art alt text / inspect (empty when anonymized).
   string name = 10;
+  // Stable stack-entry identity, independent of any source object.
+  uint64 entry_id = 11;
+  // Explicit public printed rules text for source-less authored entries.
+  repeated string printed_sentences = 12;
 }
 
 // One labelled item offered by a pending choice (a legal target, or a blocker to assign damage

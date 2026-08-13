@@ -166,7 +166,10 @@ pub fn complete_visible(
         if entry.card_id.is_empty() {
             continue;
         }
-        let seat = game.owner_of(entry.source).0 as usize;
+        let Some(source) = entry.source else {
+            continue;
+        };
+        let seat = game.owner_of(source).0 as usize;
         if seat >= extras.prints.len() {
             continue;
         }
@@ -1017,8 +1020,9 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     .collect();
                 let (print, card_id, name) = stack_source_art(game, id);
                 StackObjectView {
+                    entry_id: entry.entry_id.0,
                     kind: "spell".to_string(),
-                    source: id,
+                    source: Some(id),
                     controller: game.controller_of(id).0,
                     label: named_message("card.name", game.def_of(id).name),
                     target: game.spell_target(id).map(WireTarget::of),
@@ -1026,6 +1030,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     print,
                     card_id,
                     name,
+                    printed_sentences: Vec::new(),
                 }
             }
             engine::StackEntryKind::Ability {
@@ -1037,8 +1042,9 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 let targets: Vec<WireTarget> = target.map(WireTarget::of).into_iter().collect();
                 let (print, card_id, name) = stack_source_art(game, source);
                 StackObjectView {
+                    entry_id: entry.entry_id.0,
                     kind: "ability".to_string(),
-                    source,
+                    source: Some(source),
                     controller: controller.0,
                     label: to_wire_message(effect.message()),
                     target: targets.first().copied(),
@@ -1046,8 +1052,22 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     print,
                     card_id,
                     name,
+                    printed_sentences: Vec::new(),
                 }
             }
+            engine::StackEntryKind::DebugNoOp { controller, public } => StackObjectView {
+                entry_id: entry.entry_id.0,
+                kind: "ability".to_string(),
+                source: None,
+                controller: controller.0,
+                label: MessageRef::key(public.label),
+                target: None,
+                targets: Vec::new(),
+                print: public.printing_id,
+                card_id: public.card_id.unwrap_or_default(),
+                name: public.name,
+                printed_sentences: public.printed_sentences,
+            },
         })
         .collect();
 
@@ -3650,7 +3670,7 @@ mod tests {
         let entry = snap
             .stack
             .iter()
-            .find(|e| e.kind == "ability" && e.source == wilds)
+            .find(|e| e.kind == "ability" && e.source == Some(wilds))
             .expect("ability on stack keyed by the activation source id");
         assert_eq!(entry.print, expected_print);
         assert_eq!(entry.name, "Evolving Wilds");
@@ -3671,7 +3691,7 @@ mod tests {
         let seated = with_seat
             .stack
             .iter()
-            .find(|e| e.kind == "ability" && e.source == wilds)
+            .find(|e| e.kind == "ability" && e.source == Some(wilds))
             .expect("ability still on stack");
         assert_eq!(seated.print, preferred);
     }
@@ -3714,7 +3734,7 @@ mod tests {
         let entry = snap
             .stack
             .iter()
-            .find(|e| e.kind == "ability" && e.source == food)
+            .find(|e| e.kind == "ability" && e.source == Some(food))
             .expect("Food ability on stack keyed by the sacrificed token id");
         assert_eq!(entry.print, expected_print);
         assert_eq!(entry.name, "Food");
@@ -3752,5 +3772,42 @@ mod tests {
             !nezumi_action.mana_only,
             "a non-mana activated ability is a real play"
         );
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn source_less_stack_ghost_projects_identically_to_every_audience() {
+        let mut game = Game::with_players(2, 7);
+        let public = engine::PublicStackGhost {
+            name: "Public fixture".to_string(),
+            label: "No-op ability".to_string(),
+            printing_id: "11111111-1111-1111-1111-111111111111".to_string(),
+            card_id: None,
+            printed_sentences: vec!["Explicit public rules text.".to_string()],
+        };
+        let entry_id =
+            engine::debug::push_public_stack_ghost(&mut game, PlayerId(1), public.clone())
+                .expect("valid public metadata inserts one ghost");
+
+        let owner = snapshot(&game, PlayerId(0)).stack;
+        let opponent = snapshot(&game, PlayerId(1)).stack;
+        let spectator = spectator_snapshot(&game).stack;
+
+        assert_eq!(owner, opponent);
+        assert_eq!(owner, spectator);
+        assert_eq!(owner.len(), 1);
+        let projected = &owner[0];
+        assert_eq!(projected.entry_id, entry_id.0);
+        assert_eq!(projected.kind, "ability");
+        assert_eq!(projected.source, None);
+        assert_eq!(projected.controller, 1);
+        assert_eq!(projected.label.key, "No-op ability");
+        assert_eq!(projected.target, None);
+        assert!(projected.targets.is_empty());
+        assert_eq!(projected.print, public.printing_id);
+        assert_eq!(projected.card_id, "");
+        assert_eq!(projected.name, public.name);
+        assert_eq!(projected.printed_sentences, public.printed_sentences);
+        assert!(snapshot(&game, PlayerId(0)).objects.is_empty());
     }
 }

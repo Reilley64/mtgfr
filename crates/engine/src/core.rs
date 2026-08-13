@@ -188,7 +188,7 @@ impl Game {
         Ok(entry_id)
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, debug_assertions))]
     pub(crate) fn push_stack_item(
         &mut self,
         render_source: StackRenderSource,
@@ -261,6 +261,16 @@ impl Game {
                         },
                     }
                 }
+                (StackRenderSource::InlinePublic(render), StackPayload::DebugNoOp) => StackEntry {
+                    entry_id: item.entry_id,
+                    kind: StackEntryKind::DebugNoOp {
+                        controller: render.controller,
+                        public: render.public.clone(),
+                    },
+                },
+                _ => unreachable!(
+                    "structural validation rejects mismatched stack render/payload pairs"
+                ),
             })
             .collect()
     }

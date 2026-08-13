@@ -95,10 +95,11 @@ impl Game {
         // every `Event::Discarded` by `discard_ids` so Psychic Purge can ask whether "a spell or
         // ability an opponent controls" made you discard it. Armed here, per stack item, because
         // the discards that pause for a choice are answered outside any resolution call.
-        self.resolution_frame.discard_cause = Some(match &top.payload {
-            StackPayload::Spell(object) => self.spell(*object).controller,
-            StackPayload::Ability { controller, .. } => *controller,
-        });
+        self.resolution_frame.discard_cause = match &top.payload {
+            StackPayload::Spell(object) => Some(self.spell(*object).controller),
+            StackPayload::Ability { controller, .. } => Some(*controller),
+            StackPayload::DebugNoOp => None,
+        };
         match top.payload {
             StackPayload::Spell(object) => self.resolve_spell(object, events),
             StackPayload::Ability {
@@ -167,6 +168,11 @@ impl Game {
                     events,
                 );
                 self.resolution_frame.resolving_targets.clear();
+            }
+            StackPayload::DebugNoOp => {
+                // Debug ghosts are deliberately not Magic objects or abilities. The ordinary
+                // all-pass resolution path removes the top entry without manufacturing an event.
+                self.stack.pop();
             }
         }
     }

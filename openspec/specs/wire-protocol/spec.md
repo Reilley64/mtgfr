@@ -87,6 +87,22 @@ Each viewer's visible state SHALL carry turn structure, per-seat public player v
 - **WHEN** an attacker became blocked and its blockers later leave combat
 - **THEN** the combat view still lists that attacker among blocked attackers for the rest of combat
 
+### Requirement: Stack views preserve identity and optional source presence
+
+`StackObjectView` SHALL retain `source` as presence-aware optional field tag 2, SHALL carry the stable engine-owned `uint64 entry_id` at tag 11 without narrowing or lossy conversion, and SHALL carry explicit public `printed_sentences` at repeated string tag 12. An ordinary spell or ability SHALL project `source` as present with its stack object or ability source id. A source-independent public ghost SHALL project `source` as absent, with no target or targets, and SHALL carry only its explicit public renderer metadata. The production stack projection shape SHALL support both forms even though only a debug-assertion-only engine constructor can create the ghost. This additive production message shape SHALL NOT expose the debug protobuf package, add a browser debug RPC, or add a BFF debug route.
+
+#### Scenario: Ordinary stack entry preserves source and wide identity
+- **WHEN** an ordinary spell or ability with a stack-entry identity above JavaScript's safe integer range is mapped to `StackObjectView`
+- **THEN** tag 2 is present with its source and tag 11 preserves the exact `u64` value
+
+#### Scenario: Public ghost projects without a source
+- **WHEN** a game containing a debug-authored public ghost is projected through the production visible-state contract
+- **THEN** tag 2 is absent, targets are empty, tag 11 carries its stable identity, and tag 12 carries its explicit public printed sentences
+
+#### Scenario: Stack shape does not create a browser debug operation
+- **WHEN** production browser bindings are generated with the expanded `StackObjectView`
+- **THEN** they contain the production stack fields but no debug package, debug service, debug RPC, or mutation route
+
 ### Requirement: Stream snapshots and deltas are ordered first-class frames
 A connecting client SHALL receive an initial snapshot frame at the current sequence number, then ordered delta, replacement snapshot, and heartbeat frames. Each delta SHALL carry a monotonic sequence watermark, a batch of already-redacted visible events, the viewer's complete visible state after those events, and optional auto-action notices for forced or automatic submissions in the frame. A midstream replacement snapshot SHALL be a first-class frame at its own monotonic sequence watermark, SHALL contain a complete state freshly projected for that viewer, and SHALL establish the baseline for every later delta without inventing incremental events. Clients SHALL fold snapshots by replacing the board and SHALL fold deltas by replacing the board from state and appending the events to the log. They SHALL NOT reorder visible events across frames or fetch a side snapshot. On reconnect after a sequence gap, the client SHALL open a new stream and treat the opening snapshot as resume. Heartbeat frames SHALL exist to prevent edge-proxy idle timeouts and MUST be forwarded on the browser-facing push channel.
 

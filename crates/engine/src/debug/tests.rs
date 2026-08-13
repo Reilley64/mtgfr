@@ -2744,3 +2744,339 @@ fn later_invalid_operation_does_not_commit_an_earlier_pending_clear() {
         "the failed candidate was partially edited and must be discarded"
     );
 }
+
+#[test]
+fn stack_render_source_public_ghost_is_source_less_targetless_and_resolves_without_events() {
+    let mut game = Game::with_players(2, 7);
+    let public = PublicStackGhost {
+        name: "Public fixture".to_string(),
+        label: "No-op ability".to_string(),
+        printing_id: "11111111-1111-1111-1111-111111111111".to_string(),
+        card_id: Some(card("Lightning Bolt").id.to_string()),
+        printed_sentences: vec!["This is explicit public text.".to_string()],
+    };
+
+    let query_source = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    let entry_id = push_public_stack_ghost(&mut game, P1, public.clone())
+        .expect("valid public metadata inserts one ghost");
+
+    assert_eq!(entry_id, crate::StackEntryId(1));
+    assert_eq!(
+        game.stack(),
+        vec![crate::StackEntry {
+            entry_id,
+            kind: crate::StackEntryKind::DebugNoOp {
+                controller: P1,
+                public: public.clone(),
+            },
+        }]
+    );
+    assert_eq!(game.stack()[0].kind.object_source(), None);
+    assert!(matches!(
+        &game.stack[0].render_source,
+        StackRenderSource::InlinePublic(_)
+    ));
+    assert!(matches!(&game.stack[0].payload, StackPayload::DebugNoOp));
+    assert!(
+        game.legal_targets_for(
+            crate::TargetSpec::InstantOrSorcerySpellOnStack,
+            query_source,
+            P0,
+            [false; crate::Color::COUNT],
+            0,
+        )
+        .is_empty(),
+        "a source-less ghost is not copy/spell-target eligible"
+    );
+    assert!(
+        game.legal_targets_for(
+            crate::TargetSpec::ActivatedAbilityOnStack {
+                artifact_source: false,
+            },
+            query_source,
+            P0,
+            [false; crate::Color::COUNT],
+            0,
+        )
+        .is_empty(),
+        "a ghost is not an activated-ability target"
+    );
+
+    let mut resolution_events = Vec::new();
+    game.resolve_top(&mut resolution_events);
+    assert!(
+        resolution_events.is_empty(),
+        "debug no-op resolution itself emits no engine events"
+    );
+    assert!(game.stack().is_empty());
+
+    push_public_stack_ghost(&mut game, P1, public).unwrap();
+    game.submit(crate::Intent::PassPriority { player: P0 })
+        .expect("first player passes");
+    game.submit(crate::Intent::PassPriority { player: P1 })
+        .expect("second pass safely resolves the ghost");
+    assert!(game.stack().is_empty());
+}
+
+#[test]
+fn stack_render_source_public_ghost_metadata_enforces_byte_bounds_atomically() {
+    let known_card_id = card("Lightning Bolt").id.to_string();
+    let cases = [
+        (
+            "empty name",
+            PublicStackGhost {
+                name: String::new(),
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidName,
+        ),
+        (
+            "name over bound",
+            PublicStackGhost {
+                name: "é".repeat(65),
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidName,
+        ),
+        (
+            "empty label",
+            PublicStackGhost {
+                label: " ".to_string(),
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidLabel,
+        ),
+        (
+            "label over bound",
+            PublicStackGhost {
+                label: "é".repeat(257),
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidLabel,
+        ),
+        (
+            "empty printing",
+            PublicStackGhost {
+                printing_id: String::new(),
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidPrintingId,
+        ),
+        (
+            "printing over bound",
+            PublicStackGhost {
+                printing_id: "é".repeat(33),
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidPrintingId,
+        ),
+        (
+            "empty card id",
+            PublicStackGhost {
+                card_id: Some(String::new()),
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidCardId,
+        ),
+        (
+            "card id over bound",
+            PublicStackGhost {
+                card_id: Some("é".repeat(33)),
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidCardId,
+        ),
+        (
+            "unknown card id",
+            PublicStackGhost {
+                card_id: Some("unknown-public-card".to_string()),
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::UnknownCardId,
+        ),
+        (
+            "too many sentences",
+            PublicStackGhost {
+                printed_sentences: vec!["ok".to_string(); 9],
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::TooManyPrintedSentences,
+        ),
+        (
+            "empty sentence",
+            PublicStackGhost {
+                printed_sentences: vec![" ".to_string()],
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidPrintedSentence,
+        ),
+        (
+            "sentence over bound",
+            PublicStackGhost {
+                printed_sentences: vec!["é".repeat(257)],
+                ..valid_public_ghost()
+            },
+            PublicStackGhostError::InvalidPrintedSentence,
+        ),
+    ];
+
+    for (case, mut public, expected) in cases {
+        if public.card_id.as_deref() == Some("known") {
+            public.card_id = Some(known_card_id.clone());
+        }
+        let mut game = Game::with_players(2, 7);
+        let allocator_before = game.next_stack_entry_id;
+        assert_eq!(
+            push_public_stack_ghost(&mut game, P0, public),
+            Err(expected),
+            "{case}"
+        );
+        assert_eq!(
+            game.next_stack_entry_id, allocator_before,
+            "{case} consumed an id"
+        );
+        assert!(game.stack.is_empty(), "{case} partially inserted");
+    }
+
+    let mut game = Game::with_players(2, 7);
+    assert_eq!(
+        push_public_stack_ghost(&mut game, PlayerId(2), valid_public_ghost()),
+        Err(PublicStackGhostError::InvalidController)
+    );
+    assert_eq!(game.next_stack_entry_id.unwrap().get(), 1);
+    assert!(game.stack.is_empty());
+}
+
+#[test]
+fn stack_render_source_public_ghost_accepts_exact_metadata_byte_limits() {
+    let mut game = Game::with_players(2, 7);
+    let public = PublicStackGhost {
+        name: "n".repeat(MAX_PUBLIC_STACK_GHOST_NAME_BYTES),
+        label: "l".repeat(MAX_PUBLIC_STACK_GHOST_LABEL_BYTES),
+        printing_id: "p".repeat(MAX_PUBLIC_STACK_GHOST_PRINTING_ID_BYTES),
+        card_id: Some(card("Lightning Bolt").id.to_string()),
+        printed_sentences: vec![
+            "s".repeat(MAX_PUBLIC_STACK_GHOST_SENTENCE_BYTES);
+            MAX_PUBLIC_STACK_GHOST_SENTENCES
+        ],
+    };
+    push_public_stack_ghost(&mut game, P0, public).expect("exact bounds are accepted");
+    assert!(validate_structural(&game).is_ok());
+}
+
+#[test]
+fn stack_render_source_structural_validator_rejects_every_mismatched_pair() {
+    let base = valid_public_ghost();
+    let mut ghost_game = Game::with_players(2, 7);
+    push_public_stack_ghost(&mut ghost_game, P0, base.clone()).unwrap();
+    let inline = ghost_game.stack[0].render_source.clone();
+
+    let mut object_debug = ghost_game.clone();
+    object_debug.stack[0].render_source = StackRenderSource::Object(0);
+    assert!(codes(&object_debug).contains(&"stack_pairing"));
+
+    let mut game = Game::with_players(2, 7);
+    let source = game.spawn_on_battlefield(P0, card("Grizzly Bears"));
+    game.push_stack_item(
+        StackRenderSource::Object(source),
+        StackPayload::Ability {
+            controller: P0,
+            source,
+            effect: Effect::Draw(crate::DrawEffect::Cards {
+                who: crate::PlayerSet::You,
+                count: crate::Amount::Fixed(1),
+            }),
+            activated: false,
+            target: None,
+            targets_second: Default::default(),
+            x: 0,
+            spent_mana: [0; 6],
+        },
+    )
+    .unwrap();
+    game.stack[0].render_source = inline.clone();
+    assert!(codes(&game).contains(&"stack_pairing"));
+
+    let mut spell_game = Game::with_players(2, 7);
+    let card_id = spell_game.spawn_in_hand(P0, card("Lightning Bolt"));
+    spell_game.fund_mana(P0);
+    spell_game
+        .cast(
+            P0,
+            card_id,
+            Some(Target::Player(P1)),
+            0,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            false,
+            false,
+            false,
+            0,
+            0,
+            0,
+            false,
+        )
+        .unwrap();
+    spell_game.stack[0].render_source = inline;
+    assert!(codes(&spell_game).contains(&"stack_pairing"));
+}
+
+#[test]
+fn stack_render_source_public_ghost_exhaustion_is_atomic() {
+    let mut game = Game::with_players(2, 7);
+    game.next_stack_entry_id = None;
+    let allocator_before = game.next_stack_entry_id;
+
+    assert_eq!(
+        push_public_stack_ghost(&mut game, P0, valid_public_ghost()),
+        Err(PublicStackGhostError::StackEntryIdExhausted)
+    );
+    assert_eq!(game.next_stack_entry_id, allocator_before);
+    assert!(game.stack.is_empty());
+}
+
+#[test]
+fn stack_render_source_public_ghost_preserves_accepted_whitespace() {
+    let mut game = Game::with_players(2, 7);
+    let public = PublicStackGhost {
+        name: "  Fixture  ".to_string(),
+        label: "  Public no-op  ".to_string(),
+        printing_id: "  print  ".to_string(),
+        card_id: None,
+        printed_sentences: vec!["  public sentence  ".to_string()],
+    };
+
+    push_public_stack_ghost(&mut game, P0, public.clone()).expect("nonempty metadata is accepted");
+    assert!(matches!(
+        &game.stack()[0].kind,
+        crate::StackEntryKind::DebugNoOp { public: stored, .. } if stored == &public
+    ));
+}
+
+#[test]
+fn stack_render_source_public_ghost_card_id_lookup_is_exact() {
+    let mut game = Game::with_players(2, 7);
+    let public = PublicStackGhost {
+        card_id: Some(format!(" {} ", card("Lightning Bolt").id)),
+        ..valid_public_ghost()
+    };
+
+    assert_eq!(
+        push_public_stack_ghost(&mut game, P0, public),
+        Err(PublicStackGhostError::UnknownCardId)
+    );
+    assert_eq!(game.next_stack_entry_id.unwrap().get(), 1);
+    assert!(game.stack.is_empty());
+}
+
+fn valid_public_ghost() -> PublicStackGhost {
+    PublicStackGhost {
+        name: "Fixture".to_string(),
+        label: "Public no-op".to_string(),
+        printing_id: "print".to_string(),
+        card_id: None,
+        printed_sentences: vec![],
+    }
+}

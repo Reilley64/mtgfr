@@ -26960,7 +26960,7 @@ fn top_spell(game: &Game) -> ObjectId {
         .rev()
         .find_map(|entry| match entry.kind.clone() {
             StackEntryKind::Spell(id) => Some(id),
-            StackEntryKind::Ability { .. } => None,
+            StackEntryKind::Ability { .. } | StackEntryKind::DebugNoOp { .. } => None,
         })
         .expect("a spell is on the stack")
 }
@@ -30775,7 +30775,9 @@ fn mirrorwing_dragon_copies_spell_targeting_only_it_per_other_creature() {
         .iter()
         .map(|entry| match entry.kind.clone() {
             StackEntryKind::Spell(id) => id,
-            StackEntryKind::Ability { .. } => panic!("no ability should remain on the stack"),
+            StackEntryKind::Ability { .. } | StackEntryKind::DebugNoOp { .. } => {
+                panic!("no ability should remain on the stack")
+            }
         })
         .collect();
     let original = ids[0];

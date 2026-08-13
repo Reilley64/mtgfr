@@ -187,12 +187,19 @@ Release compilation SHALL omit debug protobuf exposure, all six service implemen
 
 CI SHALL build and scan the production-equivalent target (`server` package, release profile, `server` binary), proving that the debug service FQN, RPC path prefix, and implementation marker are absent from its bytes and that exactly one production descriptor contains no debug package. The production Docker build SHALL independently build the equivalent package/profile/binary target and repeat the forbidden-byte gate on the exact server binary it copies into the runtime image. Browser generation exclusion, release all-target compilation of the CLI stub, and CLI recipe argument safety SHALL remain verification gates.
 
-Phase C remains outside the available development contract: the authoritative debug API SHALL NOT replace, push, or pop stack entries; add stable stack-entry identifiers; create public ghost sources; override per-object printing or renderer metadata; edit mana pools or commander damage; allocate arbitrary arena identifiers; accept generic patches; or add a browser/BFF debug route.
+The shared engine and production projection contract SHALL include stable stack-entry identities and an exhaustive source-independent public-ghost representation. Only a debug-assertion-only engine constructor MAY create that constrained source-less, targetless, no-op ghost; release builds SHALL retain the inert engine enum and wire/projection shape solely so projection is total, and SHALL NOT contain that constructor or an operational service that can create the ghost.
 
-#### Scenario: Release artifacts exclude the expanded debug service
+The authoritative debug service SHALL NOT replace, push, or pop stack entries; construct known spells or abilities on the stack; override per-object printing or renderer metadata; expose arbitrary executable effects; edit mana pools or commander damage; allocate arbitrary arena identifiers; accept generic patches; add a checked stack-fixture authoring CLI workflow; or add a browser/BFF debug route. Stable identities and the inert public-ghost engine/wire shape SHALL NOT be treated as a release debug service or as authorization for any of those operations.
 
-- **WHEN** release-isolation, production-image, descriptor, browser-generation, and release all-target gates inspect artifacts after the Phase B RPCs are added
-- **THEN** no operational debug service, debug package, debug RPC path, implementation marker, browser binding, or production-runtime debug executable is present, while the release CLI target remains only a non-operational stub
+#### Scenario: Release artifacts exclude the authoritative debug service
+
+- **WHEN** release-isolation, production-image, descriptor, browser-generation, and release all-target gates inspect production artifacts
+- **THEN** no operational debug service, debug package, debug RPC path, implementation marker, browser binding, public-ghost constructor, or production-runtime debug executable is present, while stable stack identities and the inert production projection shape remain available
+
+#### Scenario: Inert stack shape exposes no debug operation
+
+- **WHEN** a release build compiles the source-independent stack enum and production projection arms
+- **THEN** no caller can construct a public ghost or invoke stack replacement, push, pop, printing override, fixture authoring, or arbitrary-effect operations through a debug service
 
 ### Requirement: Commit convention and release authorship
 

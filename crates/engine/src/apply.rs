@@ -3284,6 +3284,10 @@ impl Game {
                 self.stack.retain(|item| match &item.payload {
                     StackPayload::Spell(id) => !removed(*id),
                     StackPayload::Ability { source, .. } => !removed(*source),
+                    StackPayload::DebugNoOp => match &item.render_source {
+                        StackRenderSource::InlinePublic(render) => render.controller != player,
+                        StackRenderSource::Object(_) => false,
+                    },
                 });
                 self.combat.attackers.retain(|&a| !removed(a));
                 // Counter and boost batches leave with the object they describe — an object that

@@ -635,6 +635,7 @@ mod tests {
         assert_eq!(game.allocate_stack_entry_id(), Err(StackEntryIdExhausted));
     }
 
+    #[cfg(debug_assertions)]
     #[test]
     fn exhausted_stack_identity_rejects_an_ordinary_cast_without_partial_state() {
         let mut game = Game::new();
@@ -708,6 +709,7 @@ mod tests {
         assert_eq!(game.actions, actions_before);
     }
 
+    #[cfg(debug_assertions)]
     fn test_ability_event(source: ObjectId) -> Event {
         Event::TriggeredAbilityOnStack {
             controller: P0,
@@ -723,6 +725,7 @@ mod tests {
         }
     }
 
+    #[cfg(debug_assertions)]
     #[test]
     fn direct_ability_replay_uses_max_then_fails_atomically() {
         let mut game = Game::new();
@@ -745,6 +748,7 @@ mod tests {
         assert_eq!(game.stack_entry_id_error, error_before);
     }
 
+    #[cfg(debug_assertions)]
     #[test]
     fn replay_batch_is_atomic_when_it_needs_more_identities_than_remain() {
         let mut game = Game::new();

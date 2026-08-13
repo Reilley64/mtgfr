@@ -354,10 +354,12 @@ pub struct ModifierSourceView {
 /// One entry on the stack, for the stack panel. Bottom-first in `VisibleState.stack`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StackObjectView {
+    /// Stable identity for this stack entry, independent of any source object.
+    pub entry_id: u64,
     /// `spell` or `ability`.
     pub kind: String,
-    /// The spell's stack-object id, or the ability's source permanent.
-    pub source: ObjectId,
+    /// The spell's stack-object id or ability source; absent for source-less entries.
+    pub source: Option<ObjectId>,
     pub controller: u8,
     /// Stable label ref (the spell's name as a param, or the ability's effect key).
     pub label: MessageRef,
@@ -376,6 +378,9 @@ pub struct StackObjectView {
     /// Source card display name for art alt / inspect. Empty when anonymized.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub name: String,
+    /// Explicit public printed rules text for source-less authored entries.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub printed_sentences: Vec<String>,
 }
 
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign

@@ -70,6 +70,8 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         print: entry.print,
         card_id: entry.card_id,
         name: entry.name,
+        entry_id: entry.entry_id,
+        printed_sentences: entry.printed_sentences,
     }
 }
 
@@ -1791,8 +1793,9 @@ mod tests {
                 modifiers: vec![],
             }],
             stack: vec![StackObjectView {
+                entry_id: 9_007_199_254_740_993,
                 kind: "spell".into(),
-                source: 10,
+                source: Some(10),
                 controller: 0,
                 label: MessageRef::key("test.shock"),
                 target: Some(schema::WireTarget::Player { player: 1 }),
@@ -1800,6 +1803,7 @@ mod tests {
                 print: "shock-print".into(),
                 card_id: "shock-id".into(),
                 name: "Shock".into(),
+                printed_sentences: vec!["Explicit public text".into()],
             }],
             combat: CombatView::default(),
             can_act: true,
@@ -1894,6 +1898,9 @@ mod tests {
                 pb::wire_target::PlayerTarget { player: 1 }
             ))
         );
+        assert_eq!(st.stack[0].source, Some(10));
+        assert_eq!(st.stack[0].entry_id, 9_007_199_254_740_993);
+        assert_eq!(st.stack[0].printed_sentences, ["Explicit public text"]);
     }
 
     #[test]

@@ -6,13 +6,104 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    Card, CardId, CounterKind, EffectMessage, Game, Object, ObjectId, PlayerCounterKind, PlayerId,
-    StackItem, StackPayload, StackRenderSource, Step, Target, Zone, card_def, fresh_permanent,
-    intern_card_def,
+    Card, CardId, CounterKind, DebugStackRender, EffectMessage, Game, Object, ObjectId,
+    PlayerCounterKind, PlayerId, PublicStackGhost, StackEntryId, StackItem, StackPayload,
+    StackRenderSource, Step, Target, Zone, card_def, fresh_permanent, intern_card_def,
 };
+
+pub const MAX_PUBLIC_STACK_GHOST_NAME_BYTES: usize = 128;
+pub const MAX_PUBLIC_STACK_GHOST_LABEL_BYTES: usize = 512;
+pub const MAX_PUBLIC_STACK_GHOST_PRINTING_ID_BYTES: usize = 64;
+pub const MAX_PUBLIC_STACK_GHOST_CARD_ID_BYTES: usize = 64;
+pub const MAX_PUBLIC_STACK_GHOST_SENTENCES: usize = 8;
+pub const MAX_PUBLIC_STACK_GHOST_SENTENCE_BYTES: usize = 512;
 
 const MAX_VIOLATIONS: usize = 16;
 const MAX_VIOLATION_MESSAGE_BYTES: usize = 256;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PublicStackGhostError {
+    InvalidController,
+    InvalidName,
+    InvalidLabel,
+    InvalidPrintingId,
+    InvalidCardId,
+    UnknownCardId,
+    TooManyPrintedSentences,
+    InvalidPrintedSentence,
+    StackEntryIdExhausted,
+    StructuralViolation,
+}
+
+/// Push one explicit public, source-less, targetless no-op through the engine allocator.
+///
+/// Validation happens against a clone before commit, so rejected metadata, identity exhaustion,
+/// or a structurally invalid candidate cannot consume an id or partially change the live stack.
+pub fn push_public_stack_ghost(
+    game: &mut Game,
+    controller: PlayerId,
+    public: PublicStackGhost,
+) -> Result<StackEntryId, PublicStackGhostError> {
+    validate_public_stack_ghost(game, controller, &public)?;
+
+    let mut candidate = game.clone();
+    let entry_id = candidate
+        .allocate_stack_entry_id()
+        .map_err(|_| PublicStackGhostError::StackEntryIdExhausted)?;
+    candidate.push_stack_item_with_id(
+        entry_id,
+        StackRenderSource::InlinePublic(DebugStackRender { controller, public }),
+        StackPayload::DebugNoOp,
+    );
+    validate_structural(&candidate).map_err(|_| PublicStackGhostError::StructuralViolation)?;
+    *game = candidate;
+    Ok(entry_id)
+}
+
+fn validate_public_stack_ghost(
+    game: &Game,
+    controller: PlayerId,
+    public: &PublicStackGhost,
+) -> Result<(), PublicStackGhostError> {
+    if controller.0 as usize >= game.players.len() {
+        return Err(PublicStackGhostError::InvalidController);
+    }
+    if !bounded_nonempty(&public.name, MAX_PUBLIC_STACK_GHOST_NAME_BYTES) {
+        return Err(PublicStackGhostError::InvalidName);
+    }
+    if !bounded_nonempty(&public.label, MAX_PUBLIC_STACK_GHOST_LABEL_BYTES) {
+        return Err(PublicStackGhostError::InvalidLabel);
+    }
+    if !bounded_nonempty(
+        &public.printing_id,
+        MAX_PUBLIC_STACK_GHOST_PRINTING_ID_BYTES,
+    ) {
+        return Err(PublicStackGhostError::InvalidPrintingId);
+    }
+    if let Some(card_id) = &public.card_id {
+        if !bounded_nonempty(card_id, MAX_PUBLIC_STACK_GHOST_CARD_ID_BYTES) {
+            return Err(PublicStackGhostError::InvalidCardId);
+        }
+        if cards::get(card_id).is_none() {
+            return Err(PublicStackGhostError::UnknownCardId);
+        }
+    }
+    if public.printed_sentences.len() > MAX_PUBLIC_STACK_GHOST_SENTENCES {
+        return Err(PublicStackGhostError::TooManyPrintedSentences);
+    }
+    if public
+        .printed_sentences
+        .iter()
+        .any(|sentence| !bounded_nonempty(sentence, MAX_PUBLIC_STACK_GHOST_SENTENCE_BYTES))
+    {
+        return Err(PublicStackGhostError::InvalidPrintedSentence);
+    }
+    Ok(())
+}
+
+fn bounded_nonempty(value: &str, max_bytes: usize) -> bool {
+    !value.trim().is_empty() && value.len() <= max_bytes
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Inspection {
@@ -408,6 +499,24 @@ fn inspect_stack_item(
             source_object_id: Some(*source),
             controller: Some(*controller),
             label: effect.clone().message().key.as_str().to_string(),
+        },
+        StackPayload::DebugNoOp => match &item.render_source {
+            StackRenderSource::InlinePublic(render) => StackInspection {
+                entry_id: item.entry_id,
+                position_from_bottom,
+                kind: "ability",
+                source_object_id: None,
+                controller: Some(render.controller),
+                label: render.public.label.clone(),
+            },
+            StackRenderSource::Object(_) => StackInspection {
+                entry_id: item.entry_id,
+                position_from_bottom,
+                kind: "ability",
+                source_object_id: None,
+                controller: None,
+                label: "invalid no-op stack pairing".to_string(),
+            },
         },
     }
 }
@@ -1118,6 +1227,11 @@ fn all_player_references(game: &Game) -> Vec<(PlayerId, &'static str)> {
                     push_target_player(target, "stack target", &mut players);
                 }
             }
+            StackPayload::DebugNoOp => {
+                if let StackRenderSource::InlinePublic(render) = &item.render_source {
+                    players.push((render.controller, "stack controller"));
+                }
+            }
         }
     }
 
@@ -1791,6 +1905,24 @@ fn validate_stack(game: &Game, violations: &mut ViolationCollector) {
                     );
                 }
             }
+            (StackRenderSource::InlinePublic(render), StackPayload::DebugNoOp) => {
+                if let Err(error) =
+                    validate_public_stack_ghost(game, render.controller, &render.public)
+                {
+                    violations.push(
+                        "stack_public_metadata",
+                        format!("stack position {position} has invalid public metadata: {error:?}"),
+                    );
+                }
+            }
+            (StackRenderSource::Object(_), StackPayload::DebugNoOp)
+            | (StackRenderSource::InlinePublic(_), StackPayload::Spell(_))
+            | (StackRenderSource::InlinePublic(_), StackPayload::Ability { .. }) => {
+                violations.push(
+                    "stack_pairing",
+                    format!("stack position {position} mismatches render source and payload"),
+                );
+            }
         }
     }
     for (index, object) in game.objects.iter().enumerate() {
@@ -1966,6 +2098,7 @@ fn all_references(game: &Game) -> Vec<(ObjectId, ReferenceSite)> {
                     }
                 }
             }
+            StackPayload::DebugNoOp => {}
         }
     }
     if let Some(choice) = &game.pending_choice {
