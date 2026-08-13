@@ -58,6 +58,8 @@ message GameInspection {
   uint32 consecutive_passes = 7;
   bool has_pending_choice = 8;
   bool has_deferred_resume = 9;
+  optional uint64 next_object_id = 10;
+  optional uint64 next_stack_entry_id = 11;
 }
 message PlayerInspection {
   uint32 player_id = 1;
@@ -116,6 +118,16 @@ message StackInspection {
   optional uint32 source_object_id = 3;
   optional uint32 controller = 4;
   string label = 5;
+  uint64 entry_id = 6;
+  repeated DebugTarget targets = 7;
+  optional PublicGhostMetadata public_ghost = 8;
+}
+message PublicGhostMetadata {
+  string name = 1;
+  string label = 2;
+  string printing_id = 3;
+  optional string card_id = 4;
+  repeated string printed_sentences = 5;
 }
 
 enum Zone {
@@ -360,6 +372,7 @@ enum DebugErrorReason {
   DEBUG_ERROR_REASON_CHECKPOINT_COUNT_LIMIT = 15;
   DEBUG_ERROR_REASON_CHECKPOINT_OBJECT_LIMIT = 16;
   DEBUG_ERROR_REASON_JOURNAL_LIMIT = 17;
+  DEBUG_ERROR_REASON_UNSUPPORTED_STACK_CONSTRUCTION = 18;
 }
 message Violation {
   string code = 1;

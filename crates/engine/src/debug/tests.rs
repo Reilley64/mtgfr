@@ -103,6 +103,14 @@ fn inspect_returns_raw_arena_zones_stack_and_orchestration_facts() {
     assert_eq!(inspection.consecutive_passes, 1);
     assert!(inspection.has_pending_choice);
     assert!(inspection.has_deferred_resume);
+    assert_eq!(
+        inspection.next_object_id,
+        u32::try_from(game.objects.len()).ok()
+    );
+    assert_eq!(
+        inspection.next_stack_entry_id,
+        game.next_stack_entry_id.map(|id| StackEntryId(id.get()))
+    );
     assert_eq!(inspection.players[0].library, library);
     assert_eq!(inspection.players[0].hand, vec![hidden_hand, other_hand]);
     assert_eq!(inspection.objects.len(), game.objects.len());
@@ -137,6 +145,16 @@ fn inspect_returns_raw_arena_zones_stack_and_orchestration_facts() {
     assert_eq!(inspection.stack[1].source_object_id, Some(permanent));
     assert_eq!(inspection.stack[1].controller, Some(P1));
     assert!(!inspection.stack[1].label.is_empty());
+}
+
+#[test]
+fn inspect_preserves_exhausted_stack_identity_frontier() {
+    let mut game = Game::with_players(2, 7);
+    game.next_stack_entry_id = None;
+
+    let inspection = inspect(&game);
+
+    assert_eq!(inspection.next_stack_entry_id, None);
 }
 
 #[test]

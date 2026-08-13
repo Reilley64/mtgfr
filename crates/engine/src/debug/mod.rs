@@ -633,6 +633,10 @@ pub struct Inspection {
     pub consecutive_passes: u8,
     pub has_pending_choice: bool,
     pub has_deferred_resume: bool,
+    /// The exact next arena identity, or `None` when the `ObjectId` domain is exhausted.
+    pub next_object_id: Option<ObjectId>,
+    /// The exact next monotonic stack identity, or `None` when all identities were issued.
+    pub next_stack_entry_id: Option<StackEntryId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -852,6 +856,10 @@ pub fn inspect(game: &Game) -> Inspection {
         consecutive_passes: game.consecutive_passes,
         has_pending_choice: game.pending_choice.is_some(),
         has_deferred_resume: resume_has_pending(&game.resume),
+        next_object_id: ObjectId::try_from(game.objects.len()).ok(),
+        next_stack_entry_id: game
+            .next_stack_entry_id
+            .map(|entry_id| StackEntryId(entry_id.get())),
     }
 }
 

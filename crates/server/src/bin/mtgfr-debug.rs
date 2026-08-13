@@ -14,7 +14,7 @@ mod debug_cli {
 
     use clap::{Parser, Subcommand};
     use prost::Message;
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
     use server::grpc::debug_pb as pb;
 
     const DEFAULT_ENDPOINT: &str = "http://127.0.0.1:50051";
@@ -80,6 +80,8 @@ mod debug_cli {
             #[arg(long)]
             out: Option<PathBuf>,
         },
+        /// Install the checked seven-entry authoritative stack fixture
+        StackFixture { table: String },
         /// Read the successful debug-operation journal for one table
         Journal {
             table: String,
@@ -169,6 +171,7 @@ mod debug_cli {
                 PreparedCommand::Mutate { request, out }
             }
             Command::Tables => PreparedCommand::Tables,
+            Command::StackFixture { table } => PreparedCommand::StackFixture { table },
             Command::Inspect { table, out } => PreparedCommand::Inspect { table, out },
             Command::Checkpoint {
                 table,
@@ -212,6 +215,24 @@ mod debug_cli {
             PreparedCommand::Tables => {
                 let response = client
                     .list_tables(pb::ListTablesRequest {})
+                    .await
+                    .map_err(CliError::Status)?
+                    .into_inner();
+                let json = protobuf_json(&response)
+                    .map_err(|_| CliError::Generic("failed to encode debug response"))?;
+                Ok((json, None))
+            }
+            PreparedCommand::StackFixture { table } => {
+                let inspection = client
+                    .inspect_table(pb::InspectTableRequest {
+                        table_id: table.clone(),
+                    })
+                    .await
+                    .map_err(CliError::Status)?
+                    .into_inner();
+                let request = build_stack_fixture_request(table, inspection)?;
+                let response = client
+                    .mutate_table(request)
                     .await
                     .map_err(CliError::Status)?
                     .into_inner();
@@ -274,6 +295,9 @@ mod debug_cli {
 
     enum PreparedCommand {
         Tables,
+        StackFixture {
+            table: String,
+        },
         Inspect {
             table: String,
             out: Option<PathBuf>,
@@ -294,6 +318,149 @@ mod debug_cli {
             request: pb::GetDebugJournalRequest,
             out: Option<PathBuf>,
         },
+    }
+
+    const STACK_SEVEN_FIXTURE_JSON: &str =
+        include_str!("../../tests/fixtures/debug/stack-seven.json");
+
+    #[derive(Deserialize)]
+    struct StackFixtureDescriptor {
+        cards: Vec<StackFixtureCard>,
+        ghost: StackFixtureGhost,
+    }
+
+    #[derive(Deserialize)]
+    struct StackFixtureCard {
+        card_id: String,
+        printing_id: Option<String>,
+    }
+
+    #[derive(Deserialize)]
+    struct StackFixtureGhost {
+        name: String,
+        label: String,
+        printing_id: String,
+        card_id: Option<String>,
+        printed_sentences: Vec<String>,
+    }
+
+    #[allow(clippy::result_large_err)]
+    fn build_stack_fixture_request(
+        table_id: String,
+        inspection: pb::InspectTableResponse,
+    ) -> Result<pb::MutateTableRequest, CliError> {
+        use pb::mutation::Operation;
+        use pb::stack_entry_spec::Kind;
+
+        let descriptor: StackFixtureDescriptor = serde_json::from_str(STACK_SEVEN_FIXTURE_JSON)
+            .map_err(|_| CliError::Generic("invalid checked stack fixture"))?;
+        if descriptor.cards.len() != 6 {
+            return Err(CliError::Generic("invalid checked stack fixture"));
+        }
+        let game = inspection
+            .game
+            .ok_or(CliError::Generic("inspection omitted game state"))?;
+        let next_object_id = game
+            .next_object_id
+            .ok_or(CliError::Generic("fixture object ids exhausted"))?;
+        let last_object_id = next_object_id
+            .checked_add(11)
+            .ok_or(CliError::Generic("fixture object ids exhausted"))?;
+        let next_object_id = u32::try_from(next_object_id)
+            .map_err(|_| CliError::Generic("fixture object ids exhausted"))?;
+        usize::try_from(last_object_id)
+            .map_err(|_| CliError::Generic("fixture object ids exhausted"))?;
+        u32::try_from(last_object_id)
+            .map_err(|_| CliError::Generic("fixture object ids exhausted"))?;
+
+        let next_entry_id = game
+            .next_stack_entry_id
+            .filter(|entry_id| *entry_id != 0)
+            .ok_or(CliError::Generic("fixture stack ids exhausted"))?;
+        next_entry_id
+            .checked_add(6)
+            .ok_or(CliError::Generic("fixture stack ids exhausted"))?;
+
+        let controller = game.active_player;
+        let mut operations = Vec::with_capacity(13);
+        let mut object_ids = Vec::with_capacity(6);
+        for (offset, card) in descriptor.cards.iter().enumerate() {
+            let offset = u32::try_from(offset)
+                .map_err(|_| CliError::Generic("invalid checked stack fixture"))?;
+            let object_id = next_object_id + offset;
+            object_ids.push(object_id);
+            operations.push(pb::Mutation {
+                operation: Some(Operation::CreateCard(pb::CreateCard {
+                    object_id,
+                    card_id: card.card_id.clone(),
+                    owner: controller,
+                    controller,
+                    destination: pb::Zone::Hand as i32,
+                    commander: false,
+                    face_down: false,
+                })),
+            });
+        }
+        for (object_id, card) in object_ids.iter().copied().zip(&descriptor.cards) {
+            if let Some(printing_id) = &card.printing_id {
+                operations.push(pb::Mutation {
+                    operation: Some(Operation::SetObjectPrintOverride(
+                        pb::SetObjectPrintOverride {
+                            object_id,
+                            printing_id: Some(printing_id.clone()),
+                        },
+                    )),
+                });
+            }
+        }
+        let spell_base = next_object_id
+            .checked_add(6)
+            .ok_or(CliError::Generic("fixture object ids exhausted"))?;
+        let mut entries = Vec::with_capacity(7);
+        for (offset, from_object_id) in object_ids.into_iter().enumerate() {
+            let object_offset = u32::try_from(offset)
+                .map_err(|_| CliError::Generic("invalid checked stack fixture"))?;
+            let entry_offset = u64::try_from(offset)
+                .map_err(|_| CliError::Generic("invalid checked stack fixture"))?;
+            entries.push(pb::StackEntrySpec {
+                kind: Some(Kind::KnownSpell(pb::KnownSpellStackEntry {
+                    entry_id: next_entry_id
+                        .checked_add(entry_offset)
+                        .ok_or(CliError::Generic("fixture stack ids exhausted"))?,
+                    from_object_id,
+                    spell_object_id: spell_base
+                        .checked_add(object_offset)
+                        .ok_or(CliError::Generic("fixture object ids exhausted"))?,
+                    controller,
+                    targets: vec![],
+                    targets_second: vec![],
+                    x: 0,
+                })),
+            });
+        }
+        let ghost = descriptor.ghost;
+        entries.push(pb::StackEntrySpec {
+            kind: Some(Kind::PublicGhost(pb::PublicGhostStackEntry {
+                entry_id: next_entry_id
+                    .checked_add(6)
+                    .ok_or(CliError::Generic("fixture stack ids exhausted"))?,
+                controller,
+                name: ghost.name,
+                label: ghost.label,
+                printing_id: ghost.printing_id,
+                card_id: ghost.card_id,
+                printed_sentences: ghost.printed_sentences,
+            })),
+        });
+        operations.push(pb::Mutation {
+            operation: Some(Operation::ReplaceStack(pb::ReplaceStack { entries })),
+        });
+        Ok(pb::MutateTableRequest {
+            table_id,
+            expected_debug_revision: Some(inspection.debug_revision),
+            expected_table_seq: Some(inspection.table_seq),
+            operations,
+        })
     }
 
     fn resolve_endpoint<'a>(cli: Option<&'a str>, env: Option<&'a str>) -> Result<&'a str, ()> {

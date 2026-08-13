@@ -1139,6 +1139,8 @@ fn debug_service_rejects_card_inspection_in_stack_zone_without_leaking_payload()
         consecutive_passes: 0,
         has_pending_choice: false,
         has_deferred_resume: false,
+        next_object_id: None,
+        next_stack_entry_id: None,
     })
     .expect_err("a card object cannot successfully map from the stack zone");
 
@@ -1165,6 +1167,8 @@ fn empty_debug_inspection() -> engine::debug::Inspection {
         consecutive_passes: 0,
         has_pending_choice: false,
         has_deferred_resume: false,
+        next_object_id: None,
+        next_stack_entry_id: None,
     }
 }
 
@@ -1298,6 +1302,8 @@ fn debug_service_maps_every_inspection_field_and_object_variant() {
     inspection.consecutive_passes = u8::MAX;
     inspection.has_pending_choice = true;
     inspection.has_deferred_resume = false;
+    inspection.next_object_id = Some(u32::MAX);
+    inspection.next_stack_entry_id = Some(engine::StackEntryId(u64::MAX));
 
     let mapped = debug_svc::map_inspection(inspection).expect("complete inspection maps");
 
@@ -1315,6 +1321,8 @@ fn debug_service_maps_every_inspection_field_and_object_variant() {
             command: vec![6],
         }]
     );
+    assert_eq!(mapped.next_object_id, Some(u64::from(u32::MAX)));
+    assert_eq!(mapped.next_stack_entry_id, Some(u64::MAX));
     assert_eq!(
         mapped.objects[0],
         debug_pb::ObjectInspection {
@@ -1382,6 +1390,9 @@ fn debug_service_maps_every_inspection_field_and_object_variant() {
                 source_object_id: Some(12),
                 controller: Some(3),
                 label: "Secret Spell".into(),
+                entry_id: 1,
+                targets: vec![],
+                public_ghost: None,
             },
             debug_pb::StackInspection {
                 position_from_bottom: 1,
@@ -1389,6 +1400,9 @@ fn debug_service_maps_every_inspection_field_and_object_variant() {
                 source_object_id: None,
                 controller: None,
                 label: "Secret Ability".into(),
+                entry_id: 2,
+                targets: vec![],
+                public_ghost: None,
             },
         ]
     );
@@ -1605,6 +1619,8 @@ fn debug_service_inspection_preserves_absent_stack_controller() {
         consecutive_passes: 0,
         has_pending_choice: false,
         has_deferred_resume: false,
+        next_object_id: None,
+        next_stack_entry_id: None,
     })
     .expect("inspection values fit the protobuf");
 
@@ -1884,7 +1900,7 @@ async fn debug_journal_maps_committed_stack_and_print_operations_without_panicki
 
 #[cfg(debug_assertions)]
 #[tokio::test]
-async fn debug_stack_request_ingress_remains_unimplemented_until_task_six() {
+async fn debug_stack_request_ingress_reports_checked_pop_failure() {
     use debug_pb::debug_service_server::DebugService;
     use debug_pb::mutation::Operation;
 
@@ -1899,8 +1915,14 @@ async fn debug_stack_request_ingress_remains_unimplemented_until_task_six() {
             ..Default::default()
         }))
         .await
-        .expect_err("Task 5 only exposes the operation types for faithful journal output");
-    assert_eq!(error.code(), tonic::Code::Unimplemented);
+        .expect_err("checked stack pop rejects underflow");
+    assert_eq!(error.code(), tonic::Code::InvalidArgument);
+    let detail = decode_debug_detail(&error);
+    assert_eq!(detail.operation_index, Some(0));
+    assert_eq!(
+        detail.reason,
+        debug_pb::DebugErrorReason::InvalidValue as i32
+    );
 }
 
 #[cfg(debug_assertions)]
@@ -3473,4 +3495,256 @@ async fn debug_checkpoint_and_restore_direct_error_matrix_is_stable() {
         tonic::Code::InvalidArgument,
         debug_pb::DebugErrorReason::InvalidValue,
     );
+}
+
+#[cfg(debug_assertions)]
+#[test]
+fn debug_stack_ingress_maps_all_entry_kinds_and_inspection_metadata() {
+    use debug_pb::mutation::Operation;
+    use debug_pb::stack_entry_spec::Kind;
+
+    let entries = vec![
+        debug_pb::StackEntrySpec {
+            kind: Some(Kind::KnownSpell(debug_pb::KnownSpellStackEntry {
+                entry_id: 11,
+                from_object_id: 21,
+                spell_object_id: 27,
+                controller: 1,
+                targets: vec![debug_pb::DebugTarget {
+                    kind: Some(debug_pb::debug_target::Kind::Player(0)),
+                }],
+                targets_second: vec![],
+                x: 0,
+            })),
+        },
+        debug_pb::StackEntrySpec {
+            kind: Some(Kind::AuthoredAbility(debug_pb::AuthoredAbilityStackEntry {
+                entry_id: 12,
+                controller: 0,
+                source_object_id: 9,
+                ability_index: 2,
+                target: Some(debug_pb::DebugTarget {
+                    kind: Some(debug_pb::debug_target::Kind::ObjectId(21)),
+                }),
+                targets_second: vec![],
+                x: 3,
+            })),
+        },
+        debug_pb::StackEntrySpec {
+            kind: Some(Kind::PublicGhost(debug_pb::PublicGhostStackEntry {
+                entry_id: 13,
+                controller: 1,
+                name: "SECRET ghost".into(),
+                label: "public label".into(),
+                printing_id: "SECRET-print".into(),
+                card_id: Some("SECRET-card".into()),
+                printed_sentences: vec!["A sentence".into()],
+            })),
+        },
+    ];
+    let mapped = debug_svc::map_table_mutation(debug_pb::Mutation {
+        operation: Some(Operation::ReplaceStack(debug_pb::ReplaceStack { entries })),
+    })
+    .expect("checked stack ingress maps");
+    assert!(
+        matches!(mapped, crate::debug::TableMutation::ReplaceStack(entries) if entries.len() == 3)
+    );
+
+    let mapped = debug_svc::map_inspection(engine::debug::Inspection {
+        players: vec![],
+        objects: vec![],
+        stack: vec![engine::debug::StackInspection {
+            entry_id: engine::StackEntryId(13),
+            position_from_bottom: 0,
+            kind: "ghost",
+            source_object_id: None,
+            controller: Some(engine::PlayerId(1)),
+            label: "public label".into(),
+            targets: vec![engine::Target::Player(engine::PlayerId(0))],
+            public_ghost: Some(engine::PublicStackGhost {
+                name: "Ghost".into(),
+                label: "public label".into(),
+                printing_id: "print".into(),
+                card_id: None,
+                printed_sentences: vec!["A sentence".into()],
+            }),
+        }],
+        active_player: engine::PlayerId(0),
+        step: engine::Step::Upkeep,
+        priority_player: engine::PlayerId(0),
+        consecutive_passes: 0,
+        has_pending_choice: false,
+        has_deferred_resume: false,
+        next_object_id: None,
+        next_stack_entry_id: None,
+    })
+    .unwrap();
+    assert_eq!(mapped.stack[0].entry_id, 13);
+    assert_eq!(mapped.stack[0].targets.len(), 1);
+    assert_eq!(mapped.stack[0].public_ghost.as_ref().unwrap().name, "Ghost");
+}
+
+#[cfg(debug_assertions)]
+#[test]
+fn debug_stack_ingress_rejects_missing_nested_oneofs_without_echoing_values() {
+    use debug_pb::mutation::Operation;
+    let cases = [
+        debug_pb::Mutation {
+            operation: Some(Operation::PushStack(debug_pb::PushStack { entry: None })),
+        },
+        debug_pb::Mutation {
+            operation: Some(Operation::ReplaceStack(debug_pb::ReplaceStack {
+                entries: vec![debug_pb::StackEntrySpec { kind: None }],
+            })),
+        },
+        debug_pb::Mutation {
+            operation: Some(Operation::SetObjectPrintOverride(
+                debug_pb::SetObjectPrintOverride {
+                    object_id: 1,
+                    printing_id: Some(String::new()),
+                },
+            )),
+        },
+    ];
+    for mutation in cases {
+        let error =
+            debug_svc::map_table_mutation(mutation).expect_err("malformed nested input rejected");
+        assert_eq!(error.code(), tonic::Code::InvalidArgument);
+        assert_eq!(error.message(), "debug request rejected");
+    }
+    assert_eq!(
+        debug_pb::DebugErrorReason::UnsupportedStackConstruction as i32,
+        18
+    );
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_stack_failures_keep_global_index_and_use_generic_typed_details() {
+    use debug_pb::debug_service_server::DebugService;
+    use debug_pb::mutation::Operation;
+    use debug_pb::stack_entry_spec::Kind;
+
+    let state = test_state().await;
+    let mut game = engine::Game::with_players(2, 0);
+    let source = game.spawn_in_hand(
+        engine::PlayerId(0),
+        cards::get_by_name("Grizzly Bears").unwrap(),
+    );
+    insert_debug_game(&state, "table", game, 0, 0);
+    let service = debug_svc::DebugSvc::new(state);
+    let request = debug_pb::MutateTableRequest {
+        table_id: "table".into(),
+        expected_debug_revision: None,
+        expected_table_seq: None,
+        operations: vec![
+            debug_set_life(0, 20),
+            debug_pb::Mutation {
+                operation: Some(Operation::ReplaceStack(debug_pb::ReplaceStack {
+                    entries: vec![debug_pb::StackEntrySpec {
+                        kind: Some(Kind::KnownSpell(debug_pb::KnownSpellStackEntry {
+                            entry_id: 1,
+                            from_object_id: source,
+                            spell_object_id: source + 1,
+                            controller: 0,
+                            targets: vec![],
+                            targets_second: vec![],
+                            x: 0,
+                        })),
+                    }],
+                })),
+            },
+        ],
+    };
+    let error = service
+        .mutate_table(Request::new(request))
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), tonic::Code::InvalidArgument);
+    assert_eq!(error.message(), "debug request rejected");
+    let detail = decode_debug_detail(&error);
+    assert_eq!(detail.operation_index, Some(1));
+    assert_eq!(
+        detail.reason,
+        debug_pb::DebugErrorReason::UnsupportedStackConstruction as i32
+    );
+    for secret in ["Grizzly Bears", "SECRET", "print"] {
+        assert!(!error.to_string().contains(secret));
+    }
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_stack_ingress_reports_exact_indexed_details_for_shape_bounds_and_zero_id() {
+    use debug_pb::debug_service_server::DebugService;
+    use debug_pb::mutation::Operation;
+    use debug_pb::stack_entry_spec::Kind;
+
+    let cases = vec![
+        (
+            vec![
+                debug_set_life(0, 20),
+                debug_pb::Mutation { operation: None },
+            ],
+            1,
+        ),
+        (
+            vec![debug_pb::Mutation {
+                operation: Some(Operation::PushStack(debug_pb::PushStack {
+                    entry: Some(debug_pb::StackEntrySpec {
+                        kind: Some(Kind::PublicGhost(debug_pb::PublicGhostStackEntry {
+                            entry_id: 0,
+                            controller: 0,
+                            name: "SECRET ghost".into(),
+                            label: "label".into(),
+                            printing_id: "SECRET print".into(),
+                            card_id: None,
+                            printed_sentences: vec![],
+                        })),
+                    }),
+                })),
+            }],
+            0,
+        ),
+        (
+            vec![debug_pb::Mutation {
+                operation: Some(Operation::PushStack(debug_pb::PushStack {
+                    entry: Some(debug_pb::StackEntrySpec {
+                        kind: Some(Kind::KnownSpell(debug_pb::KnownSpellStackEntry {
+                            entry_id: 1,
+                            controller: 256,
+                            targets: vec![debug_pb::DebugTarget { kind: None }],
+                            ..Default::default()
+                        })),
+                    }),
+                })),
+            }],
+            0,
+        ),
+    ];
+
+    for (operations, expected_index) in cases {
+        let state = test_state().await;
+        insert_debug_game(&state, "table", engine::Game::with_players(2, 0), 0, 0);
+        let error = debug_svc::DebugSvc::new(state)
+            .mutate_table(Request::new(debug_pb::MutateTableRequest {
+                table_id: "table".into(),
+                operations,
+                ..Default::default()
+            }))
+            .await
+            .expect_err("malformed checked stack ingress is rejected");
+        assert_eq!(error.code(), tonic::Code::InvalidArgument);
+        assert_eq!(error.message(), "debug request rejected");
+        let detail = decode_debug_detail(&error);
+        assert_eq!(detail.operation_index, Some(expected_index));
+        assert_eq!(
+            detail.reason,
+            debug_pb::DebugErrorReason::InvalidValue as i32
+        );
+        assert!(detail.violations.is_empty());
+        for secret in ["SECRET ghost", "SECRET print"] {
+            assert!(!error.to_string().contains(secret));
+        }
+    }
 }

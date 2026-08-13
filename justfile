@@ -67,6 +67,11 @@ debug-restore table name expected_debug_revision='' expected_table_seq='' out=''
     table={{quote(table)}}; name={{quote(name)}}; expected_debug_revision={{quote(expected_debug_revision)}}; expected_table_seq={{quote(expected_table_seq)}}; out={{quote(out)}}; endpoint={{quote(endpoint)}}; args=(restore "$table" "$name"); [[ -z "$expected_debug_revision" ]] || args+=(--expected-debug-revision "$expected_debug_revision"); [[ -z "$expected_table_seq" ]] || args+=(--expected-table-seq "$expected_table_seq"); [[ -z "$out" ]] || args+=(--out "$out"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
 
 [group('server')]
+[doc("Install the checked seven-entry authoritative stack fixture")]
+debug-stack-seven table endpoint='':
+    table={{quote(table)}}; endpoint={{quote(endpoint)}}; args=(stack-fixture "$table"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
+
+[group('server')]
 [doc("Read an authoritative debug-table journal")]
 debug-journal table out='' endpoint='':
     table={{quote(table)}}; out={{quote(out)}}; endpoint={{quote(endpoint)}}; args=(journal "$table"); [[ -z "$out" ]] || args+=(--out "$out"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"

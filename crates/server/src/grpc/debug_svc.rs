@@ -154,12 +154,9 @@ impl pb::debug_service_server::DebugService for DebugSvc {
             u32::try_from(request.operations.len()).map_err(|_| invalid_status(None))?;
         let mut operations = Vec::with_capacity(request.operations.len());
         for (operation_index, operation) in request.operations.into_iter().enumerate() {
-            let mapped = match map_mutation(operation) {
-                Ok(mapped) => mapped,
-                Err(error) if error.code() == Code::Unimplemented => return Err(error),
-                Err(_) => return Err(invalid_status(Some(operation_index))),
-            };
-            operations.push(TableMutation::Engine(mapped));
+            let mapped =
+                map_table_mutation(operation).map_err(|_| invalid_status(Some(operation_index)))?;
+            operations.push(mapped);
         }
         let receipt = mutate_domain(
             &self.state,
@@ -257,6 +254,114 @@ impl pb::debug_service_server::DebugService for DebugSvc {
             .map(map_journal_record)
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Response::new(pb::GetDebugJournalResponse { records }))
+    }
+}
+
+#[allow(clippy::result_large_err)]
+pub(crate) fn map_table_mutation(mutation: pb::Mutation) -> Result<TableMutation, Status> {
+    use pb::mutation::Operation;
+
+    let Some(operation) = mutation.operation else {
+        return Err(invalid_status(None));
+    };
+    let mapped = match operation {
+        Operation::ReplaceStack(edit) => TableMutation::ReplaceStack(
+            edit.entries
+                .into_iter()
+                .map(map_stack_entry_ingress)
+                .collect::<Result<Vec<_>, _>>()?,
+        ),
+        Operation::PushStack(edit) => TableMutation::PushStack(map_stack_entry_ingress(
+            edit.entry.ok_or_else(|| invalid_status(None))?,
+        )?),
+        Operation::PopStack(edit) => TableMutation::PopStack {
+            count: usize::try_from(edit.count).map_err(|_| invalid_status(None))?,
+        },
+        Operation::SetObjectPrintOverride(edit) => {
+            if edit
+                .printing_id
+                .as_ref()
+                .is_some_and(|value| value.trim().is_empty())
+            {
+                return Err(invalid_status(None));
+            }
+            TableMutation::SetObjectPrintOverride {
+                object_id: edit.object_id,
+                printing_id: edit.printing_id,
+            }
+        }
+        operation => TableMutation::Engine(map_mutation(pb::Mutation {
+            operation: Some(operation),
+        })?),
+    };
+    Ok(mapped)
+}
+
+#[allow(clippy::result_large_err)]
+fn map_stack_entry_ingress(
+    entry: pb::StackEntrySpec,
+) -> Result<engine::debug::DebugStackEntrySpec, Status> {
+    use engine::debug::DebugStackEntrySpec;
+    use pb::stack_entry_spec::Kind;
+
+    let Some(kind) = entry.kind else {
+        return Err(invalid_status(None));
+    };
+    Ok(match kind {
+        Kind::KnownSpell(entry) => DebugStackEntrySpec::KnownSpell {
+            entry_id: engine::StackEntryId(entry.entry_id),
+            from_object_id: entry.from_object_id,
+            spell_object_id: entry.spell_object_id,
+            controller: player(entry.controller).map_err(|_| invalid_status(None))?,
+            targets: entry
+                .targets
+                .into_iter()
+                .map(map_target_ingress)
+                .collect::<Result<Vec<_>, _>>()?,
+            targets_second: entry
+                .targets_second
+                .into_iter()
+                .map(map_target_ingress)
+                .collect::<Result<Vec<_>, _>>()?,
+            x: entry.x,
+        },
+        Kind::AuthoredAbility(entry) => DebugStackEntrySpec::AuthoredAbility {
+            entry_id: engine::StackEntryId(entry.entry_id),
+            controller: player(entry.controller).map_err(|_| invalid_status(None))?,
+            source_object_id: entry.source_object_id,
+            ability_index: usize::try_from(entry.ability_index)
+                .map_err(|_| invalid_status(None))?,
+            target: entry.target.map(map_target_ingress).transpose()?,
+            targets_second: entry
+                .targets_second
+                .into_iter()
+                .map(map_target_ingress)
+                .collect::<Result<Vec<_>, _>>()?,
+            x: entry.x,
+        },
+        Kind::PublicGhost(entry) => DebugStackEntrySpec::PublicGhost {
+            entry_id: engine::StackEntryId(entry.entry_id),
+            controller: player(entry.controller).map_err(|_| invalid_status(None))?,
+            public: engine::PublicStackGhost {
+                name: entry.name,
+                label: entry.label,
+                printing_id: entry.printing_id,
+                card_id: entry.card_id,
+                printed_sentences: entry.printed_sentences,
+            },
+        },
+    })
+}
+
+#[allow(clippy::result_large_err)]
+fn map_target_ingress(target: pb::DebugTarget) -> Result<engine::Target, Status> {
+    use pb::debug_target::Kind;
+    match target.kind {
+        Some(Kind::ObjectId(object_id)) => Ok(engine::Target::Object(object_id)),
+        Some(Kind::Player(player_id)) => player(player_id)
+            .map(engine::Target::Player)
+            .map_err(|_| invalid_status(None)),
+        None => Err(invalid_status(None)),
     }
 }
 
@@ -430,6 +535,8 @@ fn map_inspection_inner(inspection: Inspection) -> Result<pb::GameInspection, Ma
         consecutive_passes: u32::from(inspection.consecutive_passes),
         has_pending_choice: inspection.has_pending_choice,
         has_deferred_resume: inspection.has_deferred_resume,
+        next_object_id: inspection.next_object_id.map(u64::from),
+        next_stack_entry_id: inspection.next_stack_entry_id.map(|entry_id| entry_id.0),
     })
 }
 
@@ -535,6 +642,15 @@ fn map_stack_inspection(stack: StackInspection) -> Result<pb::StackInspection, M
         source_object_id: stack.source_object_id,
         controller: stack.controller.map(|controller| u32::from(controller.0)),
         label: stack.label,
+        entry_id: stack.entry_id.0,
+        targets: stack.targets.into_iter().map(map_debug_target).collect(),
+        public_ghost: stack.public_ghost.map(|public| pb::PublicGhostMetadata {
+            name: public.name,
+            label: public.label,
+            printing_id: public.printing_id,
+            card_id: public.card_id,
+            printed_sentences: public.printed_sentences,
+        }),
     })
 }
 
@@ -595,7 +711,7 @@ fn map_journal_record(record: JournalRecord) -> Result<pb::DebugJournalRecord, S
             Kind::MutationCommitted(pb::MutationCommitted {
                 operations: operations
                     .into_iter()
-                    .map(map_table_mutation)
+                    .map(map_table_mutation_to_pb)
                     .collect::<Result<Vec<_>, _>>()?,
             })
         }
@@ -622,7 +738,7 @@ fn map_journal_record(record: JournalRecord) -> Result<pb::DebugJournalRecord, S
 }
 
 #[allow(clippy::result_large_err)]
-fn map_table_mutation(operation: TableMutation) -> Result<pb::Mutation, Status> {
+fn map_table_mutation_to_pb(operation: TableMutation) -> Result<pb::Mutation, Status> {
     use pb::mutation::Operation;
 
     let operation = match operation {
@@ -904,7 +1020,7 @@ pub(crate) fn status(failure: DebugFailure) -> Status {
         } => (
             Code::InvalidArgument,
             Some(operation_index),
-            pb::DebugErrorReason::InvalidValue,
+            pb::DebugErrorReason::UnsupportedStackConstruction,
             vec![],
         ),
         DebugFailure::FailedPrecondition {

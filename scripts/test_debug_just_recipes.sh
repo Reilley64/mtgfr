@@ -77,6 +77,12 @@ assert_args "${prefix[@]}" restore "$table" "$name" --expected-table-seq "$expec
 (cd "$root" && just --quiet debug-restore "$table" "$name" "$expected_debug_revision" "$expected_table_seq" "$out" "$endpoint")
 assert_args "${prefix[@]}" restore "$table" "$name" --expected-debug-revision "$expected_debug_revision" --expected-table-seq "$expected_table_seq" --out "$out" --endpoint "$endpoint"
 
+# Checked stack fixture: default endpoint omission and populated endpoint preservation.
+(cd "$root" && just --quiet debug-stack-seven "$table")
+assert_args "${prefix[@]}" stack-fixture "$table"
+(cd "$root" && just --quiet debug-stack-seven "$table" "$endpoint")
+assert_args "${prefix[@]}" stack-fixture "$table" --endpoint "$endpoint"
+
 # Journal: default and populated optionals.
 (cd "$root" && just --quiet debug-journal "$table")
 assert_args "${prefix[@]}" journal "$table"
