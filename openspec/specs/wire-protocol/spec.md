@@ -43,7 +43,7 @@ The debug-only `mtgfr.debug.v1` package SHALL have separate generated Rust bindi
 - **THEN** it contains the ordinary production services and no debug package or service
 
 ### Requirement: Browser reaches the API through a same-origin backend
-Browsers SHALL speak a same-origin RPC surface to the web backend. The backend SHALL terminate the session cookie and forward the resolved session token as gRPC metadata to the API. The live game stream SHALL be a server-streaming RPC on the API, bridged by the backend to a browser-safe server-push channel. Health probes MAY live on a separate HTTP port from gRPC. Native WebSocket is not part of the protocol.
+Browsers SHALL speak a same-origin RPC surface to the web backend. The backend SHALL terminate the session cookie and forward the resolved session token as gRPC metadata to the API. The live game stream SHALL be a server-streaming RPC on the API, bridged by the backend to a browser-safe server-push channel. At that JSON/SSE boundary, the backend SHALL encode any bigint as its exact decimal string rather than narrow it to a JavaScript number; the browser SHALL revive only production `state.stack[*].entry_id` canonical `uint64` decimal strings (`0` through `18446744073709551615`) to the domain `bigint` shape, leaving decimal-looking strings elsewhere unchanged. Malformed JSON, unknown frame variants, structurally invalid frame envelopes, and non-canonical or out-of-range stack entry IDs SHALL fail through a typed stream parse error without echoing the rejected payload or identifier, and the live-game subscriber SHALL handle that failure through its ordinary reconnect path rather than as a defect. Health probes MAY live on a separate HTTP port from gRPC. Native WebSocket is not part of the protocol.
 
 #### Scenario: Session cookie never leaves the backend
 - **WHEN** the backend dials the API for an authenticated call
@@ -97,7 +97,7 @@ Each viewer's visible state SHALL carry turn structure, per-seat public player v
 
 #### Scenario: Browser mapping keeps adjacent wide stack identities distinct
 - **WHEN** two stack entries carry adjacent `entry_id` values above `Number.MAX_SAFE_INTEGER`
-- **THEN** the browser domain receives two exact distinct `bigint` values while unrelated bigint-backed IDs retain their existing numeric domain shape
+- **THEN** the BFF SSE payload carries two exact decimal JSON strings and the browser domain receives two exact distinct `bigint` values while unrelated bigint-backed IDs retain their existing numeric domain shape and lookalike decimal strings remain strings
 
 #### Scenario: Public ghost projects without a source
 - **WHEN** a game containing a debug-authored public ghost is projected through the production visible-state contract
