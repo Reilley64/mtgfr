@@ -89,11 +89,15 @@ Each viewer's visible state SHALL carry turn structure, per-seat public player v
 
 ### Requirement: Stack views preserve identity and optional source presence
 
-`StackObjectView` SHALL retain `source` as presence-aware optional field tag 2, SHALL carry the stable engine-owned `uint64 entry_id` at tag 11 without narrowing or lossy conversion, and SHALL carry explicit public `printed_sentences` at repeated string tag 12. An ordinary spell or ability SHALL project `source` as present with its stack object or ability source id. A source-independent public ghost SHALL project `source` as absent, with no target or targets, and SHALL carry only its explicit public renderer metadata. The production stack projection shape SHALL support both forms even though only a debug-assertion-only engine constructor can create the ghost. This additive production message shape SHALL NOT expose the debug protobuf package, add a browser debug RPC, or add a BFF debug route.
+`StackObjectView` SHALL retain `source` as presence-aware optional field tag 2, SHALL carry the stable engine-owned `uint64 entry_id` at tag 11 without narrowing or lossy conversion, and SHALL carry explicit public `printed_sentences` at repeated string tag 12. An ordinary spell or ability SHALL project `source` as present with its stack object or ability source id. A source-independent public ghost SHALL project `source` as absent, with no target or targets, and SHALL carry only its explicit public renderer metadata. The production stack projection shape SHALL support both forms even though only a debug-assertion-only engine constructor can create the ghost. Browser mapping SHALL preserve this `entry_id` as `bigint` while retaining the established numeric mapping for other production IDs. This additive production message shape SHALL NOT expose the debug protobuf package, add a browser debug RPC, or add a BFF debug route.
 
 #### Scenario: Ordinary stack entry preserves source and wide identity
 - **WHEN** an ordinary spell or ability with a stack-entry identity above JavaScript's safe integer range is mapped to `StackObjectView`
 - **THEN** tag 2 is present with its source and tag 11 preserves the exact `u64` value
+
+#### Scenario: Browser mapping keeps adjacent wide stack identities distinct
+- **WHEN** two stack entries carry adjacent `entry_id` values above `Number.MAX_SAFE_INTEGER`
+- **THEN** the browser domain receives two exact distinct `bigint` values while unrelated bigint-backed IDs retain their existing numeric domain shape
 
 #### Scenario: Public ghost projects without a source
 - **WHEN** a game containing a debug-authored public ghost is projected through the production visible-state contract

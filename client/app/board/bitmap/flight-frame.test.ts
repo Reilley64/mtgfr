@@ -46,16 +46,33 @@ describe("restingPaintChanged", () => {
     expect(restingPaintChanged(upright, tapped)).toBe(true);
   });
 
+  it("is true when two stack entries share a source but have different lossless entry identity", () => {
+    const source = 9;
+    const first = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+    const second = first + 1n;
+    const before = restingPaintSnapshot({
+      ...baseResting,
+      stack: [{ controller: 0, entry_id: first, kind: "ability", label: { key: "card.name", params: [] }, source }],
+    } as never);
+    const after = restingPaintSnapshot({
+      ...baseResting,
+      stack: [{ controller: 0, entry_id: second, kind: "ability", label: { key: "card.name", params: [] }, source }],
+    } as never);
+
+    expect(restingPaintChanged(before, after)).toBe(true);
+  });
+
   it("is true when only stack declared targets change", () => {
     const before = restingPaintSnapshot({
       ...baseResting,
-      stack: [{ controller: 0, kind: "spell", label: { key: "card.name", params: [] }, source: 9 }],
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: { key: "card.name", params: [] }, source: 9 }],
     } as never);
     const after = restingPaintSnapshot({
       ...baseResting,
       stack: [
         {
           controller: 0,
+          entry_id: 1n,
           kind: "spell",
           label: { key: "card.name", params: [] },
           source: 9,

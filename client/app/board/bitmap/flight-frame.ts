@@ -76,7 +76,7 @@ function stackEntryPaintKey(entry: StackObjectView): string {
   const targets = (entry.targets ?? (entry.target != null ? [entry.target] : []))
     .map((t) => (t.kind === "player" ? `p${t.player}` : `o${t.id}`))
     .join(",");
-  return `${entry.source}:${entry.kind}:${targets}`;
+  return `${String(entry.entry_id)}:${entry.source ?? "source-less"}:${entry.kind}:${targets}`;
 }
 
 export function restingPaintSnapshot(

@@ -80,6 +80,35 @@ describe("pure game fold", () => {
     });
   });
 
+  it("records distinct lossless stack entry identities even when abilities share a source", () => {
+    const first = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+    const second = first + 1n;
+    const state = {
+      ...mkState(),
+      stack: [
+        {
+          controller: 0,
+          entry_id: first,
+          kind: "ability",
+          label: { key: "first", params: [], children: [] },
+          source: 9,
+        },
+        {
+          controller: 0,
+          entry_id: second,
+          kind: "ability",
+          label: { key: "second", params: [], children: [] },
+          source: 9,
+        },
+      ],
+    };
+    const current = applySnapshotPure(emptyGameFold(), 0, state);
+
+    const next = applyDeltaPure(current, mkDelta(1, []));
+
+    expect(next.provenance.priorStackEntryIds).toEqual(new Set([first, second]));
+  });
+
   it("applyDeltaPure records landPlayFrom provenance", () => {
     const forest = mkObject({ id: 3, name: "Forest", kind: { kind: "land", colors: [4] } });
     let game = emptyGameFold();

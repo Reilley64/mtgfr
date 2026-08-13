@@ -597,7 +597,7 @@ function stackFlightAim(
 
 function stackFlightAimForSource(
   model: BoardModel,
-  stack: ReadonlyArray<{ source: number }>,
+  stack: ReadonlyArray<{ source?: number }>,
   sourceId: number,
 ): { x: number; y: number; scale: number } {
   const count = Math.max(1, stack.length);
@@ -979,7 +979,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     );
   }
 
-  const stackSources = new Set(state.stack.map((stackObject) => stackObject.source));
+  const stackSources = new Set(
+    state.stack.flatMap((stackObject) => (stackObject.source == null ? [] : [stackObject.source])),
+  );
   const pendingResolve = fold.provenance.resolvedFromStack.size > 0 || fold.provenance.leftStackToPile.size > 0;
   for (const [id, flight] of flights) {
     if (flight.kind !== "stack") continue;

@@ -72,7 +72,15 @@ Active seated players SHALL see a bottom DOM bar in Arena order: command, hand, 
 
 ### Requirement: Stack Overlay
 
-The stack SHALL be a right-edge DOM overlay with pile / expanded strip / full-grid presentations. Labels SHALL format wire `MessageRef`s. Declared targets SHALL paint one Island Blue arrow per resolvable destination on the Mount layer. Legal aim faces SHALL set `data-legal-target` and submit on click/keyboard. Priority holders hovering a non-empty stack SHALL emit `SetStackDwell`. Resting stack faces SHALL hide only for `kind: "stack"` flights. Pending board-aim without a stack entry for the source SHALL show a source-art ghost; spell sources already on the stack SHALL NOT duplicate.
+The stack SHALL be a right-edge DOM overlay with pile / expanded strip / full-grid presentations. Labels SHALL format wire `MessageRef`s. Each authoritative face SHALL use the lossless `entry_id` as its DOM identity while preserving bottom-to-top projection order; entries that share a source SHALL remain distinct. Faces SHALL accept an optional source: source-backed entries MAY use their visible object metadata, while a source-less entry SHALL render only its explicit public name, formatted label, printing, and printed sentences. An optional public `card_id` on a source-less entry SHALL remain wire metadata and MUST NOT be forwarded to catalog inspect, object lookup, card-default or deck-preference inference, or rendered as inspect identity; source-less entries likewise SHALL NOT use printing-overlay inference. Every face SHALL expose a stable accessible name combining its deduplicated explicit name, formatted label, and printed sentences independently of card-art Mount readiness. Declared targets SHALL paint one Island Blue arrow per resolvable destination on the Mount layer, and source-less entries SHALL produce no target arrows or object-target controls. Legal aim faces SHALL set `data-legal-target` and submit on click/keyboard. Priority holders hovering a non-empty stack SHALL emit `SetStackDwell`. Resting stack faces SHALL hide only for `kind: "stack"` flights with a present matching source. Pending board-aim without a stack entry for the source SHALL show a separate local source-art ghost; spell sources already on the stack SHALL NOT duplicate.
+
+#### Scenario: Seven-entry stack includes a source-less face
+- **WHEN** six source-backed entries and one source-less public entry arrive in one production visible state
+- **THEN** seven ordinary `stack-face-*` nodes render bottom-to-top and compact, expand, and collapse preserve their entry identities and explicit public metadata
+
+#### Scenario: Same-source abilities stay distinct
+- **WHEN** two abilities have the same source but different `entry_id` values, including values above JavaScript's safe integer range
+- **THEN** both faces remain distinct and no bigint-to-number conversion merges their DOM identity, repaint fingerprint, or provenance identity
 
 #### Scenario: Multi-target caption
 - **WHEN** a stack object has multiple resolved targets

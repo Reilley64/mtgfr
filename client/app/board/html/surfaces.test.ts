@@ -19,7 +19,7 @@ import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } 
 import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
 import { STEP, ZONE } from "../geometry/layout";
 import type { Message } from "../messages";
-import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
+import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID, updateBoard } from "../submodel";
 import { type BoardViewModel, view as boardView, type ViewMessage } from "../view";
 import { handMetrics } from "./hand";
 import { boardOverlays } from "./overlays";
@@ -219,7 +219,7 @@ function gameFold(state: VisibleState | null = gameState(), log: ReadonlyArray<L
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
@@ -389,9 +389,77 @@ test("turn chrome drives phase and label chrome from data attributes", () => {
   );
 });
 
+test("seven authoritative stack entries keep lossless identity through compact, expand, and collapse", () => {
+  const firstId = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+  const ids = Array.from({ length: 7 }, (_, index) => firstId + BigInt(index));
+  const objects = Array.from({ length: 6 }, (_, index) =>
+    card(100 + index, {
+      card_id: `card-${index}`,
+      name: `Known label ${index}`,
+      print: `print-${index}`,
+      zone: ZONE.Stack,
+    }),
+  );
+  const stack: VisibleState["stack"] = ids.map((entry_id, index) =>
+    index < 6
+      ? {
+          controller: 0,
+          entry_id,
+          kind: index < 2 ? "ability" : "spell",
+          label: testMessageRef(`Known label ${index}`),
+          // Two abilities deliberately share one source but retain different entry identity.
+          source: index < 2 ? objects[0]?.id : objects[index]?.id,
+          printed_sentences: [`Known rules ${index}`],
+        }
+      : {
+          card_id: "public-ghost-card",
+          controller: 1,
+          entry_id,
+          kind: "ability",
+          label: testMessageRef("Public ghost label"),
+          name: "Public Ghost",
+          print: "public-ghost-print",
+          printed_sentences: ["Public ghost rules text."],
+        },
+  );
+  const model = overlayModel(initialBoardModel(), gameState({ objects, stack }));
+
+  Scene.scene<OverlayModel, Message>(
+    {
+      update: (current, message) => {
+        const [board] = updateBoard(current.board, message, current.fold, current.tableId);
+        return [{ ...current, board }, []];
+      },
+      view: overlayView,
+    },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("stack-face-2")).toHaveAttr("aria-label", "Known label 2 Known rules 2"),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveAttr(
+      "aria-label",
+      "Public Ghost Public ghost label Public ghost rules text.",
+    ),
+    resolveBoardCardArtMounts(7),
+    Scene.expectAll(Scene.all.selector('[data-testid^="stack-face-"]')).toHaveCount(7),
+    ...ids.flatMap((id, row) => [
+      Scene.expect(Scene.testId(`stack-face-${row}`)).toHaveAttr("data-stack-entry-id", String(id)),
+    ]),
+    Scene.expect(Scene.testId("stack-face-0")).toHaveAttr("data-inspect-card-id", "card-0"),
+    Scene.expect(Scene.testId("stack-face-6")).not.toHaveAttr("data-inspect-card-id"),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveAttr("title", "Public Ghost"),
+    Scene.expect(Scene.testId("stack-expand")).toExist(),
+    Scene.click(Scene.testId("stack-expand")),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
+    Scene.expectAll(Scene.all.selector('[data-testid^="stack-face-"]')).toHaveCount(7),
+    Scene.click(Scene.testId("stack-collapse")),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toBeAbsent(),
+  );
+});
+
 test("stack context renders resolve stack affordance and top caption", () => {
   const state = gameState({
-    stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
+    stack: [{ entry_id: 1n, controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
   });
   overlayScene(
     overlayModel(initialBoardModel(), state),
@@ -405,7 +473,7 @@ test("armed stack yield state renders separately", () => {
     overlayModel(
       initialBoardModel(),
       gameState({
-        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }],
+        stack: [{ entry_id: 1n, controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }],
         yielded: true,
       }),
     ),
@@ -3294,6 +3362,7 @@ test("full board view mounts the flight layer above the hand bar", () => {
 
 test("tiny board HUD close controls keep coarse pointer hit targets", () => {
   const stack = Array.from({ length: 6 }, (_, index) => ({
+    entry_id: BigInt(index + 1),
     controller: index % 2,
     kind: "spell" as const,
     label: testMessageRef(`Spell ${index}`),

@@ -83,6 +83,7 @@ test("objects targeted by a stack entry are engaged", () => {
       stack: [
         {
           controller: 0,
+          entry_id: 1n,
           kind: "spell",
           label: testMessageRef("Shock"),
           source: 50,

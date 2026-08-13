@@ -53,7 +53,7 @@ function gameFold(visible: VisibleState, provenance: Partial<GameFoldState["prov
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
       ...provenance,
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
@@ -141,7 +141,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: fromHand, controller: 0 }]]),
@@ -194,8 +196,8 @@ describe("stack flight settle handoff", () => {
         state({
           objects: [bottom, top],
           stack: [
-            { controller: 0, kind: "spell", label: testMessageRef("Counterspell"), source: bottomId },
-            { controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: topId },
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Counterspell"), source: bottomId },
+            { entry_id: 2n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: topId },
           ],
         }),
         {
@@ -269,7 +271,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -319,7 +323,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -402,7 +408,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -545,7 +553,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -594,7 +604,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -639,7 +651,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -677,7 +691,9 @@ describe("stack flight settle handoff", () => {
         ...gameFold(
           state({
             objects: [bolt],
-            stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+            stack: [
+              { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+            ],
           }),
         ),
         seq: 2,
@@ -715,7 +731,9 @@ describe("stack flight settle handoff", () => {
     const fold = gameFold(
       state({
         objects: [bolt],
-        stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+        stack: [
+          { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+        ],
       }),
     );
     const [after] = updateBoard(
@@ -845,7 +863,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
       ),
     );

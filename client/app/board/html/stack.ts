@@ -37,11 +37,14 @@ import type { BoardModel } from "../submodel";
 
 type StackItem = {
   row: number;
-  source: number;
+  /** Production entry identity. Local staged/pending faces deliberately have no authoritative id. */
+  entryId?: bigint;
+  source?: number;
   imageName: string | null;
   print: string;
   cardId?: string;
   label: string;
+  printedSentences: readonly string[];
   staged: boolean;
 };
 
@@ -49,7 +52,8 @@ type StackItem = {
  * Ability entries reuse the source permanent's id — a battlefield / from-stack flight for that
  * permanent must not blank the ability face (ETB triggers would otherwise show only the effect
  * caption). */
-function hideStackRestingFace(board: BoardModel, source: number): boolean {
+function hideStackRestingFace(board: BoardModel, source: number | undefined): boolean {
+  if (source == null) return false;
   const flight = board.flights.get(source);
   if (flight == null || flight.kind !== "stack") return false;
   // Any in-model stack flight still owns the face — including settled frames before FlightsSynced
@@ -64,20 +68,23 @@ function objectMeta(state: VisibleState, source: number): { print: string; name:
 
 function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean): StackItem[] {
   const items: StackItem[] = state.stack.map((entry, row) => {
-    const meta = objectMeta(state, entry.source);
+    const meta = entry.source == null ? { print: "", name: null } : objectMeta(state, entry.source);
     const label = formatMessage(entry.label);
     // Prefer live object art; fall back to entry-carried identity when `source` is a Moved
     // tombstone (sacrifice-as-cost) omitted from `objects`.
     const print = meta.print || entry.print || "";
     const name = meta.name || entry.name || null;
-    const cardId = meta.cardId || entry.card_id || undefined;
+    // Source-less entries must not trigger catalog/card-default inference from an otherwise explicit card id.
+    const cardId = entry.source == null ? undefined : meta.cardId || entry.card_id || undefined;
     return {
       row,
-      source: entry.source,
+      entryId: entry.entry_id,
+      ...(entry.source == null ? {} : { source: entry.source }),
       imageName: entry.kind === "spell" ? label : name,
       print,
       cardId,
       label,
+      printedSentences: entry.printed_sentences ?? [],
       staged: false,
     };
   });
@@ -93,6 +100,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       print: card.print ?? "",
       cardId: card.card_id,
       label: card.name,
+      printedSentences: [],
       staged: true,
     });
     return items;
@@ -107,6 +115,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       print: pending.print ?? "",
       cardId: pending.card_id,
       label: pending.name,
+      printedSentences: [],
       staged: true,
     });
   }
@@ -116,11 +125,13 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
 function stackFace(
   opts: {
     row: number;
-    source: number;
+    entryId?: bigint;
+    source?: number;
     imageName: string | null;
     print: string;
     cardId?: string;
     label: string;
+    printedSentences: readonly string[];
     isTop: boolean;
     staged?: boolean;
     legalTarget?: boolean;
@@ -159,21 +170,31 @@ function stackFace(
           [opts.label],
         );
 
+  const accessibleParts: string[] = [];
+  for (const part of [opts.imageName, opts.label, ...opts.printedSentences]) {
+    if (part == null || accessibleParts.includes(part)) continue;
+    accessibleParts.push(part);
+  }
+  const accessibleLabel = accessibleParts.join(" ");
+  const isLegalTarget = opts.legalTarget && opts.source != null;
   const faceAttrs: Attribute<Message>[] = [
     h.Class(faceClass),
     h.Style(opts.style),
+    h.Key(opts.entryId == null ? `local-${opts.row}` : String(opts.entryId)),
     h.DataAttribute("testid", `stack-face-${opts.row}`),
+    ...(opts.entryId == null ? [] : [h.DataAttribute("stack-entry-id", String(opts.entryId))]),
+    ...(opts.cardId == null ? [] : [h.DataAttribute("inspect-card-id", opts.cardId)]),
     h.Attribute("title", opts.imageName ?? opts.label),
+    h.Role(isLegalTarget ? "button" : "group"),
+    h.Attribute("aria-label", isLegalTarget ? `Target: ${accessibleLabel}` : accessibleLabel),
   ];
   if (opts.staged) {
     faceAttrs.push(h.DataAttribute("staged", "true"));
   }
-  if (opts.legalTarget) {
+  if (isLegalTarget) {
     faceAttrs.push(h.DataAttribute("legal-target", "true"));
     // Legal targets are real controls: click AND keyboard pick the target.
-    faceAttrs.push(h.Role("button"));
     faceAttrs.push(h.Tabindex(0));
-    faceAttrs.push(h.Attribute("aria-label", `Target: ${opts.imageName ?? opts.label}`));
     faceAttrs.push(h.OnClick(TargetChosen({ target: { kind: "object", id: opts.source } })));
     faceAttrs.push(
       h.OnKeyDownPreventDefault((key) => {
@@ -199,7 +220,7 @@ function stackFace(
     faceAttrs.push(h.OnMouseLeave(InspectAuxHovered({ source: "stack", card: null })));
   }
 
-  return h.div(faceAttrs, [art]);
+  return h.div(faceAttrs, [h.div([h.Attribute("aria-hidden", "true")], [art])]);
 }
 
 function holdBar(holdMs: number, holdPeak: number, show: boolean, h: HtmlBuilder<Message>): Html | null {
@@ -271,14 +292,16 @@ function pileView(
       return stackFace(
         {
           row: item.row,
+          entryId: item.entryId,
           source: item.source,
           imageName: item.imageName,
           print: item.print,
           cardId: item.cardId,
           label: item.label,
+          printedSentences: item.printedSentences,
           isTop,
           staged: item.staged,
-          legalTarget: !item.staged && legalTargets.has(item.source),
+          legalTarget: !item.staged && item.source != null && legalTargets.has(item.source),
           cardH,
           positionClass: "bottom-(--b) left-0 z-(--z)",
           style: {
@@ -365,14 +388,16 @@ function stripView(
       return stackFace(
         {
           row: item.row,
+          entryId: item.entryId,
           source: item.source,
           imageName: item.imageName,
           print: item.print,
           cardId: item.cardId,
           label: item.label,
+          printedSentences: item.printedSentences,
           isTop,
           staged: item.staged,
-          legalTarget: !item.staged && legalTargets.has(item.source),
+          legalTarget: !item.staged && item.source != null && legalTargets.has(item.source),
           cardH,
           positionClass: "top-(--y) left-(--x) z-(--z)",
           style: {

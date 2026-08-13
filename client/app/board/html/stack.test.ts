@@ -72,7 +72,7 @@ function gameFold(state: VisibleState): GameFoldState {
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
@@ -104,7 +104,7 @@ function spellOnStack(
   };
   return {
     objects: [spell],
-    stack: [{ controller: 0, kind: "spell", label: testMessageRef(label), source: sourceId }],
+    stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef(label), source: sourceId }],
   };
 }
 
@@ -254,6 +254,7 @@ function abilityDuringSourceFlight(kind: "battlefield" | "from-stack"): ViewMode
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "ability",
             label: testMessageRef("Draw a card"),
             source: sourceId,
@@ -289,6 +290,7 @@ test("ability stack face uses entry print when the source id is no longer in obj
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "ability",
             label: testMessageRef("Search your library for a basic land card"),
             source: 77,
@@ -355,6 +357,7 @@ test("stack pile caption lists every declared target", () => {
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "spell",
             label: testMessageRef("Electrolyze"),
             source: 42,
@@ -721,6 +724,7 @@ test("pending choose_target does not duplicate a spell already on the stack", ()
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "spell",
             label: testMessageRef("Lightning Bolt"),
             source: bolt.id,
@@ -801,7 +805,9 @@ test("a second trigger from one permanent gets its own top face while aiming", (
     fold: gameFold(
       gameState({
         objects: [veyran, bear],
-        stack: [{ controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: veyran.id }],
+        stack: [
+          { entry_id: 1n, controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: veyran.id },
+        ],
         pending_choice: {
           kind: "choose_target",
           label: testMessageRef("Target creature gets +1/+1"),
@@ -850,7 +856,13 @@ test("expand button appears for a tall stack and opens strip view", () => {
       toughness: 0,
       zone: ZONE.Stack,
     });
-    stack.push({ controller: 0, kind: "spell", label: testMessageRef(`Spell ${i}`), source: id });
+    stack.push({
+      entry_id: BigInt(i + 1),
+      controller: 0,
+      kind: "spell",
+      label: testMessageRef(`Spell ${i}`),
+      source: id,
+    });
   }
   const model: ViewModel = {
     board: initialBoardModel(),
