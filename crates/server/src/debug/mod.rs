@@ -28,6 +28,7 @@ pub(crate) const MAX_JOURNAL_REQUEST_BYTES: usize = 1_048_576;
 pub(crate) struct Checkpoint {
     pub(crate) game: Game,
     pub(crate) chrome: DebugChromeSnapshot,
+    pub(crate) object_prints: schema::ObjectPrintOverrides,
     pub(crate) source_table_seq: u64,
     pub(crate) object_slots: usize,
 }
@@ -52,6 +53,8 @@ pub(crate) struct JournalRecord {
 pub struct TableDebugState {
     pub revision: u64,
     pub debug_mutated: bool,
+    /// Live exact-object presentation overlays, swapped atomically with debug game replacement.
+    pub(crate) object_prints: schema::ObjectPrintOverrides,
     pub(crate) checkpoints: BTreeMap<String, Checkpoint>,
     pub(crate) checkpoint_object_slots: usize,
     pub(crate) journal: VecDeque<JournalRecord>,
@@ -65,6 +68,7 @@ impl Default for TableDebugState {
         Self {
             revision: 0,
             debug_mutated: false,
+            object_prints: Default::default(),
             checkpoints: BTreeMap::new(),
             checkpoint_object_slots: 0,
             journal: VecDeque::new(),
@@ -301,6 +305,7 @@ pub(crate) fn checkpoint_table(
     let checkpoint = Checkpoint {
         game: game.clone(),
         chrome: table.chrome.debug_snapshot(),
+        object_prints: table.debug.object_prints.clone(),
         source_table_seq: table.seq,
         object_slots,
     };
@@ -381,7 +386,12 @@ pub fn mutate_table(
     } else {
         table.chrome.debug_snapshot()
     };
-    projection_sweep_with_logical_chrome(&candidate_game, table, snapshot)?;
+    projection_sweep_with_logical_chrome(
+        &candidate_game,
+        table,
+        snapshot,
+        table.current_object_print_overrides(),
+    )?;
 
     // Preflight every bounded/counted commit fact before touching the live table.
     let next_table_seq = checked_increment(table.seq, "table_seq_exhausted")?;
@@ -452,7 +462,12 @@ pub(crate) fn restore_checkpoint(
         });
     }
 
-    projection_sweep_with_logical_chrome(&candidate_game, table, checkpoint.chrome)?;
+    projection_sweep_with_logical_chrome(
+        &candidate_game,
+        table,
+        checkpoint.chrome,
+        &checkpoint.object_prints,
+    )?;
 
     // The stored source sequence is provenance only. Transport always advances from live values.
     let next_table_seq = checked_increment(table.seq, "table_seq_exhausted")?;
@@ -468,6 +483,7 @@ pub(crate) fn restore_checkpoint(
     table.broadcast_seq = next_broadcast_seq;
     table.debug.revision = next_debug_revision;
     table.debug.debug_mutated = true;
+    table.debug.object_prints = checkpoint.object_prints;
     let schedule_hold =
         checkpoint.chrome.hold_requested && arm_stack_resolution(table, next_table_seq);
     let journal_record = JournalRecord {
@@ -595,6 +611,7 @@ fn projection_sweep_with_logical_chrome(
     game: &Game,
     table: &Table,
     chrome: DebugChromeSnapshot,
+    object_prints: &schema::ObjectPrintOverrides,
 ) -> Result<(), DebugFailure> {
     let hold_ms = if chrome.hold_requested {
         u32::try_from(STACK_HOLD.as_millis()).expect("stack hold fits u32 milliseconds")
@@ -607,6 +624,7 @@ fn projection_sweep_with_logical_chrome(
         &table.seats,
         hold_ms,
         &table.prints,
+        object_prints,
     );
     projection_sweep_with_extras(game, &extras)
 }
@@ -646,6 +664,7 @@ fn publish_snapshot(table: &Table) {
         stack_hold_remaining_ms: table.stack_hold_remaining_ms(),
         seats: table.seats.clone(),
         prints: table.prints.clone(),
+        object_print_overrides: table.current_object_print_overrides().clone(),
     };
     let _ = table.tx.send(Arc::new(PublishedUpdate::Snapshot(state)));
 }

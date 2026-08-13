@@ -715,6 +715,7 @@ async fn grpc_stream_delivers_midstream_snapshot() {
                 stack_hold_remaining_ms: table.stack_hold_remaining_ms(),
                 seats: table.seats.clone(),
                 prints: table.prints.clone(),
+                object_print_overrides: Default::default(),
             },
             hand_card,
         )

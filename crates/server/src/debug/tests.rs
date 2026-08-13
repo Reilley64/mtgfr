@@ -40,6 +40,7 @@ fn command(table_id: &str, operations: Vec<Mutation>) -> MutateCommand {
 fn assert_debug_state_is_empty(debug: &TableDebugState) {
     assert_eq!(debug.revision, 0);
     assert!(!debug.debug_mutated);
+    assert!(debug.object_prints.is_empty());
     assert!(debug.checkpoints.is_empty());
     assert_eq!(debug.checkpoint_object_slots, 0);
     assert!(debug.journal.is_empty());
@@ -92,6 +93,7 @@ struct CheckpointFingerprint {
     name: String,
     game: engine::debug::Inspection,
     chrome: DebugChromeSnapshot,
+    object_prints: schema::ObjectPrintOverrides,
     source_table_seq: u64,
     object_slots: usize,
 }
@@ -107,6 +109,7 @@ struct TableTransactionFingerprint {
     broadcast_seq: u64,
     revision: u64,
     debug_mutated: bool,
+    object_prints: schema::ObjectPrintOverrides,
     checkpoint_object_slots: usize,
     checkpoints: Vec<CheckpointFingerprint>,
     journal: Vec<JournalRecord>,
@@ -142,6 +145,7 @@ fn table_transaction_fingerprint(state: &AppState, table_id: &str) -> TableTrans
         broadcast_seq: table.broadcast_seq,
         revision: debug.revision,
         debug_mutated: debug.debug_mutated,
+        object_prints: debug.object_prints.clone(),
         checkpoint_object_slots: debug.checkpoint_object_slots,
         checkpoints: debug
             .checkpoints
@@ -150,6 +154,7 @@ fn table_transaction_fingerprint(state: &AppState, table_id: &str) -> TableTrans
                 name: name.clone(),
                 game: engine::debug::inspect(&checkpoint.game),
                 chrome: checkpoint.chrome,
+                object_prints: checkpoint.object_prints.clone(),
                 source_table_seq: checkpoint.source_table_seq,
                 object_slots: checkpoint.object_slots,
             })
@@ -1030,7 +1035,7 @@ async fn checkpoint_creation_only_appends_audit_state_and_preserves_live_state_a
 }
 
 #[tokio::test]
-async fn debug_restore_replaces_only_game_and_logical_chrome_monotonically() {
+async fn debug_restore_replaces_game_chrome_and_object_prints_monotonically() {
     let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
     {
         let mut registry = lock(&state.reg);
@@ -1039,9 +1044,19 @@ async fn debug_restore_replaces_only_game_and_logical_chrome_monotonically() {
             .chrome
             .set_yields_for_test([true, false, false, false]);
         table.chrome.set_turn_yield_flag(1, true);
+        table
+            .debug
+            .object_prints
+            .insert(42, "checkpoint-print".to_string());
     }
     checkpoint_table(&state, checkpoint_command("baseline", 7)).unwrap();
     mutate_table(&state, command("table", vec![set_life(9)])).unwrap();
+    lock(&state.reg)
+        .get_mut("table")
+        .unwrap()
+        .debug
+        .object_prints
+        .insert(42, "newer-live-print".to_string());
     let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
 
     let receipt = restore_checkpoint(
@@ -1066,12 +1081,20 @@ async fn debug_restore_replaces_only_game_and_logical_chrome_monotonically() {
     assert_eq!(*table.chrome.yields(), [true, false, false, false]);
     assert_eq!(*table.chrome.turn_yields(), [false, true, false, false]);
     assert!(!table.chrome.any_dwell());
+    assert_eq!(
+        table.debug.object_prints.get(&42).map(String::as_str),
+        Some("checkpoint-print")
+    );
     let update = rx.try_recv().expect("one replacement snapshot");
     let PublishedUpdate::Snapshot(snapshot) = update.as_ref() else {
         panic!("restore publishes a snapshot")
     };
     assert_eq!((snapshot.seq, snapshot.broadcast_seq), (2, 2));
     assert_eq!(snapshot.game.life(PlayerId(0)), 20);
+    assert_eq!(
+        snapshot.object_print_overrides.get(&42).map(String::as_str),
+        Some("checkpoint-print")
+    );
     assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
     assert_eq!(
         table.debug.journal.back().unwrap().kind,

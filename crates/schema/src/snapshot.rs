@@ -48,11 +48,15 @@ fn format_modifier_contribution(contribution: engine::ModifierContribution) -> S
 /// Distinct from every real seat (ids run 0..4); the client renders this view read-only.
 pub const SPECTATOR_VIEWER: u8 = u8::MAX;
 
+/// Exact live object identity to Printing UUID. This is transient presentation input: it is
+/// applied only after visibility projection and is never serialized into the engine `Game`.
+pub type ObjectPrintOverrides = std::collections::HashMap<engine::ObjectId, String>;
+
 /// Table-owned facts that finish a [`VisibleState`]. Pure data — no `Seat` / tokio coupling.
 ///
-/// Yield, stack-hold remaining, display names, and avatar hashes live on the server's `Table`,
-/// not the `Game` (turn-priority-and-stack spec). Callers map table state into this DTO and pass
-/// it to [`complete_visible`].
+/// Yield, stack-hold remaining, display names, avatar hashes, and exact-object art live on the
+/// server's `Table`, not the `Game` (turn-priority-and-stack spec). Callers map table state into
+/// this DTO and pass it to [`complete_visible`].
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ViewExtras {
     pub yields: [bool; 4],
@@ -63,6 +67,9 @@ pub struct ViewExtras {
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference). Empty maps mean
     /// every object uses its CardDef `default_print`.
     pub prints: [std::collections::HashMap<String, String>; 4],
+    /// Exact-object Printing UUIDs, taking precedence over seat/card deck preferences. The map is
+    /// consulted only for objects already admitted by the viewer's visibility projection.
+    pub object_print_overrides: ObjectPrintOverrides,
 }
 
 /// Inputs for one viewer-facing delta frame: redact events + complete board in one call
@@ -127,6 +134,12 @@ pub fn complete_visible(
         if obj.card_id.is_empty() {
             continue;
         }
+        if let Some(print) = extras.object_print_overrides.get(&obj.id)
+            && !print.is_empty()
+        {
+            obj.print = print.clone();
+            continue;
+        }
         let seat = obj.owner as usize;
         if seat >= extras.prints.len() {
             continue;
@@ -169,6 +182,12 @@ pub fn complete_visible(
         let Some(source) = entry.source else {
             continue;
         };
+        if let Some(print) = extras.object_print_overrides.get(&source)
+            && !print.is_empty()
+        {
+            entry.print = print.clone();
+            continue;
+        }
         let seat = game.owner_of(source).0 as usize;
         if seat >= extras.prints.len() {
             continue;
@@ -1219,6 +1238,7 @@ mod tests {
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
             gravatar_hashes: Default::default(),
             prints: Default::default(),
+            object_print_overrides: Default::default(),
         };
 
         let StreamFrame::Delta(env) = compose_delta(DeltaCompose {
@@ -1286,6 +1306,7 @@ mod tests {
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
             gravatar_hashes: Default::default(),
             prints: Default::default(),
+            object_print_overrides: Default::default(),
         };
 
         let seated = complete_visible(&game, Some(PlayerId(1)), &extras);
@@ -3774,40 +3795,183 @@ mod tests {
         );
     }
 
+    #[test]
+    fn stack_projection_exact_object_prints_win_without_leaking_hidden_objects() {
+        let mut game = Game::with_players(2, 7);
+        let p0 = PlayerId(0);
+        let first = game.spawn_on_battlefield(p0, def("Llanowar Elves"));
+        let second = game.spawn_on_battlefield(p0, def("Llanowar Elves"));
+        let empty_exact = game.spawn_on_battlefield(p0, def("Llanowar Elves"));
+        let hidden = game.spawn_in_hand(p0, def("Llanowar Elves"));
+        let card_id = game.def_of(first).id.to_string();
+        let first_print = "11111111-1111-1111-1111-111111111111";
+        let second_print = "22222222-2222-2222-2222-222222222222";
+        let hidden_print = "private-hidden-print";
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(card_id, "seat-preference".to_string());
+        let extras = ViewExtras {
+            prints,
+            object_print_overrides: std::collections::HashMap::from([
+                (first, first_print.to_string()),
+                (second, second_print.to_string()),
+                (empty_exact, String::new()),
+                (hidden, hidden_print.to_string()),
+            ]),
+            ..ViewExtras::default()
+        };
+
+        for viewer in [Some(p0), Some(PlayerId(1)), None] {
+            let state = complete_visible(&game, viewer, &extras);
+            assert_eq!(
+                state
+                    .objects
+                    .iter()
+                    .find(|object| object.id == first)
+                    .unwrap()
+                    .print,
+                first_print,
+            );
+            assert_eq!(
+                state
+                    .objects
+                    .iter()
+                    .find(|object| object.id == second)
+                    .unwrap()
+                    .print,
+                second_print,
+            );
+            assert_eq!(
+                state
+                    .objects
+                    .iter()
+                    .find(|object| object.id == empty_exact)
+                    .unwrap()
+                    .print,
+                "seat-preference",
+                "an empty exact override falls through to the seat Card preference",
+            );
+            if viewer == Some(p0) {
+                assert_eq!(
+                    state
+                        .objects
+                        .iter()
+                        .find(|object| object.id == hidden)
+                        .unwrap()
+                        .print,
+                    hidden_print,
+                );
+            } else {
+                assert!(state.objects.iter().all(|object| object.id != hidden));
+                assert!(
+                    state
+                        .objects
+                        .iter()
+                        .all(|object| object.print != hidden_print)
+                );
+            }
+        }
+    }
+
     #[cfg(debug_assertions)]
     #[test]
-    fn source_less_stack_ghost_projects_identically_to_every_audience() {
+    fn stack_projection_preserves_bottom_order_identity_exact_art_and_public_ghost_metadata() {
         let mut game = Game::with_players(2, 7);
+        let p0 = PlayerId(0);
+        let spell_card = game.spawn_in_hand(p0, def("Dark Ritual"));
+        let ability_source = game.spawn_on_battlefield(p0, def("Llanowar Elves"));
+        let spell_object = game.live_object_ids().into_iter().max().unwrap() + 1;
+        let ghost_card_id = game.def_of(ability_source).id.to_string();
         let public = engine::PublicStackGhost {
             name: "Public fixture".to_string(),
             label: "No-op ability".to_string(),
-            printing_id: "11111111-1111-1111-1111-111111111111".to_string(),
-            card_id: None,
+            printing_id: "ghost-explicit-print".to_string(),
+            card_id: Some(ghost_card_id.clone()),
             printed_sentences: vec!["Explicit public rules text.".to_string()],
         };
-        let entry_id =
-            engine::debug::push_public_stack_ghost(&mut game, PlayerId(1), public.clone())
-                .expect("valid public metadata inserts one ghost");
+        let specs = [
+            engine::debug::DebugStackEntrySpec::KnownSpell {
+                entry_id: engine::StackEntryId(10),
+                from_object_id: spell_card,
+                spell_object_id: spell_object,
+                controller: p0,
+                targets: vec![],
+                targets_second: vec![],
+                x: 0,
+            },
+            engine::debug::DebugStackEntrySpec::AuthoredAbility {
+                entry_id: engine::StackEntryId(11),
+                controller: p0,
+                source_object_id: ability_source,
+                ability_index: 0,
+                target: None,
+                targets_second: vec![],
+                x: 0,
+            },
+            engine::debug::DebugStackEntrySpec::AuthoredAbility {
+                entry_id: engine::StackEntryId(12),
+                controller: p0,
+                source_object_id: ability_source,
+                ability_index: 0,
+                target: None,
+                targets_second: vec![],
+                x: 0,
+            },
+            engine::debug::DebugStackEntrySpec::PublicGhost {
+                entry_id: engine::StackEntryId(13),
+                controller: PlayerId(1),
+                public: public.clone(),
+            },
+        ];
+        engine::debug::replace_stack(&mut game, &specs).expect("supported public stack fixture");
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[1].insert(ghost_card_id.clone(), "ghost-seat-preference".to_string());
+        let extras = ViewExtras {
+            prints,
+            object_print_overrides: std::collections::HashMap::from([
+                (spell_object, "spell-exact-print".to_string()),
+                (ability_source, "ability-source-exact-print".to_string()),
+            ]),
+            ..ViewExtras::default()
+        };
 
-        let owner = snapshot(&game, PlayerId(0)).stack;
-        let opponent = snapshot(&game, PlayerId(1)).stack;
-        let spectator = spectator_snapshot(&game).stack;
-
-        assert_eq!(owner, opponent);
-        assert_eq!(owner, spectator);
-        assert_eq!(owner.len(), 1);
-        let projected = &owner[0];
-        assert_eq!(projected.entry_id, entry_id.0);
-        assert_eq!(projected.kind, "ability");
-        assert_eq!(projected.source, None);
-        assert_eq!(projected.controller, 1);
-        assert_eq!(projected.label.key, "No-op ability");
-        assert_eq!(projected.target, None);
-        assert!(projected.targets.is_empty());
-        assert_eq!(projected.print, public.printing_id);
-        assert_eq!(projected.card_id, "");
-        assert_eq!(projected.name, public.name);
-        assert_eq!(projected.printed_sentences, public.printed_sentences);
-        assert!(snapshot(&game, PlayerId(0)).objects.is_empty());
+        let views = [
+            complete_visible(&game, Some(p0), &extras).stack,
+            complete_visible(&game, Some(PlayerId(1)), &extras).stack,
+            complete_visible(&game, None, &extras).stack,
+        ];
+        assert_eq!(views[0], views[1]);
+        assert_eq!(views[0], views[2]);
+        let projected = &views[0];
+        assert_eq!(
+            projected
+                .iter()
+                .map(|entry| entry.entry_id)
+                .collect::<Vec<_>>(),
+            vec![10, 11, 12, 13],
+        );
+        assert_eq!(
+            projected
+                .iter()
+                .map(|entry| entry.source)
+                .collect::<Vec<_>>(),
+            vec![
+                Some(spell_object),
+                Some(ability_source),
+                Some(ability_source),
+                None
+            ],
+        );
+        assert_eq!(projected[0].print, "spell-exact-print");
+        assert_eq!(projected[1].print, "ability-source-exact-print");
+        assert_eq!(projected[2].print, "ability-source-exact-print");
+        assert_eq!(projected[3].kind, "ability");
+        assert_eq!(projected[3].controller, 1);
+        assert_eq!(projected[3].label.key, public.label);
+        assert_eq!(projected[3].target, None);
+        assert!(projected.iter().all(|entry| entry.targets.is_empty()));
+        assert_eq!(projected[3].print, public.printing_id);
+        assert_eq!(projected[3].card_id, ghost_card_id);
+        assert_eq!(projected[3].name, public.name);
+        assert_eq!(projected[3].printed_sentences, public.printed_sentences);
     }
 }

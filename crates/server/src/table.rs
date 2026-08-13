@@ -49,9 +49,9 @@ pub struct Table {
     pub tx: broadcast::Sender<Broadcast>,
     /// Auto-pass / stack-hold / dwell policy — see [`crate::chrome::ChromeState`].
     pub chrome: ChromeState,
-    /// Debug-only revision and provenance; omitted from release builds.
+    /// Debug-only transaction state; omitted from release builds.
     #[cfg(debug_assertions)]
-    pub debug: TableDebugState,
+    pub(crate) debug: TableDebugState,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
     /// When `Game.Stream` last went quiet (`None` = has/had listeners, grace not armed).
@@ -125,12 +125,28 @@ impl Table {
             stack_hold_remaining_ms: self.stack_hold_remaining_ms(),
             seats: self.seats.clone(),
             prints: self.prints.clone(),
+            object_print_overrides: self.current_object_print_overrides().clone(),
         };
         let _ = self.tx.send(std::sync::Arc::new(PublishedUpdate::Delta {
             state,
             events: vec![],
             auto_actions: vec![],
         }));
+    }
+
+    /// Current exact-object presentation overlays. Live ownership is debug-only; release tables
+    /// always project the shared empty map.
+    pub(crate) fn current_object_print_overrides(&self) -> &schema::ObjectPrintOverrides {
+        #[cfg(debug_assertions)]
+        {
+            &self.debug.object_prints
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            static EMPTY: std::sync::LazyLock<schema::ObjectPrintOverrides> =
+                std::sync::LazyLock::new(schema::ObjectPrintOverrides::new);
+            &EMPTY
+        }
     }
 
     /// The seat index a user holds, if any.

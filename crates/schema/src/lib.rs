@@ -37,7 +37,8 @@ pub use intent::{
     WireSpellDamage, WireTarget, to_intent, to_intent_for_seat,
 };
 pub use snapshot::{
-    DeltaCompose, SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible, compose_delta,
+    DeltaCompose, ObjectPrintOverrides, SPECTATOR_VIEWER, StreamFrame, ViewExtras,
+    complete_visible, compose_delta,
 };
 
 /// Mirror of [`engine::ObjectId`] for the wire.

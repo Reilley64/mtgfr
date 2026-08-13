@@ -103,6 +103,20 @@ Each viewer's visible state SHALL carry turn structure, per-seat public player v
 - **WHEN** production browser bindings are generated with the expanded `StackObjectView`
 - **THEN** they contain the production stack fields but no debug package, debug service, debug RPC, or mutation route
 
+### Requirement: Exact-object printing overlays preserve visibility
+
+Production projection MAY receive a transient Printing UUID map keyed by exact `ObjectId`. For an ordinary object already admitted to a viewer's visible state, or an ordinary visible stack entry with an object source, a nonempty exact-object print SHALL take precedence over the owning seat's Card-id deck preference, which SHALL take precedence over the `CardDef` default print. Projection SHALL consult the exact-object map only after visibility admits the object or stack metadata. A source-less public ghost SHALL use only its explicit public print and SHALL NOT infer art from this map, a deck preference, or a card default.
+
+Every self-contained published snapshot or delta SHALL carry the exact-object map captured with its game state so a later ordinary publication does not revert already-overridden visible art. The map remains presentation input rather than serialized `Game` state or an additional wire payload.
+
+#### Scenario: Same card identity has different exact art
+- **WHEN** two public objects with the same Card id have different exact-object Printing UUIDs
+- **THEN** every owner, opponent, and spectator projection shows the matching exact print on each visible object and ordinary stack source, ahead of deck preference and default art
+
+#### Scenario: Hidden exact art does not reveal identity
+- **WHEN** an exact-object print exists for a hand or library object hidden from an opponent or spectator
+- **THEN** projection reveals neither the object, its card identity, nor its Printing UUID, and the overlay does not cause hidden-object inference
+
 ### Requirement: Stream snapshots and deltas are ordered first-class frames
 A connecting client SHALL receive an initial snapshot frame at the current sequence number, then ordered delta, replacement snapshot, and heartbeat frames. Each delta SHALL carry a monotonic sequence watermark, a batch of already-redacted visible events, the viewer's complete visible state after those events, and optional auto-action notices for forced or automatic submissions in the frame. A midstream replacement snapshot SHALL be a first-class frame at its own monotonic sequence watermark, SHALL contain a complete state freshly projected for that viewer, and SHALL establish the baseline for every later delta without inventing incremental events. Clients SHALL fold snapshots by replacing the board and SHALL fold deltas by replacing the board from state and appending the events to the log. They SHALL NOT reorder visible events across frames or fetch a side snapshot. On reconnect after a sequence gap, the client SHALL open a new stream and treat the opening snapshot as resume. Heartbeat frames SHALL exist to prevent edge-proxy idle timeouts and MUST be forwarded on the browser-facing push channel.
 

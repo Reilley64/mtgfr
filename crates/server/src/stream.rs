@@ -7,8 +7,8 @@
 use axum::http::StatusCode;
 use engine::{Event, Game, PlayerId};
 use schema::{
-    DeltaCompose, MessageRef, StreamFrame, ViewExtras, VisibleState, complete_visible,
-    compose_delta,
+    DeltaCompose, MessageRef, ObjectPrintOverrides, StreamFrame, ViewExtras, VisibleState,
+    complete_visible, compose_delta,
 };
 use tokio::sync::broadcast;
 
@@ -23,6 +23,7 @@ pub fn view_extras(
     seats: &[Seat; 4],
     stack_hold_remaining_ms: u32,
     prints: &[std::collections::HashMap<String, String>; 4],
+    object_print_overrides: &ObjectPrintOverrides,
 ) -> ViewExtras {
     ViewExtras {
         yields: *yields,
@@ -41,6 +42,7 @@ pub fn view_extras(
                 .unwrap_or_default()
         }),
         prints: prints.clone(),
+        object_print_overrides: object_print_overrides.clone(),
     }
 }
 
@@ -102,6 +104,7 @@ pub fn table_view_extras(table: &crate::Table) -> ViewExtras {
         &table.seats,
         table.stack_hold_remaining_ms(),
         &table.prints,
+        table.current_object_print_overrides(),
     )
 }
 
@@ -135,6 +138,7 @@ pub fn frame_for_update(viewer: Option<PlayerId>, update: &PublishedUpdate) -> S
                 &state.seats,
                 state.stack_hold_remaining_ms,
                 &state.prints,
+                &state.object_print_overrides,
             ),
         ),
         PublishedUpdate::Snapshot(state) => StreamFrame::Snapshot {
@@ -148,6 +152,7 @@ pub fn frame_for_update(viewer: Option<PlayerId>, update: &PublishedUpdate) -> S
                     &state.seats,
                     state.stack_hold_remaining_ms,
                     &state.prints,
+                    &state.object_print_overrides,
                 ),
             ),
         },
@@ -271,7 +276,14 @@ mod tests {
         seats[1].username = Some("bob".into());
         let yields = [true, false, false, false];
         let turn_yields = [false, true, false, false];
-        let extras = view_extras(&yields, &turn_yields, &seats, 900, &Default::default());
+        let extras = view_extras(
+            &yields,
+            &turn_yields,
+            &seats,
+            900,
+            &Default::default(),
+            &Default::default(),
+        );
 
         let StreamFrame::Delta(DeltaEnvelope { state, .. }) =
             frame_for(Some(PlayerId(0)), 1, &[], &game, vec![], &extras)
@@ -295,6 +307,84 @@ mod tests {
         assert!(p1.turn_yielded, "viewer P1's turn yield comes from extras");
     }
 
+    #[cfg(debug_assertions)]
+    #[test]
+    fn published_state_object_print_overrides_survive_snapshot_and_delta_projection() {
+        let mut game = Game::with_players(2, 7);
+        let object = game.spawn_on_battlefield(PlayerId(0), def("Llanowar Elves"));
+        let hidden = game.spawn_in_hand(PlayerId(0), def("Dark Ritual"));
+        let override_print = "exact-object-print";
+        let hidden_print = "hidden-exact-object-print";
+        let mut table = crate::Table::empty();
+        table
+            .debug
+            .object_prints
+            .insert(object, override_print.to_string());
+        assert_eq!(
+            table_view_extras(&table)
+                .object_print_overrides
+                .get(&object)
+                .map(String::as_str),
+            Some(override_print),
+            "an opening snapshot reads the table-owned exact-object map",
+        );
+        let published = |game: Game| PublishedState {
+            seq: 9,
+            broadcast_seq: 12,
+            game,
+            yields: [false; 4],
+            turn_yields: [false; 4],
+            stack_hold_remaining_ms: 0,
+            seats: std::array::from_fn(|_| Seat::default()),
+            prints: Default::default(),
+            object_print_overrides: std::collections::HashMap::from([
+                (object, override_print.to_string()),
+                (hidden, hidden_print.to_string()),
+            ]),
+        };
+
+        let updates = [
+            PublishedUpdate::Snapshot(published(game.clone())),
+            PublishedUpdate::Delta {
+                state: published(game),
+                events: vec![],
+                auto_actions: vec![],
+            },
+        ];
+        for update in &updates {
+            for viewer in [Some(PlayerId(0)), Some(PlayerId(1)), None] {
+                let state = match frame_for_update(viewer, update) {
+                    StreamFrame::Snapshot { state, .. }
+                    | StreamFrame::Delta(DeltaEnvelope { state, .. }) => state,
+                    StreamFrame::Heartbeat => panic!("publication never maps to a heartbeat"),
+                };
+                assert_eq!(
+                    state
+                        .objects
+                        .iter()
+                        .find(|view| view.id == object)
+                        .unwrap()
+                        .print,
+                    override_print,
+                );
+                if viewer == Some(PlayerId(0)) {
+                    assert_eq!(
+                        state
+                            .objects
+                            .iter()
+                            .find(|view| view.id == hidden)
+                            .unwrap()
+                            .print,
+                        hidden_print,
+                    );
+                } else {
+                    assert!(state.objects.iter().all(|view| view.id != hidden));
+                    assert!(state.objects.iter().all(|view| view.print != hidden_print));
+                }
+            }
+        }
+    }
+
     #[test]
     fn frame_for_update_maps_snapshot_without_delta_events() {
         let mut game = Game::new();
@@ -314,6 +404,7 @@ mod tests {
             stack_hold_remaining_ms: 0,
             seats,
             prints,
+            object_print_overrides: Default::default(),
         });
 
         for viewer in [Some(PlayerId(0)), Some(PlayerId(1)), None] {

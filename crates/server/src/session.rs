@@ -40,6 +40,8 @@ pub struct PublishedState {
     pub stack_hold_remaining_ms: u32,
     pub seats: [crate::Seat; 4],
     pub prints: [std::collections::HashMap<String, String>; 4],
+    /// Transient exact-object art overlays captured atomically with this publication.
+    pub object_print_overrides: schema::ObjectPrintOverrides,
 }
 
 /// A normal intent/hold publication is a delta. Authoritative out-of-band replacement publishes
@@ -289,6 +291,7 @@ impl<'a> TableSession<'a> {
             stack_hold_remaining_ms: hold_ms,
             seats: self.table.seats.clone(),
             prints: self.table.prints.clone(),
+            object_print_overrides: self.table.current_object_print_overrides().clone(),
         };
         let _ = self.table.tx.send(Arc::new(PublishedUpdate::Delta {
             state,
