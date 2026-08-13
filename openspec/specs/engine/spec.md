@@ -57,7 +57,7 @@ The engine MUST represent the seven MTG zones and a flat object arena addressed 
 ### Requirement: Event-Sourced Board Facts vs Orchestration State
 During ordinary play, board facts (life, zones, counters, tap, damage marks, mana pools, stack contents) MUST mutate only via events applied by direct pattern-matched handlers. Priority holder, consecutive passes, pending choice, deferred resume frames, keyword obligations, resolution-finish policy, and similar orchestration MUST live as plain fields on the game and MUST NOT be reconstituted from the event log alone. Library order MUST NOT be fully event-sourced (shuffles/draws mutate the library directly) so other players never observe order through events. The event log MUST be treated as audit-only; intent replay of a full match from events alone is out of scope.
 
-A debug-assertion-only authoritative raw editor MAY mutate a cloned transaction candidate without manufacturing ordinary events. This is the sole exception for board-fact editing: it SHALL expose typed edits only, rebuild derived state after the ordered batch, require structural validation and all-viewer projection before the server swaps the candidate, and leave later ordinary intents on the event-applied path. Raw debug edits SHALL NOT claim that the resulting state or event log arose through rules-legal play.
+A debug-assertion-only authoritative raw editor MAY mutate a cloned transaction candidate without manufacturing ordinary events. This is the sole exception for board-fact editing: it SHALL expose typed edits only, rebuild derived state after the ordered batch, require structural validation and all-viewer projection before the server swaps the candidate, and leave later ordinary intents on the event-applied path. Its coherent pending-orchestration edit SHALL clear the pending choice, every deferred resume rider, the resolution-local frame, resolution-finish policy, pending enter-bonus counters, and clash scratch as one bundle; the caller SHALL choose whether queued trigger groups and keyword obligations are also cleared. The ordered batch SHALL invalidate derived characteristics, validate the complete candidate, and rebuild legal actions once at batch tail rather than refreshing an intermediate partially cleared state. Raw debug edits are structural candidate edits, not ordinary events, and SHALL NOT claim that the resulting state or event log arose through rules-legal play or can be reconstructed by replay.
 
 #### Scenario: Events mutate ordinary board facts
 - **WHEN** an ordinary event such as life change, zone move, or mana spend is applied
@@ -66,6 +66,14 @@ A debug-assertion-only authoritative raw editor MAY mutate a cloned transaction 
 #### Scenario: Debug editing is an explicit out-of-band exception
 - **WHEN** a debug-only typed batch edits a transaction candidate
 - **THEN** the candidate facts change without fabricated incremental events and become authoritative only after structural and projection checks succeed
+
+#### Scenario: Debug pending orchestration clears coherently
+- **WHEN** a debug candidate applies the typed pending-orchestration clear
+- **THEN** pending choice, all deferred resume and resolution-local scratch are cleared together, queued trigger groups and obligations follow the caller's option, and legal actions are rebuilt once after the complete ordered batch
+
+#### Scenario: A late debug failure preserves the live game
+- **WHEN** a later operation fails after an earlier candidate operation cleared pending orchestration
+- **THEN** the candidate is discarded and the live game's pending bundle, triggers, obligations, and legal actions remain unchanged
 
 #### Scenario: Priority is not in the event log
 - **WHEN** priority passes or a pending choice is raised

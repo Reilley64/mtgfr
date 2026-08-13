@@ -513,11 +513,20 @@ async fn seed_two_player_table_with_players(
     state: &AppState,
     table_id: &str,
 ) -> (i64, i64, String) {
+    let (host_id, guest_id, host_token, _guest_token) =
+        seed_two_player_table_with_tokens(state, table_id).await;
+    (host_id, guest_id, host_token)
+}
+
+/// Seed a running two-player table and return both account ids and authenticated tokens.
+async fn seed_two_player_table_with_tokens(
+    state: &AppState,
+    table_id: &str,
+) -> (i64, i64, String, String) {
     use pb::tables_service_server::TablesService;
 
     let (host_id, host_token) = signed_up(state, &format!("{table_id}-host@x.c"), "host").await;
-    let (guest_id, _guest_token) =
-        signed_up(state, &format!("{table_id}-guest@x.c"), "guest").await;
+    let (guest_id, guest_token) = signed_up(state, &format!("{table_id}-guest@x.c"), "guest").await;
     let host_deck_id = deck_row(state, host_id).await;
     let guest_deck_id = deck_row(state, guest_id).await;
 
@@ -547,7 +556,7 @@ async fn seed_two_player_table_with_players(
         .await
         .expect("seed");
     keep_table_hands(state, table_id);
-    (host_id, guest_id, host_token)
+    (host_id, guest_id, host_token, guest_token)
 }
 
 fn keep_table_hands(state: &AppState, table_id: &str) {
@@ -2786,6 +2795,302 @@ async fn debug_checkpoint_restore_and_journal_are_plain_requests_with_exact_wire
         before,
         "journal reads are neither journaled nor charged request capacity"
     );
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
+async fn debug_restore_publishes_exact_private_snapshots_then_allows_an_ordinary_delta() {
+    use debug_pb::debug_service_server::DebugService;
+    use pb::game_service_server::GameService;
+
+    let state = test_state().await;
+    let (_host_id, _guest_id, host_token, guest_token) =
+        seed_two_player_table_with_tokens(&state, "restore-stream").await;
+    let (_spectator_id, spectator_token) =
+        signed_up(&state, "restore-stream-spectator@x.c", "spectator").await;
+
+    // Give the coherent clear real logical orchestration chrome to clear. The checkpoint must
+    // restore these logical flags, but never a transport sequence or timer instant.
+    {
+        let mut registry = crate::lock(&state.reg);
+        let table = registry.get_mut("restore-stream").expect("seeded table");
+        table.chrome.arm_yield(1);
+        table.chrome.set_turn_yield_flag(1, true);
+    }
+
+    let game = game_svc::GameSvc::new(state.clone());
+    let debug = debug_svc::DebugSvc::new(state.clone());
+    let mut owner_stream = game
+        .stream(authed(
+            pb::StreamRequest {
+                table_id: "restore-stream".into(),
+            },
+            &host_token,
+        ))
+        .await
+        .expect("owner stream opens")
+        .into_inner();
+    let mut opponent_stream = game
+        .stream(authed(
+            pb::StreamRequest {
+                table_id: "restore-stream".into(),
+            },
+            &guest_token,
+        ))
+        .await
+        .expect("opponent stream opens")
+        .into_inner();
+    let mut spectator_stream = game
+        .stream(authed(
+            pb::StreamRequest {
+                table_id: "restore-stream".into(),
+            },
+            &spectator_token,
+        ))
+        .await
+        .expect("spectator stream opens")
+        .into_inner();
+
+    let pb::stream_response::Frame::Snapshot(owner_opening) = next_frame(&mut owner_stream).await
+    else {
+        panic!("owner opening frame must be a snapshot");
+    };
+    let pb::stream_response::Frame::Snapshot(opponent_opening) =
+        next_frame(&mut opponent_stream).await
+    else {
+        panic!("opponent opening frame must be a snapshot");
+    };
+    let pb::stream_response::Frame::Snapshot(spectator_opening) =
+        next_frame(&mut spectator_stream).await
+    else {
+        panic!("spectator opening frame must be a snapshot");
+    };
+    assert_eq!(
+        (
+            owner_opening.seq,
+            opponent_opening.seq,
+            spectator_opening.seq
+        ),
+        (0, 0, 0)
+    );
+    let owner_baseline = owner_opening.state.expect("owner snapshot state");
+    let opponent_baseline = opponent_opening.state.expect("opponent snapshot state");
+    let spectator_baseline = spectator_opening.state.expect("spectator snapshot state");
+
+    let inspected = debug
+        .inspect_table(Request::new(debug_pb::InspectTableRequest {
+            table_id: "restore-stream".into(),
+        }))
+        .await
+        .expect("debug inspection")
+        .into_inner();
+    let inspected_game = inspected.game.expect("inspection includes the game");
+    let private_hand_object = inspected_game.players[0].hand[0];
+    let next_object_id = u32::try_from(inspected_game.objects.len()).expect("arena fits u32");
+    let fresh_hand_object = next_object_id
+        .checked_add(1)
+        .expect("the fixture has room for two fresh object identifiers");
+    assert!(
+        owner_baseline
+            .objects
+            .iter()
+            .any(|object| object.id == private_hand_object),
+        "the owner sees their private hand object"
+    );
+    for public_view in [&opponent_baseline, &spectator_baseline] {
+        assert!(
+            public_view
+                .objects
+                .iter()
+                .all(|object| object.id != private_hand_object),
+            "opponents and spectators do not see another player's private hand object"
+        );
+    }
+
+    let checkpoint = debug
+        .checkpoint_table(Request::new(debug_pb::CheckpointTableRequest {
+            table_id: "restore-stream".into(),
+            name: "baseline".into(),
+            replace_existing: false,
+            expected_table_seq: Some(0),
+        }))
+        .await
+        .expect("checkpoint commits")
+        .into_inner();
+    let mutated = debug
+        .mutate_table(Request::new(debug_pb::MutateTableRequest {
+            table_id: "restore-stream".into(),
+            expected_debug_revision: Some(checkpoint.debug_revision),
+            expected_table_seq: Some(checkpoint.table_seq),
+            operations: vec![
+                debug_pb::Mutation {
+                    operation: Some(debug_pb::mutation::Operation::ClearPendingOrchestration(
+                        debug_pb::ClearPendingOrchestration {
+                            clear_queued_triggers: true,
+                        },
+                    )),
+                },
+                debug_set_life(0, 17),
+                debug_pb::Mutation {
+                    operation: Some(debug_pb::mutation::Operation::MoveCard(
+                        debug_pb::MoveCard {
+                            object_id: private_hand_object,
+                            new_object_id: next_object_id,
+                            destination: debug_pb::Zone::Library as i32,
+                            controller: 0,
+                            face_down: false,
+                        },
+                    )),
+                },
+                debug_pb::Mutation {
+                    operation: Some(debug_pb::mutation::Operation::CreateCard(
+                        debug_pb::CreateCard {
+                            object_id: fresh_hand_object,
+                            card_id: cards::get_by_name("Plains")
+                                .expect("fixture card is catalogued")
+                                .id
+                                .to_string(),
+                            owner: 0,
+                            controller: 0,
+                            destination: debug_pb::Zone::Hand as i32,
+                            commander: false,
+                            face_down: false,
+                        },
+                    )),
+                },
+            ],
+        }))
+        .await
+        .expect("clear plus private-zone mutation commits")
+        .into_inner();
+    assert_eq!((mutated.debug_revision, mutated.table_seq), (1, 1));
+    assert_eq!(mutated.applied_operation_count, 4);
+
+    let mut mutated_states = Vec::new();
+    for frame in [
+        next_frame(&mut owner_stream).await,
+        next_frame(&mut opponent_stream).await,
+        next_frame(&mut spectator_stream).await,
+    ] {
+        let pb::stream_response::Frame::Snapshot(snapshot) = frame else {
+            panic!("debug mutation must publish replacement snapshots");
+        };
+        assert_eq!(snapshot.seq, mutated.table_seq);
+        mutated_states.push(snapshot.state.expect("mutation snapshot state"));
+    }
+    assert_eq!(mutated_states[0].players[0].life, 17);
+    assert_ne!(mutated_states[0], owner_baseline);
+
+    for (mutated_view, baseline) in
+        mutated_states
+            .iter()
+            .zip([&owner_baseline, &opponent_baseline, &spectator_baseline])
+    {
+        let expected_zone_counts = baseline
+            .players
+            .iter()
+            .enumerate()
+            .map(|(player, view)| {
+                if player == 0 {
+                    (view.hand_count, view.library_count + 1)
+                } else {
+                    (view.hand_count, view.library_count)
+                }
+            })
+            .collect::<Vec<_>>();
+        let actual_zone_counts = mutated_view
+            .players
+            .iter()
+            .map(|view| (view.hand_count, view.library_count))
+            .collect::<Vec<_>>();
+        assert_eq!(actual_zone_counts, expected_zone_counts);
+        assert!(
+            mutated_view
+                .objects
+                .iter()
+                .all(|object| { object.id != private_hand_object && object.id != next_object_id }),
+            "the source identity disappears and the new library identity is hidden from every viewer"
+        );
+    }
+    assert!(
+        mutated_states[0]
+            .objects
+            .iter()
+            .any(|object| object.id == fresh_hand_object),
+        "the owner sees the freshly created hand identity"
+    );
+    for public_view in &mutated_states[1..] {
+        assert!(
+            public_view
+                .objects
+                .iter()
+                .all(|object| object.id != fresh_hand_object),
+            "opponents and spectators do not see the freshly created private hand identity"
+        );
+    }
+    let post_clear = debug
+        .inspect_table(Request::new(debug_pb::InspectTableRequest {
+            table_id: "restore-stream".into(),
+        }))
+        .await
+        .expect("post-clear inspection")
+        .into_inner()
+        .chrome
+        .expect("logical chrome inspection");
+    assert!(post_clear.yields.iter().all(|flag| !flag));
+    assert!(post_clear.turn_yields.iter().all(|flag| !flag));
+    assert!(!post_clear.hold_requested);
+
+    let restored = debug
+        .restore_checkpoint(Request::new(debug_pb::RestoreCheckpointRequest {
+            table_id: "restore-stream".into(),
+            name: "baseline".into(),
+            expected_debug_revision: Some(mutated.debug_revision),
+            expected_table_seq: Some(mutated.table_seq),
+        }))
+        .await
+        .expect("restore commits")
+        .into_inner();
+    assert_eq!(
+        (restored.debug_revision, restored.table_seq),
+        (mutated.debug_revision + 1, mutated.table_seq + 1)
+    );
+    assert_eq!(restored.restored_source_table_seq, checkpoint.table_seq);
+
+    let baselines = [owner_baseline, opponent_baseline, spectator_baseline];
+    for (frame, baseline) in [
+        (next_frame(&mut owner_stream).await, &baselines[0]),
+        (next_frame(&mut opponent_stream).await, &baselines[1]),
+        (next_frame(&mut spectator_stream).await, &baselines[2]),
+    ] {
+        let pb::stream_response::Frame::Snapshot(snapshot) = frame else {
+            panic!("debug restore must publish replacement snapshots");
+        };
+        assert_eq!(snapshot.seq, restored.table_seq);
+        assert_eq!(snapshot.state.as_ref(), Some(baseline));
+    }
+
+    let envelope = map::intent_envelope_to_pb(schema::IntentEnvelope {
+        table_id: "restore-stream".into(),
+        client_seq: 0,
+        intent: schema::WireIntent::PassPriority { player: 0 },
+    });
+    let ack = game
+        .submit_intent(authed(
+            pb::SubmitIntentRequest {
+                table_id: "restore-stream".into(),
+                envelope: Some(envelope),
+            },
+            &host_token,
+        ))
+        .await
+        .expect("ordinary intent is accepted after restore")
+        .into_inner();
+    assert!(ack.accepted);
+    let pb::stream_response::Frame::Delta(delta) = next_frame(&mut owner_stream).await else {
+        panic!("the next ordinary publication must be a delta");
+    };
+    assert_eq!(delta.seq, restored.table_seq + 1);
 }
 
 #[cfg(debug_assertions)]

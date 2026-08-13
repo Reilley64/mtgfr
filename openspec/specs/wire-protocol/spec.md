@@ -30,12 +30,12 @@ The contract SHALL expose Buf STANDARD `*Service` service names for authenticati
 
 ### Requirement: The debug protobuf package remains outside production wire surfaces
 
-The debug-only `mtgfr.debug.v1` package SHALL have separate generated Rust bindings and a separate descriptor; those bindings SHALL be linked and exposed only when debug assertions are enabled. The package SHALL NOT be included in the production descriptor or browser-generated clients. Its `DebugService` SHALL remain a direct development gRPC surface rather than weakening authentication on ordinary game, deck, rating, or seed services or adding a browser route.
+The debug-only `mtgfr.debug.v1` package SHALL have separate generated Rust bindings and a separate descriptor; those bindings SHALL be linked and exposed only when debug assertions are enabled. The package SHALL NOT be included in the production descriptor or browser-generated clients. Its additive `DebugService` contract SHALL contain exactly six development RPCs (`ListTables`, `InspectTable`, `MutateTable`, `CheckpointTable`, `RestoreCheckpoint`, and `GetDebugJournal`) and the typed mutation union SHALL contain exactly eleven arms, with coherent pending-orchestration clearing as arm eleven. The service SHALL remain a direct development gRPC surface rather than weakening authentication on ordinary game, deck, rating, or seed services or adding a browser or BFF route.
 
-#### Scenario: Browser generation excludes the debug package
+#### Scenario: Browser generation excludes the expanded debug package
 
-- **WHEN** browser bindings are regenerated from the production proto inputs
-- **THEN** no generated path or symbol contains `mtgfr.debug.v1` or `DebugService`
+- **WHEN** browser bindings are regenerated after the checkpoint, restore, journal, and clear-pending symbols are added to the separate debug proto input
+- **THEN** no generated browser path or symbol contains `mtgfr.debug.v1`, `DebugService`, or any of those debug-only messages and methods
 
 #### Scenario: Production descriptor excludes the debug package
 
@@ -95,8 +95,12 @@ A connecting client SHALL receive an initial snapshot frame at the current seque
 - **THEN** the first stream frame is a snapshot at the current sequence
 
 #### Scenario: Authoritative edit publishes a midstream snapshot
-- **WHEN** an out-of-band authoritative debug edit commits while ordinary viewers are connected
+- **WHEN** an out-of-band authoritative debug mutation commits while ordinary viewers are connected
 - **THEN** each viewer receives a separate complete replacement snapshot through the unchanged production redaction boundary, and subsequent deltas follow it in sequence order
+
+#### Scenario: Restored snapshots preserve monotonic stream order
+- **WHEN** a debug checkpoint restores an earlier authoritative game while owner, opponent, and spectator streams remain connected
+- **THEN** the restored state is projected separately for each viewer in a complete replacement snapshot at a new monotonically increasing live sequence, and the next accepted ordinary intent publishes the following delta without exposing another viewer's private zones
 
 #### Scenario: Delta needs no side refetch
 - **WHEN** a client receives a delta envelope
