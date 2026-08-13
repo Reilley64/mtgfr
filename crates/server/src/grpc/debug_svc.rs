@@ -424,6 +424,32 @@ fn map_step(step: Step) -> pb::Step {
 
 pub(crate) fn status(failure: DebugFailure) -> Status {
     let (code, operation_index, reason, violations) = match failure {
+        // Task 5 adds dedicated protobuf reasons. Until then, keep the adapter exhaustive while
+        // exposing only the existing bounded, non-secret status vocabulary.
+        DebugFailure::CheckpointNotFound => (
+            Code::NotFound,
+            None,
+            pb::DebugErrorReason::UnknownEntity,
+            vec![],
+        ),
+        DebugFailure::CheckpointAlreadyExists => (
+            Code::AlreadyExists,
+            None,
+            pb::DebugErrorReason::DuplicateId,
+            vec![],
+        ),
+        DebugFailure::InvalidCheckpointName => (
+            Code::InvalidArgument,
+            None,
+            pb::DebugErrorReason::InvalidValue,
+            vec![],
+        ),
+        DebugFailure::ResourceExhausted { reason: _ } => (
+            Code::ResourceExhausted,
+            None,
+            pb::DebugErrorReason::InvalidValue,
+            vec![],
+        ),
         DebugFailure::NotFound { operation_index } => (
             Code::NotFound,
             operation_index,

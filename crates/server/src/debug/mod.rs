@@ -1,20 +1,99 @@
 //! Debug-build-only atomic table mutation transaction.
 
+use std::collections::{BTreeMap, VecDeque};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use engine::debug::{EditError, ErrorReason, Mutation, Violation};
 use engine::{Game, PlayerId};
 use schema::complete_visible;
 
+use crate::chrome::DebugChromeSnapshot;
 use crate::session::{PublishedState, PublishedUpdate};
 use crate::stream::table_view_extras;
 use crate::{AppState, Table, lock};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) const MAX_CHECKPOINTS_PER_TABLE: usize = 16;
+pub(crate) const MAX_OBJECT_SLOTS_PER_CHECKPOINT: usize = 4_096;
+pub(crate) const MAX_OBJECT_SLOTS_ACROSS_CHECKPOINTS: usize = 32_768;
+pub(crate) const MAX_CHECKPOINT_NAME_BYTES: usize = 64;
+pub(crate) const MAX_JOURNAL_RECORDS: usize = 1_024;
+pub(crate) const MAX_JOURNAL_REQUEST_BYTES: usize = 1_048_576;
+
+#[derive(Clone)]
+pub(crate) struct Checkpoint {
+    pub(crate) game: Game,
+    pub(crate) chrome: DebugChromeSnapshot,
+    pub(crate) source_table_seq: u64,
+    pub(crate) object_slots: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum JournalKind {
+    MutationCommitted { operations: Vec<Mutation> },
+    CheckpointCreated { name: String, replaced: bool },
+    CheckpointRestored { name: String, source_table_seq: u64 },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct JournalRecord {
+    pub(crate) ordinal: u64,
+    pub(crate) timestamp_unix_ms: u64,
+    pub(crate) debug_revision: u64,
+    pub(crate) table_seq: u64,
+    pub(crate) encoded_request_bytes: usize,
+    pub(crate) kind: JournalKind,
+}
+
 pub struct TableDebugState {
     pub revision: u64,
     pub debug_mutated: bool,
+    pub(crate) checkpoints: BTreeMap<String, Checkpoint>,
+    pub(crate) checkpoint_object_slots: usize,
+    pub(crate) journal: VecDeque<JournalRecord>,
+    pub(crate) journal_request_bytes: usize,
+    pub(crate) next_journal_ordinal: u64,
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for TableDebugState {
+    fn default() -> Self {
+        Self {
+            revision: 0,
+            debug_mutated: false,
+            checkpoints: BTreeMap::new(),
+            checkpoint_object_slots: 0,
+            journal: VecDeque::new(),
+            journal_request_bytes: 0,
+            next_journal_ordinal: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct CheckpointCommand {
+    pub(crate) table_id: String,
+    pub(crate) name: String,
+    pub(crate) replace_existing: bool,
+    pub(crate) expected_table_seq: Option<u64>,
+    pub(crate) encoded_request_bytes: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CheckpointReceipt {
+    pub(crate) debug_revision: u64,
+    pub(crate) table_seq: u64,
+    pub(crate) object_slots: u32,
+    pub(crate) replaced: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ResourceLimit {
+    CheckpointCount,
+    CheckpointObjectSlots,
+    JournalRecords,
+    JournalRequestBytes,
 }
 
 #[derive(Debug, Clone)]
@@ -40,6 +119,12 @@ pub enum DebugAbortReason {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DebugFailure {
+    CheckpointNotFound,
+    CheckpointAlreadyExists,
+    InvalidCheckpointName,
+    ResourceExhausted {
+        reason: ResourceLimit,
+    },
     NotFound {
         operation_index: Option<usize>,
     },
@@ -59,6 +144,174 @@ pub enum DebugFailure {
         operation_index: Option<usize>,
         violations: Vec<Violation>,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct JournalPreflight {
+    request_bytes_total: usize,
+    ordinal: u64,
+    next_ordinal: u64,
+}
+
+pub(crate) fn preflight_journal(
+    debug: &TableDebugState,
+    encoded_request_bytes: usize,
+) -> Result<JournalPreflight, DebugFailure> {
+    if debug.journal.len() >= MAX_JOURNAL_RECORDS {
+        return Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::JournalRecords,
+        });
+    }
+    let Some(request_bytes_total) = debug
+        .journal_request_bytes
+        .checked_add(encoded_request_bytes)
+    else {
+        return Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::JournalRequestBytes,
+        });
+    };
+    if request_bytes_total > MAX_JOURNAL_REQUEST_BYTES {
+        return Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::JournalRequestBytes,
+        });
+    }
+    let next_ordinal = checked_increment(debug.next_journal_ordinal, "journal_ordinal_exhausted")?;
+    Ok(JournalPreflight {
+        request_bytes_total,
+        ordinal: debug.next_journal_ordinal,
+        next_ordinal,
+    })
+}
+
+pub(crate) fn append_journal(
+    debug: &mut TableDebugState,
+    preflight: JournalPreflight,
+    record: JournalRecord,
+) {
+    debug_assert_eq!(record.ordinal, preflight.ordinal);
+    debug_assert_eq!(
+        record.encoded_request_bytes + debug.journal_request_bytes,
+        preflight.request_bytes_total
+    );
+    debug.journal.push_back(record);
+    debug.journal_request_bytes = preflight.request_bytes_total;
+    debug.next_journal_ordinal = preflight.next_ordinal;
+}
+
+pub(crate) fn timestamp_unix_ms_at(time: SystemTime) -> u64 {
+    let Ok(since_epoch) = time.duration_since(UNIX_EPOCH) else {
+        return 0;
+    };
+    u64::try_from(since_epoch.as_millis()).unwrap_or(u64::MAX)
+}
+
+fn timestamp_unix_ms() -> u64 {
+    timestamp_unix_ms_at(SystemTime::now())
+}
+
+pub(crate) fn checkpoint_table(
+    state: &AppState,
+    command: CheckpointCommand,
+) -> Result<CheckpointReceipt, DebugFailure> {
+    let mut registry = lock(&state.reg);
+    let Some(table) = registry.get_mut(&command.table_id) else {
+        return Err(DebugFailure::NotFound {
+            operation_index: None,
+        });
+    };
+    let Some(game) = table.game.as_ref() else {
+        return Err(DebugFailure::NotFound {
+            operation_index: None,
+        });
+    };
+    if command
+        .expected_table_seq
+        .is_some_and(|expected| expected != table.seq)
+    {
+        return Err(DebugFailure::Aborted {
+            reason: DebugAbortReason::TableSeqMismatch,
+            actual_debug_revision: table.debug.revision,
+            actual_table_seq: table.seq,
+        });
+    }
+    if !valid_checkpoint_name(&command.name) {
+        return Err(DebugFailure::InvalidCheckpointName);
+    }
+
+    let object_slots = engine::debug::object_slot_count(game);
+    if object_slots > MAX_OBJECT_SLOTS_PER_CHECKPOINT {
+        return Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::CheckpointObjectSlots,
+        });
+    }
+    let existing = table.debug.checkpoints.get(&command.name);
+    if existing.is_some() && !command.replace_existing {
+        return Err(DebugFailure::CheckpointAlreadyExists);
+    }
+    if existing.is_none() && table.debug.checkpoints.len() >= MAX_CHECKPOINTS_PER_TABLE {
+        return Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::CheckpointCount,
+        });
+    }
+    let old_slots = existing.map_or(0, |checkpoint| checkpoint.object_slots);
+    let Some(next_object_slots) = table
+        .debug
+        .checkpoint_object_slots
+        .checked_sub(old_slots)
+        .and_then(|slots| slots.checked_add(object_slots))
+    else {
+        return Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::CheckpointObjectSlots,
+        });
+    };
+    if next_object_slots > MAX_OBJECT_SLOTS_ACROSS_CHECKPOINTS {
+        return Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::CheckpointObjectSlots,
+        });
+    }
+    let journal_preflight = preflight_journal(&table.debug, command.encoded_request_bytes)?;
+
+    let replaced = existing.is_some();
+    let checkpoint = Checkpoint {
+        game: game.clone(),
+        chrome: table.chrome.debug_snapshot(),
+        source_table_seq: table.seq,
+        object_slots,
+    };
+    table
+        .debug
+        .checkpoints
+        .insert(command.name.clone(), checkpoint);
+    table.debug.checkpoint_object_slots = next_object_slots;
+    let journal_record = JournalRecord {
+        ordinal: journal_preflight.ordinal,
+        timestamp_unix_ms: timestamp_unix_ms(),
+        debug_revision: table.debug.revision,
+        table_seq: table.seq,
+        encoded_request_bytes: command.encoded_request_bytes,
+        kind: JournalKind::CheckpointCreated {
+            name: command.name,
+            replaced,
+        },
+    };
+    append_journal(&mut table.debug, journal_preflight, journal_record);
+
+    Ok(CheckpointReceipt {
+        debug_revision: table.debug.revision,
+        table_seq: table.seq,
+        object_slots: u32::try_from(object_slots)
+            .expect("checkpoint slot bound is smaller than u32::MAX"),
+        replaced,
+    })
+}
+
+fn valid_checkpoint_name(name: &str) -> bool {
+    let bytes = name.as_bytes();
+    !bytes.is_empty()
+        && bytes.len() <= MAX_CHECKPOINT_NAME_BYTES
+        && bytes
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(*byte, b'.' | b'_' | b'-'))
 }
 
 pub fn mutate_table(
