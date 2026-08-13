@@ -1839,6 +1839,37 @@ fn debug_service_rejects_missing_unknown_and_narrowing_inputs() {
 
 #[cfg(debug_assertions)]
 #[tokio::test]
+async fn debug_mutate_journal_accounts_for_the_exact_protobuf_request_bytes() {
+    use debug_pb::debug_service_server::DebugService;
+
+    let state = test_state().await;
+    insert_debug_game(&state, "table", engine::Game::with_players(2, 0), 0, 0);
+    let service = debug_svc::DebugSvc::new(state.clone());
+    let request = debug_pb::MutateTableRequest {
+        table_id: "table".into(),
+        expected_debug_revision: Some(0),
+        expected_table_seq: Some(0),
+        operations: vec![debug_set_life(0, 19)],
+    };
+    let encoded_len = prost::Message::encoded_len(&request);
+
+    service
+        .mutate_table(Request::new(request))
+        .await
+        .expect("valid mutation commits");
+
+    let registry = crate::lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!(table.debug.journal.len(), 1);
+    assert_eq!(table.debug.journal_request_bytes, encoded_len);
+    assert_eq!(
+        table.debug.journal.front().unwrap().encoded_request_bytes,
+        encoded_len
+    );
+}
+
+#[cfg(debug_assertions)]
+#[tokio::test]
 async fn debug_service_maps_domain_failures_to_bounded_typed_status_details() {
     use debug_pb::debug_service_server::DebugService;
     use debug_pb::mutation::Operation;

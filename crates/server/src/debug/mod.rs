@@ -9,9 +9,12 @@ use engine::debug::{EditError, ErrorReason, Mutation, Violation};
 use engine::{Game, PlayerId};
 use schema::complete_visible;
 
-use crate::chrome::DebugChromeSnapshot;
-use crate::session::{PublishedState, PublishedUpdate};
-use crate::stream::table_view_extras;
+use crate::chrome::{ChromeState, DebugChromeSnapshot};
+use crate::session::{
+    PublishedState, PublishedUpdate, STACK_HOLD, arm_stack_resolution,
+    schedule_armed_stack_resolution,
+};
+use crate::stream::{table_view_extras, view_extras};
 use crate::{AppState, Table, lock};
 
 pub(crate) const MAX_CHECKPOINTS_PER_TABLE: usize = 16;
@@ -102,6 +105,29 @@ pub struct MutateCommand {
     pub expected_debug_revision: Option<u64>,
     pub expected_table_seq: Option<u64>,
     pub operations: Vec<Mutation>,
+    pub encoded_request_bytes: usize,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct RestoreCommand {
+    pub(crate) table_id: String,
+    pub(crate) name: String,
+    pub(crate) expected_debug_revision: Option<u64>,
+    pub(crate) expected_table_seq: Option<u64>,
+    pub(crate) encoded_request_bytes: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RestoreReceipt {
+    pub(crate) debug_revision: u64,
+    pub(crate) table_seq: u64,
+    pub(crate) restored_source_table_seq: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RestoreTail {
+    table_id: String,
+    hold_seq: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -324,59 +350,167 @@ pub fn mutate_table(
             operation_index: None,
         });
     };
-    check_guards(table, &command)?;
+    check_guard_values(
+        table,
+        command.expected_debug_revision,
+        command.expected_table_seq,
+    )?;
     let Some(game) = table.game.as_ref() else {
         return Err(DebugFailure::NotFound {
             operation_index: None,
         });
     };
-    let mut candidate = game.clone();
+    let mut candidate_game = game.clone();
 
-    if let Err(error) = engine::debug::apply_operations(&mut candidate, &command.operations) {
-        return Err(map_edit_error(&candidate, &command.operations, error));
+    if let Err(error) = engine::debug::apply_operations(&mut candidate_game, &command.operations) {
+        return Err(map_edit_error(&candidate_game, &command.operations, error));
     }
-    if let Err(violations) = engine::debug::validate_structural(&candidate) {
+    if let Err(violations) = engine::debug::validate_structural(&candidate_game) {
         return Err(DebugFailure::FailedPrecondition {
             operation_index: None,
             violations,
         });
     }
-    projection_sweep(&candidate, table)?;
 
+    let clear_chrome = command
+        .operations
+        .iter()
+        .any(|operation| matches!(operation, Mutation::ClearPendingOrchestration { .. }));
+    let snapshot = if clear_chrome {
+        DebugChromeSnapshot::default()
+    } else {
+        table.chrome.debug_snapshot()
+    };
+    projection_sweep_with_logical_chrome(&candidate_game, table, snapshot)?;
+
+    // Preflight every bounded/counted commit fact before touching the live table.
     let next_table_seq = checked_increment(table.seq, "table_seq_exhausted")?;
     let next_broadcast_seq = checked_increment(table.broadcast_seq, "broadcast_seq_exhausted")?;
     let next_debug_revision = checked_increment(table.debug.revision, "debug_revision_exhausted")?;
+    let journal_preflight = preflight_journal(&table.debug, command.encoded_request_bytes)?;
 
-    table.game = Some(candidate);
+    let mut candidate_chrome = ChromeState::default();
+    candidate_chrome.restore_debug_snapshot(snapshot);
+    table.game = Some(candidate_game);
+    table.chrome = candidate_chrome;
     table.seq = next_table_seq;
     table.broadcast_seq = next_broadcast_seq;
     table.debug.revision = next_debug_revision;
     table.debug.debug_mutated = true;
-    table.chrome.clear_for_debug_commit();
+    let schedule_hold = snapshot.hold_requested && arm_stack_resolution(table, next_table_seq);
+    let journal_record = JournalRecord {
+        ordinal: journal_preflight.ordinal,
+        timestamp_unix_ms: timestamp_unix_ms(),
+        debug_revision: next_debug_revision,
+        table_seq: next_table_seq,
+        encoded_request_bytes: command.encoded_request_bytes,
+        kind: JournalKind::MutationCommitted {
+            operations: command.operations.clone(),
+        },
+    };
+    append_journal(&mut table.debug, journal_preflight, journal_record);
     publish_snapshot(table);
 
-    Ok(MutateReceipt {
+    let receipt = MutateReceipt {
         debug_revision: next_debug_revision,
         table_seq: next_table_seq,
         applied_operation_count: command.operations.len(),
-    })
+    };
+    let tail = RestoreTail {
+        table_id: command.table_id,
+        hold_seq: schedule_hold.then_some(next_table_seq),
+    };
+    drop(registry);
+    run_restore_tail(state, tail);
+    Ok(receipt)
 }
 
-fn check_guards(table: &Table, command: &MutateCommand) -> Result<(), DebugFailure> {
-    if command
-        .expected_debug_revision
-        .is_some_and(|expected| expected != table.debug.revision)
-    {
+pub(crate) fn restore_checkpoint(
+    state: &AppState,
+    command: RestoreCommand,
+) -> Result<RestoreReceipt, DebugFailure> {
+    let mut registry = lock(&state.reg);
+    let Some(table) = registry.get_mut(&command.table_id) else {
+        return Err(DebugFailure::NotFound {
+            operation_index: None,
+        });
+    };
+    // Revision is intentionally authoritative when both optimistic guards are stale.
+    check_guard_values(
+        table,
+        command.expected_debug_revision,
+        command.expected_table_seq,
+    )?;
+    let Some(checkpoint) = table.debug.checkpoints.get(&command.name).cloned() else {
+        return Err(DebugFailure::CheckpointNotFound);
+    };
+    let candidate_game = checkpoint.game;
+    if let Err(violations) = engine::debug::validate_structural(&candidate_game) {
+        return Err(DebugFailure::FailedPrecondition {
+            operation_index: None,
+            violations,
+        });
+    }
+
+    projection_sweep_with_logical_chrome(&candidate_game, table, checkpoint.chrome)?;
+
+    // The stored source sequence is provenance only. Transport always advances from live values.
+    let next_table_seq = checked_increment(table.seq, "table_seq_exhausted")?;
+    let next_broadcast_seq = checked_increment(table.broadcast_seq, "broadcast_seq_exhausted")?;
+    let next_debug_revision = checked_increment(table.debug.revision, "debug_revision_exhausted")?;
+    let journal_preflight = preflight_journal(&table.debug, command.encoded_request_bytes)?;
+
+    let mut candidate_chrome = ChromeState::default();
+    candidate_chrome.restore_debug_snapshot(checkpoint.chrome);
+    table.game = Some(candidate_game);
+    table.chrome = candidate_chrome;
+    table.seq = next_table_seq;
+    table.broadcast_seq = next_broadcast_seq;
+    table.debug.revision = next_debug_revision;
+    table.debug.debug_mutated = true;
+    let schedule_hold =
+        checkpoint.chrome.hold_requested && arm_stack_resolution(table, next_table_seq);
+    let journal_record = JournalRecord {
+        ordinal: journal_preflight.ordinal,
+        timestamp_unix_ms: timestamp_unix_ms(),
+        debug_revision: next_debug_revision,
+        table_seq: next_table_seq,
+        encoded_request_bytes: command.encoded_request_bytes,
+        kind: JournalKind::CheckpointRestored {
+            name: command.name,
+            source_table_seq: checkpoint.source_table_seq,
+        },
+    };
+    append_journal(&mut table.debug, journal_preflight, journal_record);
+    publish_snapshot(table);
+
+    let receipt = RestoreReceipt {
+        debug_revision: next_debug_revision,
+        table_seq: next_table_seq,
+        restored_source_table_seq: checkpoint.source_table_seq,
+    };
+    let tail = RestoreTail {
+        table_id: command.table_id,
+        hold_seq: schedule_hold.then_some(next_table_seq),
+    };
+    drop(registry);
+    run_restore_tail(state, tail);
+    Ok(receipt)
+}
+
+fn check_guard_values(
+    table: &Table,
+    expected_debug_revision: Option<u64>,
+    expected_table_seq: Option<u64>,
+) -> Result<(), DebugFailure> {
+    if expected_debug_revision.is_some_and(|expected| expected != table.debug.revision) {
         return Err(DebugFailure::Aborted {
             reason: DebugAbortReason::DebugRevisionMismatch,
             actual_debug_revision: table.debug.revision,
             actual_table_seq: table.seq,
         });
     }
-    if command
-        .expected_table_seq
-        .is_some_and(|expected| expected != table.seq)
-    {
+    if expected_table_seq.is_some_and(|expected| expected != table.seq) {
         return Err(DebugFailure::Aborted {
             reason: DebugAbortReason::TableSeqMismatch,
             actual_debug_revision: table.debug.revision,
@@ -384,6 +518,18 @@ fn check_guards(table: &Table, command: &MutateCommand) -> Result<(), DebugFailu
         });
     }
     Ok(())
+}
+
+fn run_restore_tail(state: &AppState, tail: RestoreTail) {
+    let Some(seq) = tail.hold_seq else {
+        return;
+    };
+    // Domain helpers are also used by synchronous tests. Production calls always have a runtime;
+    // without one the hold remains safely stamped and a later authoritative action invalidates it.
+    if tokio::runtime::Handle::try_current().is_err() {
+        return;
+    }
+    schedule_armed_stack_resolution(state.clone(), tail.table_id, seq);
 }
 
 fn checked_increment(value: u64, code: &'static str) -> Result<u64, DebugFailure> {
@@ -441,12 +587,39 @@ fn map_edit_error(candidate: &Game, operations: &[Mutation], error: EditError) -
 /// Only this projection boundary catches unwind: editor, validation, swapping, counters, chrome,
 /// and publication retain their normal panic semantics.
 pub fn projection_sweep(game: &Game, table: &Table) -> Result<(), DebugFailure> {
+    let extras = table_view_extras(table);
+    projection_sweep_with_extras(game, &extras)
+}
+
+fn projection_sweep_with_logical_chrome(
+    game: &Game,
+    table: &Table,
+    chrome: DebugChromeSnapshot,
+) -> Result<(), DebugFailure> {
+    let hold_ms = if chrome.hold_requested {
+        u32::try_from(STACK_HOLD.as_millis()).expect("stack hold fits u32 milliseconds")
+    } else {
+        0
+    };
+    let extras = view_extras(
+        &chrome.yields,
+        &chrome.turn_yields,
+        &table.seats,
+        hold_ms,
+        &table.prints,
+    );
+    projection_sweep_with_extras(game, &extras)
+}
+
+fn projection_sweep_with_extras(
+    game: &Game,
+    extras: &schema::ViewExtras,
+) -> Result<(), DebugFailure> {
     let projected = catch_unwind(AssertUnwindSafe(|| {
-        let extras = table_view_extras(table);
         for seat in 0..game.player_count() {
-            let _ = complete_visible(game, Some(PlayerId(seat as u8)), &extras);
+            let _ = complete_visible(game, Some(PlayerId(seat as u8)), extras);
         }
-        let _ = complete_visible(game, None, &extras);
+        let _ = complete_visible(game, None, extras);
     }));
     if projected.is_err() {
         return Err(DebugFailure::FailedPrecondition {

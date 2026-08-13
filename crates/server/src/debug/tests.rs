@@ -33,6 +33,7 @@ fn command(table_id: &str, operations: Vec<Mutation>) -> MutateCommand {
         expected_debug_revision: None,
         expected_table_seq: None,
         operations,
+        encoded_request_bytes: 13,
     }
 }
 
@@ -96,7 +97,14 @@ struct CheckpointFingerprint {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct DebugStorageFingerprint {
+struct TableTransactionFingerprint {
+    game: Option<engine::debug::Inspection>,
+    logical_chrome: DebugChromeSnapshot,
+    active_hold: Option<(u64, tokio::time::Instant)>,
+    hold_deadline: Option<tokio::time::Instant>,
+    any_dwell: bool,
+    seq: u64,
+    broadcast_seq: u64,
     revision: u64,
     debug_mutated: bool,
     checkpoint_object_slots: usize,
@@ -104,12 +112,34 @@ struct DebugStorageFingerprint {
     journal: Vec<JournalRecord>,
     journal_request_bytes: usize,
     next_journal_ordinal: u64,
+    seats: Vec<(Option<i64>, Option<String>, String)>,
+    prints: [std::collections::HashMap<String, String>; 4],
+    tx_len: usize,
 }
 
-fn debug_storage_fingerprint(state: &AppState, table_id: &str) -> DebugStorageFingerprint {
+fn table_transaction_fingerprint(state: &AppState, table_id: &str) -> TableTransactionFingerprint {
     let registry = lock(&state.reg);
-    let debug = &registry.get(table_id).unwrap().debug;
-    DebugStorageFingerprint {
+    let table = registry.get(table_id).unwrap();
+    let debug = &table.debug;
+    let active_hold = table.chrome.stack_hold();
+    let any_dwell = table.chrome.any_dwell();
+    let hold_deadline = active_hold.map(|(_, started)| {
+        started
+            + crate::session::STACK_HOLD
+            + if any_dwell {
+                crate::session::STACK_HOLD_DWELL_EXTRA
+            } else {
+                std::time::Duration::ZERO
+            }
+    });
+    TableTransactionFingerprint {
+        game: table.game.as_ref().map(engine::debug::inspect),
+        logical_chrome: table.chrome.debug_snapshot(),
+        active_hold,
+        hold_deadline,
+        any_dwell,
+        seq: table.seq,
+        broadcast_seq: table.broadcast_seq,
         revision: debug.revision,
         debug_mutated: debug.debug_mutated,
         checkpoint_object_slots: debug.checkpoint_object_slots,
@@ -127,6 +157,19 @@ fn debug_storage_fingerprint(state: &AppState, table_id: &str) -> DebugStorageFi
         journal: debug.journal.iter().cloned().collect(),
         journal_request_bytes: debug.journal_request_bytes,
         next_journal_ordinal: debug.next_journal_ordinal,
+        seats: table
+            .seats
+            .iter()
+            .map(|seat| {
+                (
+                    seat.user_id,
+                    seat.username.clone(),
+                    seat.gravatar_hash.clone(),
+                )
+            })
+            .collect(),
+        prints: table.prints.clone(),
+        tx_len: table.tx.len(),
     }
 }
 
@@ -328,7 +371,8 @@ async fn transaction_maps_an_occupied_move_destination_id_to_invalid_at_the_oper
 }
 
 #[tokio::test]
-async fn transaction_success_swaps_once_clears_chrome_and_publishes_one_fresh_snapshot() {
+async fn transaction_success_swaps_once_preserves_logical_chrome_and_publishes_one_fresh_snapshot()
+{
     let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
     let mut rx = {
         let mut reg = lock(&state.reg);
@@ -364,8 +408,8 @@ async fn transaction_success_swaps_once_clears_chrome_and_publishes_one_fresh_sn
         assert_eq!((table.seq, table.broadcast_seq), (1, 1));
         assert_eq!(table.debug.revision, 1);
         assert!(table.debug.debug_mutated);
-        assert_eq!(*table.chrome.yields(), [false; 4]);
-        assert_eq!(*table.chrome.turn_yields(), [false; 4]);
+        assert_eq!(*table.chrome.yields(), [true; 4]);
+        assert_eq!(*table.chrome.turn_yields(), [false, true, false, false]);
         assert!(table.chrome.stack_hold().is_none());
         assert!(!table.chrome.any_dwell());
     }
@@ -684,12 +728,12 @@ async fn checkpoint_names_enforce_exact_ascii_grammar_and_byte_bound() {
         "é".to_string(),
     ] {
         let state = state_with_object_slots("table", 1).await;
-        let before = debug_storage_fingerprint(&state, "table");
+        let before = table_transaction_fingerprint(&state, "table");
         assert_eq!(
             checkpoint_table(&state, checkpoint_command(invalid, 1)),
             Err(DebugFailure::InvalidCheckpointName),
         );
-        assert_eq!(debug_storage_fingerprint(&state, "table"), before);
+        assert_eq!(table_transaction_fingerprint(&state, "table"), before);
     }
 
     let state = state_with_object_slots("table", 1).await;
@@ -711,12 +755,12 @@ async fn checkpoint_requires_explicit_replacement_and_reports_it() {
     let state = state_with_object_slots("table", 2).await;
     let first = checkpoint_table(&state, checkpoint_command("baseline", 3)).unwrap();
     assert!(!first.replaced);
-    let before = debug_storage_fingerprint(&state, "table");
+    let before = table_transaction_fingerprint(&state, "table");
     assert_eq!(
         checkpoint_table(&state, checkpoint_command("baseline", 3)),
         Err(DebugFailure::CheckpointAlreadyExists),
     );
-    assert_eq!(debug_storage_fingerprint(&state, "table"), before);
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
 
     let mut replace = checkpoint_command("baseline", 4);
     replace.replace_existing = true;
@@ -732,14 +776,14 @@ async fn checkpoint_count_accepts_sixteen_distinct_names_and_rejects_seventeenth
     for index in 0..MAX_CHECKPOINTS_PER_TABLE {
         checkpoint_table(&state, checkpoint_command(format!("cp-{index}"), 0)).unwrap();
     }
-    let before = debug_storage_fingerprint(&state, "table");
+    let before = table_transaction_fingerprint(&state, "table");
     assert_eq!(
         checkpoint_table(&state, checkpoint_command("overflow", 0)),
         Err(DebugFailure::ResourceExhausted {
             reason: ResourceLimit::CheckpointCount,
         }),
     );
-    assert_eq!(debug_storage_fingerprint(&state, "table"), before);
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
 }
 
 #[tokio::test]
@@ -756,14 +800,14 @@ async fn checkpoint_object_slot_limit_counts_the_real_arena_including_removed_sl
         "removed arena entries remain counted",
     );
     replace_live_game(&state, "table", too_large);
-    let before = debug_storage_fingerprint(&state, "table");
+    let before = table_transaction_fingerprint(&state, "table");
     assert_eq!(
         checkpoint_table(&state, checkpoint_command("too-large", 0)),
         Err(DebugFailure::ResourceExhausted {
             reason: ResourceLimit::CheckpointObjectSlots,
         }),
     );
-    assert_eq!(debug_storage_fingerprint(&state, "table"), before);
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
 }
 
 #[tokio::test]
@@ -789,14 +833,14 @@ async fn checkpoint_aggregate_accepts_exact_bound_and_rejects_more() {
     );
     let mut replacement = checkpoint_command("cp-0", 0);
     replacement.replace_existing = true;
-    let before = debug_storage_fingerprint(&state, "table");
+    let before = table_transaction_fingerprint(&state, "table");
     assert_eq!(
         checkpoint_table(&state, replacement),
         Err(DebugFailure::ResourceExhausted {
             reason: ResourceLimit::CheckpointObjectSlots,
         }),
     );
-    assert_eq!(debug_storage_fingerprint(&state, "table"), before);
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
 }
 
 #[tokio::test]
@@ -826,7 +870,7 @@ async fn failed_larger_replacement_keeps_old_checkpoint_totals_and_journal() {
         table.debug.revision = 7;
         table.debug.debug_mutated = true;
     }
-    let before = debug_storage_fingerprint(&state, "table");
+    let before = table_transaction_fingerprint(&state, "table");
 
     let error = checkpoint_table(
         &state,
@@ -846,7 +890,7 @@ async fn failed_larger_replacement_keeps_old_checkpoint_totals_and_journal() {
             reason: ResourceLimit::CheckpointObjectSlots,
         }
     );
-    assert_eq!(debug_storage_fingerprint(&state, "table"), before);
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
 }
 
 #[test]
@@ -982,5 +1026,727 @@ async fn checkpoint_creation_only_appends_audit_state_and_preserves_live_state_a
             replaced: false,
         }
     );
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+}
+
+#[tokio::test]
+async fn debug_restore_replaces_only_game_and_logical_chrome_monotonically() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    {
+        let mut registry = lock(&state.reg);
+        let table = registry.get_mut("table").unwrap();
+        table
+            .chrome
+            .set_yields_for_test([true, false, false, false]);
+        table.chrome.set_turn_yield_flag(1, true);
+    }
+    checkpoint_table(&state, checkpoint_command("baseline", 7)).unwrap();
+    mutate_table(&state, command("table", vec![set_life(9)])).unwrap();
+    let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
+
+    let receipt = restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".into(),
+            name: "baseline".into(),
+            expected_debug_revision: Some(1),
+            expected_table_seq: Some(1),
+            encoded_request_bytes: 11,
+        },
+    )
+    .unwrap();
+
+    assert_eq!(receipt.debug_revision, 2);
+    assert_eq!(receipt.table_seq, 2);
+    assert_eq!(receipt.restored_source_table_seq, 0);
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!(table.game.as_ref().unwrap().life(PlayerId(0)), 20);
+    assert_eq!((table.seq, table.broadcast_seq), (2, 2));
+    assert_eq!(*table.chrome.yields(), [true, false, false, false]);
+    assert_eq!(*table.chrome.turn_yields(), [false, true, false, false]);
+    assert!(!table.chrome.any_dwell());
+    let update = rx.try_recv().expect("one replacement snapshot");
+    let PublishedUpdate::Snapshot(snapshot) = update.as_ref() else {
+        panic!("restore publishes a snapshot")
+    };
+    assert_eq!((snapshot.seq, snapshot.broadcast_seq), (2, 2));
+    assert_eq!(snapshot.game.life(PlayerId(0)), 20);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+    assert_eq!(
+        table.debug.journal.back().unwrap().kind,
+        JournalKind::CheckpointRestored {
+            name: "baseline".into(),
+            source_table_seq: 0,
+        }
+    );
+    drop(registry);
+
+    let mut registry = lock(&state.reg);
+    let table = registry.get_mut("table").unwrap();
+    let holder = table.game.as_ref().unwrap().priority_holder();
+    let (result, _) = TableSession::new(table).submit(Intent::PassPriority { player: holder });
+    assert!(result.accepted, "ordinary intent succeeds after restore");
+    assert_eq!(table.seq, 3);
+}
+
+#[tokio::test]
+async fn debug_restore_checks_revision_before_table_seq_and_rolls_back_everything() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    checkpoint_table(&state, checkpoint_command("baseline", 1)).unwrap();
+    let before = table_transaction_fingerprint(&state, "table");
+    let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
+
+    let result = restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".into(),
+            name: "baseline".into(),
+            expected_debug_revision: Some(9),
+            expected_table_seq: Some(9),
+            encoded_request_bytes: 2,
+        },
+    );
+
+    assert!(matches!(
+        result,
+        Err(DebugFailure::Aborted {
+            reason: DebugAbortReason::DebugRevisionMismatch,
+            ..
+        })
+    ));
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!((table.seq, table.broadcast_seq), (0, 0));
+    assert_eq!(table.game.as_ref().unwrap().life(PlayerId(0)), 20);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+}
+
+#[tokio::test]
+async fn debug_restore_projection_failure_precedes_exhausted_capacity_without_change() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    checkpoint_table(&state, checkpoint_command("baseline", 1)).unwrap();
+    {
+        let mut registry = lock(&state.reg);
+        registry
+            .get_mut("table")
+            .unwrap()
+            .debug
+            .checkpoints
+            .get_mut("baseline")
+            .unwrap()
+            .game = engine::Game::with_players(5, 0);
+        registry.get_mut("table").unwrap().broadcast_seq = u64::MAX;
+    }
+    let before = table_transaction_fingerprint(&state, "table");
+
+    let result = restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".into(),
+            name: "baseline".into(),
+            expected_debug_revision: Some(0),
+            expected_table_seq: Some(0),
+            encoded_request_bytes: 1,
+        },
+    );
+
+    assert!(
+        matches!(result, Err(DebugFailure::FailedPrecondition { ref violations, .. })
+        if violations.iter().any(|violation| violation.code == "projection_failed"))
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!((table.seq, table.broadcast_seq), (0, u64::MAX));
+}
+
+#[tokio::test]
+async fn successful_mutation_appends_operations_to_the_bounded_audit() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    let operations = vec![set_life(18)];
+    mutate_table(&state, command("table", operations.clone())).unwrap();
+
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!(table.debug.journal_request_bytes, 13);
+    assert_eq!(table.debug.journal.len(), 1);
+    assert_eq!(
+        table.debug.journal.front().unwrap().kind,
+        JournalKind::MutationCommitted { operations }
+    );
+}
+
+#[tokio::test]
+async fn mutation_without_stream_subscribers_commits_and_journals_exactly_once() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    {
+        let registry = lock(&state.reg);
+        let table = registry.get("table").unwrap();
+        assert_eq!(table.tx.receiver_count(), 0);
+    }
+
+    let receipt = mutate_table(&state, command("table", vec![set_life(18)])).unwrap();
+
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!((receipt.debug_revision, receipt.table_seq), (1, 1));
+    assert_eq!(
+        (table.debug.revision, table.seq, table.broadcast_seq),
+        (1, 1, 1)
+    );
+    assert_eq!(table.game.as_ref().unwrap().life(PlayerId(0)), 18);
+    assert_eq!(table.debug.journal.len(), 1);
+    assert_eq!(table.debug.next_journal_ordinal, 1);
+    assert_eq!(table.debug.journal_request_bytes, 13);
+    assert_eq!(
+        table.tx.len(),
+        0,
+        "failed zero-subscriber send retains no phantom frame"
+    );
+}
+
+#[tokio::test]
+async fn failed_mutation_at_the_journal_record_limit_rolls_back_the_full_table() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    {
+        let mut registry = lock(&state.reg);
+        let debug = &mut registry.get_mut("table").unwrap().debug;
+        let filler = JournalRecord {
+            ordinal: 0,
+            timestamp_unix_ms: 0,
+            debug_revision: 0,
+            table_seq: 0,
+            encoded_request_bytes: 0,
+            kind: JournalKind::MutationCommitted { operations: vec![] },
+        };
+        debug.journal.resize(MAX_JOURNAL_RECORDS, filler);
+    }
+    let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
+    let before = table_transaction_fingerprint(&state, "table");
+
+    assert_eq!(
+        mutate_table(&state, command("table", vec![set_life(1)])),
+        Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::JournalRecords,
+        })
+    );
+
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+}
+
+#[tokio::test]
+async fn failed_mutation_at_the_journal_byte_limit_rolls_back_the_full_table() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    {
+        let mut registry = lock(&state.reg);
+        registry
+            .get_mut("table")
+            .unwrap()
+            .debug
+            .journal_request_bytes = MAX_JOURNAL_REQUEST_BYTES;
+    }
+    let before = table_transaction_fingerprint(&state, "table");
+    assert_eq!(
+        mutate_table(&state, command("table", vec![set_life(1)])),
+        Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::JournalRequestBytes
+        })
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!(table.game.as_ref().unwrap().life(PlayerId(0)), 20);
+    assert_eq!((table.seq, table.broadcast_seq), (0, 0));
+}
+
+#[tokio::test]
+async fn ordinary_mutation_preserves_logical_chrome_while_clear_pending_resets_it() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    {
+        let mut registry = lock(&state.reg);
+        let table = registry.get_mut("table").unwrap();
+        table
+            .chrome
+            .set_yields_for_test([true, false, false, false]);
+        table.chrome.set_turn_yield_flag(1, true);
+        table.chrome.set_dwell_flag(2, true);
+    }
+    mutate_table(&state, command("table", vec![set_life(19)])).unwrap();
+    {
+        let registry = lock(&state.reg);
+        let table = registry.get("table").unwrap();
+        assert_eq!(*table.chrome.yields(), [true, false, false, false]);
+        assert_eq!(*table.chrome.turn_yields(), [false, true, false, false]);
+        assert!(!table.chrome.any_dwell());
+    }
+
+    let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
+    let clear_receipt = mutate_table(
+        &state,
+        command(
+            "table",
+            vec![Mutation::ClearPendingOrchestration {
+                clear_queued_triggers: true,
+            }],
+        ),
+    )
+    .unwrap();
+    let clear_update = rx
+        .try_recv()
+        .expect("clear publishes one replacement snapshot");
+    let PublishedUpdate::Snapshot(clear_snapshot) = clear_update.as_ref() else {
+        panic!("clear publishes a snapshot")
+    };
+    assert_eq!(clear_snapshot.seq, clear_receipt.table_seq);
+
+    {
+        let mut registry = lock(&state.reg);
+        let table = registry.get_mut("table").unwrap();
+        assert_eq!(*table.chrome.yields(), [false; 4]);
+        assert_eq!(*table.chrome.turn_yields(), [false; 4]);
+        assert!(table.chrome.stack_hold().is_none());
+        let holder = table.game.as_ref().unwrap().priority_holder();
+        let (result, _) = TableSession::new(table).submit(Intent::PassPriority { player: holder });
+        assert!(
+            result.accepted,
+            "ordinary intent succeeds after clear-pending"
+        );
+    }
+
+    let ordinary_update = rx
+        .try_recv()
+        .expect("ordinary intent publishes the next delta");
+    let PublishedUpdate::Delta { state, .. } = ordinary_update.as_ref() else {
+        panic!("ordinary intent publishes a delta")
+    };
+    assert_eq!(state.seq, clear_receipt.table_seq + 1);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+}
+
+fn cast_bear_table_with_armed_hold() -> Table {
+    let mut table = Table::empty();
+    let mut game = engine::Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_in_hand(PlayerId(0), cards::get_by_name("Grizzly Bears").unwrap());
+    table.game = Some(game);
+    let (result, _) = TableSession::new(&mut table).submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bear,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    });
+    assert!(result.accepted);
+    let seq = table.seq;
+    assert!(crate::session::arm_stack_resolution(&mut table, seq));
+    table
+}
+
+#[tokio::test(start_paused = true)]
+async fn debug_restore_invalidates_old_hold_tasks_and_polls_only_the_new_sequence() {
+    let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+    let table = cast_bear_table_with_armed_hold();
+    let source_seq = table.seq;
+    assert!(lock(&state.reg).try_insert("table".into(), table));
+    crate::session::schedule_armed_stack_resolution(state.clone(), "table".into(), source_seq);
+    checkpoint_table(
+        &state,
+        CheckpointCommand {
+            table_id: "table".into(),
+            name: "held".into(),
+            replace_existing: false,
+            expected_table_seq: Some(source_seq),
+            encoded_request_bytes: 1,
+        },
+    )
+    .unwrap();
+    mutate_table(&state, command("table", vec![set_life(17)])).unwrap();
+    let before_restore_seq = lock(&state.reg).get("table").unwrap().seq;
+
+    let receipt = restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".into(),
+            name: "held".into(),
+            expected_debug_revision: Some(1),
+            expected_table_seq: Some(before_restore_seq),
+            encoded_request_bytes: 1,
+        },
+    )
+    .unwrap();
+    {
+        let registry = lock(&state.reg);
+        let table = registry.get("table").unwrap();
+        assert_eq!(
+            table.chrome.stack_hold().map(|(seq, _)| seq),
+            Some(receipt.table_seq)
+        );
+        assert!(!table.chrome.any_dwell());
+    }
+
+    tokio::task::yield_now().await;
+    tokio::time::advance(crate::session::STACK_HOLD + std::time::Duration::from_millis(100)).await;
+    tokio::task::yield_now().await;
+
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!(
+        table.seq,
+        receipt.table_seq + 1,
+        "only the fresh timer resolves once"
+    );
+    assert!(table.chrome.stack_hold().is_none());
+    assert!(table.game.as_ref().unwrap().stack().is_empty());
+}
+
+#[tokio::test(start_paused = true)]
+async fn debug_restore_commits_saved_hold_intent_without_timer_when_game_is_now_ineligible() {
+    let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+    let table = cast_bear_table_with_armed_hold();
+    let source_seq = table.seq;
+    assert!(lock(&state.reg).try_insert("table".into(), table));
+    checkpoint_table(
+        &state,
+        CheckpointCommand {
+            table_id: "table".into(),
+            name: "held".into(),
+            replace_existing: false,
+            expected_table_seq: Some(source_seq),
+            encoded_request_bytes: 1,
+        },
+    )
+    .unwrap();
+    {
+        let mut registry = lock(&state.reg);
+        registry
+            .get_mut("table")
+            .unwrap()
+            .debug
+            .checkpoints
+            .get_mut("held")
+            .unwrap()
+            .game = engine::Game::with_players(2, 0);
+    }
+
+    let receipt = restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".into(),
+            name: "held".into(),
+            expected_debug_revision: Some(0),
+            expected_table_seq: Some(source_seq),
+            encoded_request_bytes: 1,
+        },
+    )
+    .unwrap();
+
+    {
+        let registry = lock(&state.reg);
+        let table = registry.get("table").unwrap();
+        assert_eq!(table.seq, receipt.table_seq);
+        assert!(table.game.as_ref().unwrap().stack().is_empty());
+        assert!(table.chrome.stack_hold().is_none());
+        assert!(!table.chrome.any_dwell());
+    }
+    tokio::time::advance(crate::session::STACK_HOLD + std::time::Duration::from_millis(100)).await;
+    tokio::task::yield_now().await;
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!(
+        table.seq, receipt.table_seq,
+        "no post-lock poll was scheduled"
+    );
+    assert!(table.chrome.stack_hold().is_none());
+}
+
+#[tokio::test]
+async fn concurrent_restore_with_identical_guards_has_exactly_one_winner() {
+    let state = Arc::new(state_with_game("table", engine::Game::with_players(2, 0)).await);
+    checkpoint_table(&state, checkpoint_command("baseline", 1)).unwrap();
+    mutate_table(&state, command("table", vec![set_life(7)])).unwrap();
+    let barrier = Arc::new(Barrier::new(3));
+    let handles: Vec<_> = (0..2)
+        .map(|_| {
+            let state = Arc::clone(&state);
+            let barrier = Arc::clone(&barrier);
+            thread::spawn(move || {
+                barrier.wait();
+                restore_checkpoint(
+                    &state,
+                    RestoreCommand {
+                        table_id: "table".into(),
+                        name: "baseline".into(),
+                        expected_debug_revision: Some(1),
+                        expected_table_seq: Some(1),
+                        encoded_request_bytes: 1,
+                    },
+                )
+            })
+        })
+        .collect();
+    barrier.wait();
+    let results: Vec<_> = handles
+        .into_iter()
+        .map(|handle| handle.join().unwrap())
+        .collect();
+
+    assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+    assert_eq!(
+        results
+            .iter()
+            .filter(|result| matches!(
+                result,
+                Err(DebugFailure::Aborted {
+                    reason: DebugAbortReason::DebugRevisionMismatch,
+                    ..
+                })
+            ))
+            .count(),
+        1
+    );
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!(
+        (table.seq, table.broadcast_seq, table.debug.revision),
+        (2, 2, 2)
+    );
+    assert_eq!(table.game.as_ref().unwrap().life(PlayerId(0)), 20);
+}
+
+#[tokio::test]
+async fn debug_restore_preflights_counter_and_journal_capacity_before_live_swap() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    checkpoint_table(&state, checkpoint_command("baseline", 1)).unwrap();
+    {
+        let mut registry = lock(&state.reg);
+        let table = registry.get_mut("table").unwrap();
+        table.seq = 3;
+        table.broadcast_seq = u64::MAX;
+    }
+    let before = table_transaction_fingerprint(&state, "table");
+    let result = restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".into(),
+            name: "baseline".into(),
+            expected_debug_revision: Some(0),
+            expected_table_seq: Some(3),
+            encoded_request_bytes: 1,
+        },
+    );
+    assert!(
+        matches!(result, Err(DebugFailure::FailedPrecondition { ref violations, .. })
+        if violations.iter().any(|violation| violation.code == "broadcast_seq_exhausted"))
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!((table.seq, table.broadcast_seq), (3, u64::MAX));
+    assert_eq!(table.game.as_ref().unwrap().life(PlayerId(0)), 20);
+}
+
+#[tokio::test]
+async fn debug_restore_at_the_journal_record_limit_rolls_back_the_full_table() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    checkpoint_table(&state, checkpoint_command("baseline", 1)).unwrap();
+    {
+        let mut registry = lock(&state.reg);
+        let debug = &mut registry.get_mut("table").unwrap().debug;
+        let filler = debug.journal.front().unwrap().clone();
+        debug.journal.resize(MAX_JOURNAL_RECORDS, filler);
+    }
+    let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
+    let before = table_transaction_fingerprint(&state, "table");
+
+    let result = restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".into(),
+            name: "baseline".into(),
+            expected_debug_revision: Some(0),
+            expected_table_seq: Some(0),
+            encoded_request_bytes: 1,
+        },
+    );
+
+    assert_eq!(
+        result,
+        Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::JournalRecords,
+        })
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+}
+
+#[tokio::test]
+async fn debug_restore_at_the_journal_byte_limit_rolls_back_the_full_table() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    checkpoint_table(&state, checkpoint_command("baseline", 1)).unwrap();
+    lock(&state.reg)
+        .get_mut("table")
+        .unwrap()
+        .debug
+        .journal_request_bytes = MAX_JOURNAL_REQUEST_BYTES;
+    let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
+    let before = table_transaction_fingerprint(&state, "table");
+
+    let result = restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".into(),
+            name: "baseline".into(),
+            expected_debug_revision: Some(0),
+            expected_table_seq: Some(0),
+            encoded_request_bytes: 1,
+        },
+    );
+
+    assert_eq!(
+        result,
+        Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::JournalRequestBytes,
+        })
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+}
+
+#[tokio::test]
+async fn debug_restore_at_journal_ordinal_exhaustion_rolls_back_the_full_table() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    checkpoint_table(&state, checkpoint_command("baseline", 1)).unwrap();
+    lock(&state.reg)
+        .get_mut("table")
+        .unwrap()
+        .debug
+        .next_journal_ordinal = u64::MAX;
+    let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
+    let before = table_transaction_fingerprint(&state, "table");
+
+    let result = restore_checkpoint(
+        &state,
+        RestoreCommand {
+            table_id: "table".into(),
+            name: "baseline".into(),
+            expected_debug_revision: Some(0),
+            expected_table_seq: Some(0),
+            encoded_request_bytes: 1,
+        },
+    );
+
+    assert!(
+        matches!(result, Err(DebugFailure::FailedPrecondition { ref violations, .. })
+        if violations.iter().any(|violation| violation.code == "journal_ordinal_exhausted"))
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+}
+
+#[tokio::test]
+async fn debug_restore_missing_checkpoint_stale_seq_and_full_journal_leave_no_trace() {
+    let state = state_with_game("table", engine::Game::with_players(2, 0)).await;
+    checkpoint_table(&state, checkpoint_command("baseline", 1)).unwrap();
+    let mut rx = lock(&state.reg).get("table").unwrap().tx.subscribe();
+
+    let before_missing = table_transaction_fingerprint(&state, "table");
+    assert_eq!(
+        restore_checkpoint(
+            &state,
+            RestoreCommand {
+                table_id: "table".into(),
+                name: "missing".into(),
+                expected_debug_revision: Some(0),
+                expected_table_seq: Some(0),
+                encoded_request_bytes: 1,
+            }
+        ),
+        Err(DebugFailure::CheckpointNotFound),
+    );
+    assert_eq!(
+        table_transaction_fingerprint(&state, "table"),
+        before_missing
+    );
+
+    {
+        let mut registry = lock(&state.reg);
+        let table = registry.get_mut("table").unwrap();
+        let holder = table.game.as_ref().unwrap().priority_holder();
+        let (result, _) = TableSession::new(table).submit(Intent::PassPriority { player: holder });
+        assert!(result.accepted, "ordinary intent advances the live table");
+    }
+    let ordinary_update = rx.try_recv().expect("ordinary intent publishes one delta");
+    let PublishedUpdate::Delta {
+        state: ordinary_state,
+        ..
+    } = ordinary_update.as_ref()
+    else {
+        panic!("ordinary intent publishes a delta")
+    };
+    assert_eq!(ordinary_state.seq, 1);
+
+    let before_stale = table_transaction_fingerprint(&state, "table");
+    assert!(matches!(
+        restore_checkpoint(
+            &state,
+            RestoreCommand {
+                table_id: "table".into(),
+                name: "baseline".into(),
+                expected_debug_revision: Some(0),
+                expected_table_seq: Some(0),
+                encoded_request_bytes: 1,
+            }
+        ),
+        Err(DebugFailure::Aborted {
+            reason: DebugAbortReason::TableSeqMismatch,
+            actual_table_seq: 1,
+            ..
+        })
+    ));
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before_stale);
+    assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+
+    {
+        let mut registry = lock(&state.reg);
+        registry
+            .get_mut("table")
+            .unwrap()
+            .debug
+            .journal_request_bytes = MAX_JOURNAL_REQUEST_BYTES;
+    }
+    let before_full = table_transaction_fingerprint(&state, "table");
+    assert_eq!(
+        restore_checkpoint(
+            &state,
+            RestoreCommand {
+                table_id: "table".into(),
+                name: "baseline".into(),
+                expected_debug_revision: Some(0),
+                expected_table_seq: Some(1),
+                encoded_request_bytes: 1,
+            }
+        ),
+        Err(DebugFailure::ResourceExhausted {
+            reason: ResourceLimit::JournalRequestBytes,
+        }),
+    );
+    assert_eq!(table_transaction_fingerprint(&state, "table"), before_full);
+    let registry = lock(&state.reg);
+    let table = registry.get("table").unwrap();
+    assert_eq!((table.seq, table.broadcast_seq), (1, 1));
+    assert_eq!(table.game.as_ref().unwrap().life(PlayerId(0)), 20);
     assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
 }

@@ -103,6 +103,7 @@ impl pb::debug_service_server::DebugService for DebugSvc {
         &self,
         request: Request<pb::MutateTableRequest>,
     ) -> Result<Response<pb::MutateTableResponse>, Status> {
+        let encoded_request_bytes = request.get_ref().encoded_len();
         let request = request.into_inner();
         if request.table_id.is_empty() {
             return Err(invalid_status(None));
@@ -122,6 +123,7 @@ impl pb::debug_service_server::DebugService for DebugSvc {
                 expected_debug_revision: request.expected_debug_revision,
                 expected_table_seq: request.expected_table_seq,
                 operations,
+                encoded_request_bytes,
             },
         )
         .map_err(status)?;
