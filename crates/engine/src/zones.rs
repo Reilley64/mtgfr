@@ -38,7 +38,7 @@ impl Game {
             Mana::Color(Color::Green),
             Mana::Colorless,
         ] {
-            self.apply(&Event::ManaAdded {
+            self.apply_recorded(&Event::ManaAdded {
                 player,
                 mana,
                 amount: 20,
@@ -125,8 +125,8 @@ impl Game {
     /// Draw the top card of `player`'s library into their hand. Drawing from an
     /// empty library flags the player to lose on the next SBA sweep (rule 104.3c).
     pub fn draw_card(&mut self, player: PlayerId) -> Vec<Event> {
-        let events = self.draw_events(player, 1);
-        self.apply_all(&events);
+        let mut events = self.draw_events(player, 1);
+        self.apply_all_recorded(&mut events);
         events
     }
 
@@ -315,8 +315,8 @@ impl Game {
             // "If the player doesn't discard a card this way, they mill a card." — an empty hand
             // is the only way to not discard, since the discard itself isn't optional.
             if hand.is_empty() {
-                let evs = self.mill_events(player, 1);
-                self.apply_all(&evs);
+                let mut evs = self.mill_events(player, 1);
+                self.apply_all_recorded(&mut evs);
                 events.extend(evs);
                 return true;
             }
@@ -337,8 +337,8 @@ impl Game {
             crate::pending::raise_choice(self, PendingChoice::ChooseDredge { player, eligible });
             return false;
         }
-        let evs = self.draw_events(player, 1);
-        self.apply_all(&evs);
+        let mut evs = self.draw_events(player, 1);
+        self.apply_all_recorded(&mut evs);
         events.extend(evs);
         true
     }

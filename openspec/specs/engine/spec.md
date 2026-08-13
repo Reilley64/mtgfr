@@ -46,20 +46,69 @@ The engine MUST represent the seven MTG zones and a flat object arena addressed 
 - **WHEN** an object moves between zones
 - **THEN** it receives a new object id and the old id resolves to the current id via tombstone chaining
 
+#### Scenario: Debug zone change preserves CR 400.7 identity
+- **WHEN** a debug-only raw edit creates an object or moves a non-stack object between supported zones
+- **THEN** creation uses the exact next arena identifier, movement uses that identifier for a fresh destination object, and the departed identity becomes a tombstone under CR 400.7
+
 #### Scenario: Removed objects are illegal inputs
 - **WHEN** an intent or rules path references a removed object
 - **THEN** that reference is treated as illegal (not a normal board read)
 
 ### Requirement: Event-Sourced Board Facts vs Orchestration State
-Board facts (life, zones, counters, tap, damage marks, mana pools, stack contents) MUST mutate only via events applied by direct pattern-matched handlers. Priority holder, consecutive passes, pending choice, deferred resume frames, keyword obligations, resolution-finish policy, and similar orchestration MUST live as plain fields on the game and MUST NOT be reconstituted from the event log alone. Library order MUST NOT be fully event-sourced (shuffles/draws mutate the library directly) so other players never observe order through events. The event log MUST be treated as audit-only; intent replay of a full match from events alone is out of scope.
+During ordinary play, board facts (life, zones, counters, tap, damage marks, mana pools, stack contents) MUST mutate only via events applied by direct pattern-matched handlers. Priority holder, consecutive passes, pending choice, deferred resume frames, keyword obligations, resolution-finish policy, and similar orchestration MUST live as plain fields on the game and MUST NOT be reconstituted from the event log alone. Library order MUST NOT be fully event-sourced (shuffles/draws mutate the library directly) so other players never observe order through events. The event log MUST be treated as audit-only; intent replay of a full match from events alone is out of scope.
 
-#### Scenario: Events mutate board facts
-- **WHEN** an event such as life change, zone move, or mana spend is applied
-- **THEN** the corresponding board fact changes and no non-event path mutates that fact
+A debug-assertion-only authoritative raw editor MAY mutate a cloned transaction candidate without manufacturing ordinary events. This is the sole exception for board-fact editing: it SHALL expose typed edits only, rebuild derived state after the ordered batch, require structural validation and all-viewer projection before the server swaps the candidate, and leave later ordinary intents on the event-applied path. Its coherent pending-orchestration edit SHALL clear the pending choice, every deferred resume rider, the resolution-local frame, resolution-finish policy, pending enter-bonus counters, and clash scratch as one bundle; the caller SHALL choose whether queued trigger groups and keyword obligations are also cleared. The ordered batch SHALL invalidate derived characteristics, validate the complete candidate, and rebuild legal actions once at batch tail rather than refreshing an intermediate partially cleared state. Raw debug edits are structural candidate edits, not ordinary events, and SHALL NOT claim that the resulting state or event log arose through rules-legal play or can be reconstructed by replay.
+
+The debug-assertion-only engine editor SHALL provide checked stack replacement, push, and pop functions consumed by the ordered server transaction. Entries SHALL use explicit nonzero, never-reused stack identities at or above the allocator frontier; gaps are permitted and advance the frontier, while `u64::MAX` exhausts it. Known-spell construction SHALL consume an existing hand card explicitly identified by object id, create the exact next arena object as a CardDef-backed spell under CR 400.7, and admit only authored target, X, mode, division, and payment history that its deliberately initialized runtime fields represent faithfully. Authored abilities SHALL clone an exact activated or triggered CardDef ability from a public source controlled by the requested controller; executable and rendered sources remain identical. Both activated and triggered admission SHALL use the same independent, conservative safe effect grammar rather than infer activation, event, or last-known-information fields: it SHALL admit only `draw` for exactly `you` with a literal fixed count in `0..=4096`, targetless `add_mana` with no recipient, `single_color = false`, `track_provenance = false`, and a literal fixed repeat in `0..=4096`, and recursive sequences made entirely from those leaves. Every `Amount::Combine` SHALL be rejected because admission does not replace the authored payload with a checked constant-folded result. The Effect and Amount admission matches SHALL enumerate every current variant so new vocabulary requires an explicit audit; effects and amounts outside the allowlist SHALL be rejected. The admitted `add_mana` fields for its batch, commander identity, opponent colors, restriction, and end-of-turn persistence SHALL retain their authored values because ordinary stack resolution consumes them directly; fields whose semantics require the activation path SHALL be rejected. Activated admission SHALL additionally pass the payment-history representability gate and SHALL NOT infer or claim payment history, activation conditions, or timing legality from present board state; in particular, a tap-self cost neither requires nor causes a presently tapped source. Public ghosts SHALL reuse the bounded targetless metadata validator and carry no object or executable effect. Replace/pop cleanup SHALL tombstone spell objects with last-known definition and owner without fabricating events or graveyard moves. Every stack edit SHALL reject a nonempty pending/resume bundle, validate a whole clone, and leave stack, objects, and allocators unchanged on failure.
+
+#### Scenario: Events mutate ordinary board facts
+- **WHEN** an ordinary event such as life change, zone move, or mana spend is applied
+- **THEN** the corresponding board fact changes and no ordinary non-event path mutates that fact
+
+#### Scenario: Debug editing is an explicit out-of-band exception
+- **WHEN** a debug-only typed batch edits a transaction candidate
+- **THEN** the candidate facts change without fabricated incremental events and become authoritative only after structural and projection checks succeed
+
+#### Scenario: Checked debug stack editing preserves real state shapes
+- **WHEN** the debug engine editor admits known spells, authored public abilities, or an explicit public ghost
+- **THEN** inspection remains bottom-first with stable entry identity, real sources and targets where present, explicit ghost metadata where present, and every resolvable payload uses authored engine data rather than a wire-supplied effect
+
+#### Scenario: Debug stack replacement is atomic
+- **WHEN** any requested entry has a reused identity, wrong object id or kind, hidden source, malformed targets, unsupported authored state, or the game still has pending orchestration
+- **THEN** the whole candidate is rejected with the failing entry index and the live allocator, objects, and stack remain unchanged
+
+#### Scenario: Debug pending orchestration clears coherently
+- **WHEN** a debug candidate applies the typed pending-orchestration clear
+- **THEN** pending choice, all deferred resume and resolution-local scratch are cleared together, queued trigger groups and obligations follow the caller's option, and legal actions are rebuilt once after the complete ordered batch
+
+#### Scenario: A late debug failure preserves the live game
+- **WHEN** a later operation fails after an earlier candidate operation cleared pending orchestration
+- **THEN** the candidate is discarded and the live game's pending bundle, triggers, obligations, and legal actions remain unchanged
 
 #### Scenario: Priority is not in the event log
 - **WHEN** priority passes or a pending choice is raised
 - **THEN** those fields update on the game directly without requiring an event to store them
+
+### Requirement: Finite numeric facts preserve logical operation semantics
+
+Stored player life SHALL be an `i32` and stored +1/+1-counter aggregates SHALL remain in `0..=i32::MAX`; named permanent and player counter totals SHALL remain in `0..=u8::MAX`. Every authoritative mana-pool bucket, including each persistent and spend-restricted bucket, SHALL saturate independently at `u8::MAX` when bounded mana credit is applied; `ManaAdded.amount` records that bounded attempted credit even when the destination bucket has less remaining capacity. Applying a life change SHALL saturate the stored life at the `i32` endpoints rather than wrap or panic. An internal life-change event SHALL carry an `i64` delta so one logical change can span the full distance between the two stored endpoints without being split, preserving one replacement, trigger, and turn-tally operation. Consumers that maintain per-credit state from mana-add events, including spend-to-cast provenance, SHALL account only for the delta accepted by each matching authoritative bucket; an attempted credit rejected by a full bucket SHALL NOT create provenance. Spend-to-cast provenance SHALL replay only the mana-add events produced after the tracked mana ability begins resolving, and only a direct `ManaEffect::Add` leaf with provenance tracking enabled SHALL be provenance-trackable; every composite and every other effect or mana variant SHALL be rejected.
+
+The authoritative +1/+1-counter aggregate SHALL equal its bounded provenance ledger. Authoritative event batches SHALL normalize ordinary +1/+1, named permanent, and player counter events before application and exposure to the delta the bounded destination can accept; a partial request SHALL report only the accepted delta and a zero-delta request SHALL produce no authoritative event. A debug assignment of +1/+1 counters SHALL reconcile the same ledger: increases append debug provenance, decreases consume newest batches first, and the stored aggregate SHALL be resynchronized from the retained batches. Derived counter sums SHALL use wider accumulation and clamp to their public finite representation rather than overflow.
+
+#### Scenario: One life event spans the stored range
+
+- **WHEN** one logical life operation moves a player between opposite `i32` endpoints
+- **THEN** one `i64` life event records the full signed delta and application stores the clamped endpoint without splitting the operation
+
+#### Scenario: Counter placement reaches a finite ceiling
+
+- **WHEN** a counter event requests more counters than the bounded aggregate can accept
+- **THEN** the applied and exposed event contains only the accepted delta, and a request accepted as zero is omitted
+
+#### Scenario: Debug counter assignment retains authoritative provenance
+
+- **WHEN** a debug edit lowers and then raises a permanent's +1/+1-counter total
+- **THEN** newest provenance is consumed on the decrease, debug provenance is added for the increase, and every counter reader observes the ledger-derived bounded aggregate
 
 ### Requirement: Pre-Game Mulligans and Opening Hands
 Real setup MUST stack each library, deal opening hands with 2-sample BO1 land smoothing (closest land count to deck expectation; ties keep the first sample), then enter a simultaneous mulligan phase. During mulligans, undecided living seats MAY keep or mulligan; ordinary game actions MUST be blocked until every living seat has kept. Friendly mulligan: first mulligan redraws to 7; later mulligans draw to 6, 5, …, 1. There is no London bottoming or Vancouver scry. Mulligan redraws MUST also be land-smoothed. A seat at hand size 1 MUST auto-keep after redraw. When all living seats have kept, the engine MUST clear the mulligan phase and begin the first turn. First-turn beginning steps (Untap → Upkeep → Draw) MUST run through the post-intent pipeline. In two-player games the starting player MUST skip their first draw; in 3–4 player games no player skips.
@@ -193,7 +242,25 @@ A permanent MUST stay tapped through its controller's untap step while any conti
 ### Requirement: Priority and Stack
 Priority MUST begin with the active player on steps that grant it. After a player acts (cast, activate, play land) or a stack item resolves, priority MUST return to the active player. When consecutive passes equal the number of living players: if the stack is non-empty, resolve the top item, reset passes, and return priority to the active player; if the stack is empty, advance to the next step. Combat declaration steps MUST remain until a valid declaration is made (empty declarations legal when not forced by goad/must-attack). Mana abilities that produce mana and have no target MUST resolve immediately without using the stack and without changing priority or the pass counter.
 
+Every ordinary stack entry MUST receive a nonzero, monotonically increasing, engine-owned `u64` identity when inserted. An identity MUST NOT be reused after its entry leaves the stack. A copied spell or ability MUST receive a fresh identity, while an entry that survives another entry resolving or being countered MUST retain its identity. Stack-entry identity is presentation and orchestration identity only: spell and ability targeting, countering, and resolution semantics MUST remain keyed by source or stack `ObjectId` as applicable rather than by the stack-entry identity.
+
+The render descriptor for a stack entry MUST be structurally separate from its executable payload. Ordinary spells and abilities MUST pair an object-backed render descriptor with their existing source-keyed payload. A debug-assertion-only constructor MAY insert one constrained public ghost that pairs explicit source-independent renderer metadata with a debug no-op payload. Such a ghost MUST be source-less and targetless; MUST carry an existing controller, a nonblank name of at most 128 bytes, a nonblank label of at most 512 bytes, a nonblank printing id of at most 64 bytes, an optional nonblank known card id of at most 64 bytes, and at most eight nonblank printed sentences of at most 512 bytes each; and MUST resolve only by being removed from the stack without producing authoritative events. Structural validation MUST reject every render/payload mismatch. The ghost constructor MUST remain unavailable in release builds, while the engine types and production projection MUST exhaustively represent a ghost already present in a game.
+
+Exact-object printing choices are presentation input keyed by the ordinary engine `ObjectId`; they MUST NOT be stored in `Game`, alter stack or object identity, or participate in rules evaluation. A debug-only server transaction MAY atomically pair the checked engine candidate with a bounded exact-live-object override map, including carrying a source card override to the exact spell object minted by checked CR 400.7 construction and deleting overrides for tombstoned spell objects. It MUST NOT generally migrate an exact override across unrelated zone-change identity. A source-independent public ghost has no object identity and therefore MUST NOT receive an exact-object, deck-preference, or card-default print through engine inference.
+
 An activated ability on the stack MUST be targetable and counterable in its own right, independently of the permanent that produced it: countering it MUST remove it from the stack without touching its source, and a targeting restriction naming its source's card type MUST be enforced when targets are chosen. A counter-unless-pays form MUST offer the payment to the *ability's* controller, and MUST counter the ability only when that player declines.
+
+#### Scenario: Stack identity survives unrelated removal
+- **WHEN** the top entry resolves or is countered while a lower entry remains on the stack
+- **THEN** the lower entry retains its nonzero identity, and a later insertion receives a greater identity rather than reusing the removed identity
+
+#### Scenario: Stack copy receives fresh identity without changing target semantics
+- **WHEN** a spell or ability is copied on the stack
+- **THEN** the copy receives a fresh stack-entry identity while target and counter operations continue to name the applicable source or stack object
+
+#### Scenario: Debug public ghost is inert and structurally paired
+- **WHEN** a debug build inserts valid bounded public ghost metadata and that entry resolves
+- **THEN** it has no source or targets, is paired only with the debug no-op payload, leaves the stack without authoritative events, and remains projectable through the production-visible stack shape
 
 #### Scenario: An activated ability is countered on the stack
 - **WHEN** a spell that counters a target activated ability from an artifact source resolves against an artifact's ability
@@ -260,7 +327,7 @@ After state changes, the engine MUST recompute a per-seat legal-action list from
 - **THEN** that action is marked mana-only and does not make `has_meaningful_action` true
 
 ### Requirement: Payment and Auto-Tap
-Casts, activations, cycling, and pay-cost choices MUST settle payment in-engine: verify affordability from pool plus free-tap sources; auto-tap free sources (lands before non-lands, non-pain before pain, broader color preferred); plan paid nested mana abilities feed-first without recursive mint loops; deduct mana and emit tap/spend events in the same delta. Clients MUST NOT be required to pre-sequence taps for a cast. Manual tap-for-mana remains available. Paid mana abilities with generic costs MUST appear as activate actions and MUST NOT be auto-tapped by the planner. Net-zero converters MUST be excluded from the planner.
+Casts, activations, cycling, and pay-cost choices MUST settle payment in-engine: verify affordability from pool plus free-tap sources using an exact widened supply that does not collapse independently bounded mana buckets; auto-tap free sources (lands before non-lands, non-pain before pain, broader color preferred); plan paid nested mana abilities feed-first without recursive mint loops; restore synthetic substitution and restricted-credit use to authoritative source buckets before deducting mana and emitting tap/spend events in the same delta. Clients MUST NOT be required to pre-sequence taps for a cast. Manual tap-for-mana remains available. Paid mana abilities with generic costs MUST appear as activate actions and MUST NOT be auto-tapped by the planner. Net-zero converters MUST be excluded from the planner.
 
 #### Scenario: One-click cast auto-taps
 - **WHEN** a player casts an affordable spell with untapped free mana sources and an empty or insufficient pool

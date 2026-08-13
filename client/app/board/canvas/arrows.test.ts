@@ -68,6 +68,7 @@ describe("stackTargetArrowShapes", () => {
       stack: [
         {
           controller: 0,
+          entry_id: 1n,
           kind: "spell",
           label: testMessageRef("Electrolyze"),
           source: 1,
@@ -92,6 +93,7 @@ describe("stackTargetArrowShapes", () => {
       stack: [
         {
           controller: 0,
+          entry_id: 1n,
           kind: "spell",
           label: testMessageRef("Lightning Bolt"),
           source: 1,
@@ -99,12 +101,13 @@ describe("stackTargetArrowShapes", () => {
         },
         {
           controller: 0,
+          entry_id: 2n,
           kind: "spell",
           label: testMessageRef("Shock"),
           source: 2,
           target: { kind: "player", player: 1 },
         },
-        { controller: 0, kind: "spell", label: testMessageRef("Divination"), source: 3, target: null },
+        { entry_id: 3n, controller: 0, kind: "spell", label: testMessageRef("Divination"), source: 3, target: null },
       ],
       cards: [card(22)],
       avatars: { 0: { x: 200, y: 800 }, 1: { x: 720, y: 80 } },
@@ -118,7 +121,7 @@ describe("stackTargetArrowShapes", () => {
   it("skips stack entries without a resolvable target", () => {
     const shapes = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Divination"), source: 3 }],
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Divination"), source: 3 }],
       cards: [],
       avatars: {},
       camera: { panX: 0, panY: 0, zoom: 1 },
@@ -130,7 +133,14 @@ describe("stackTargetArrowShapes", () => {
     const pile = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },
       stack: [
-        { controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 1, target: { kind: "object", id: 22 } },
+        {
+          entry_id: 1n,
+          controller: 0,
+          kind: "spell",
+          label: testMessageRef("Bolt"),
+          source: 1,
+          target: { kind: "object", id: 22 },
+        },
       ],
       cards: [card(22)],
       avatars: {},
@@ -140,7 +150,14 @@ describe("stackTargetArrowShapes", () => {
     const expanded = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },
       stack: [
-        { controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 1, target: { kind: "object", id: 22 } },
+        {
+          entry_id: 1n,
+          controller: 0,
+          kind: "spell",
+          label: testMessageRef("Bolt"),
+          source: 1,
+          target: { kind: "object", id: 22 },
+        },
       ],
       cards: [card(22)],
       avatars: {},
@@ -156,6 +173,7 @@ describe("stackTargetArrowShapes", () => {
   ] as const)("starts expanded target arrows at the mounted face center at $width×$height", (viewport) => {
     const count = 7;
     const stack = Array.from({ length: count }, (_, row) => ({
+      entry_id: BigInt(row + 1),
       controller: 0,
       kind: "spell" as const,
       label: testMessageRef(`Spell ${row}`),
@@ -181,6 +199,7 @@ describe("stackTargetArrowShapes", () => {
 
   it("uses visible compact face origins and proxies hidden rows to the overflow edge", () => {
     const stack = Array.from({ length: 7 }, (_, row) => ({
+      entry_id: BigInt(row + 1),
       controller: 0,
       kind: "spell" as const,
       label: testMessageRef(`Spell ${row}`),

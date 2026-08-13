@@ -2,7 +2,7 @@
 //! auto-advance, stack-hold scheduling, and delta packaging. Chrome knobs live on
 //! [`crate::chrome::ChromeState`]; only [`TableSession`] mutates them. gRPC adapters call the
 //! chrome verbs and get [`ApplyResult`] / [`DwellResult`] — [`Disposition`] stays crate-private
-//! for the unlock-tail. `stream` projects `PublishedDelta` only.
+//! for the unlock-tail. `stream` projects viewer-specific frames from `PublishedUpdate`.
 
 use std::sync::Arc;
 
@@ -19,31 +19,52 @@ pub const STACK_HOLD: std::time::Duration = std::time::Duration::from_millis(200
 /// Extra time a helpless dwell may add on top of [`STACK_HOLD`] (hard cap = hold + this).
 pub const STACK_HOLD_DWELL_EXTRA: std::time::Duration = std::time::Duration::from_millis(3000);
 
-/// One applied intent's canonical events plus the full post-apply game, tagged with its seq,
-/// plus the human-readable labels of any forced choices `auto_advance` submitted along the way
-/// and the post-apply yield flags. Each subscriber builds its own frame purely (`redact` +
-/// `complete_visible` for its viewer) — no re-lock, no race.
+/// The authoritative state and presentation extras carried by every publication. Each subscriber
+/// builds its own frame purely (`redact` + `complete_visible` for its viewer) — no re-lock, no
+/// race, and no reuse of seats or print preferences captured when the stream opened.
 ///
-/// ponytail: clones the whole `Game` per intent — trivial at this scale; if it ever shows in a
-/// profile, carry a canonical full-info snapshot struct instead (see wire-protocol-and-visibility spec).
+/// ponytail: clones the whole `Game` per publication — trivial at this scale; if it ever shows in
+/// a profile, carry a canonical full-info snapshot struct instead (see
+/// wire-protocol-and-visibility spec).
 /// ponytail: `yielded` is stamped per-viewer via `complete_visible` + `ViewExtras` in
-/// `stream::frame_for` / the opening snapshot — can't stamp once at publish without knowing
-/// every viewer.
-pub struct PublishedDelta {
+/// `stream::frame_for_update` / the opening snapshot — it cannot be stamped once at publish
+/// without knowing every viewer.
+pub struct PublishedState {
     pub seq: u64,
     /// Advances on every fan-out, including same-`seq` hold ticks.
     pub broadcast_seq: u64,
-    pub events: Vec<Event>,
     pub game: Game,
-    pub auto_actions: Vec<MessageRef>,
     pub yields: [bool; 4],
     pub turn_yields: [bool; 4],
     /// Stack-hold countdown for clients (ms); `0` when no hold is active.
     pub stack_hold_remaining_ms: u32,
+    pub seats: [crate::Seat; 4],
+    pub prints: [std::collections::HashMap<String, String>; 4],
+    /// Transient exact-object art overlays captured atomically with this publication.
+    pub object_print_overrides: schema::ObjectPrintOverrides,
+}
+
+/// A normal intent/hold publication is a delta. Authoritative out-of-band replacement publishes
+/// a complete snapshot instead of manufacturing an empty delta.
+pub enum PublishedUpdate {
+    Delta {
+        state: PublishedState,
+        events: Vec<Event>,
+        auto_actions: Vec<MessageRef>,
+    },
+    Snapshot(PublishedState),
+}
+
+impl PublishedUpdate {
+    pub fn broadcast_seq(&self) -> u64 {
+        match self {
+            Self::Delta { state, .. } | Self::Snapshot(state) => state.broadcast_seq,
+        }
+    }
 }
 
 /// Fan-out payload: `Arc` so subscribers clone a pointer, not the payload.
-pub type Broadcast = Arc<PublishedDelta>;
+pub type Broadcast = Arc<PublishedUpdate>;
 
 struct RatingSnapshot {
     seats: Vec<crate::Seat>,
@@ -64,7 +85,7 @@ enum HoldResolution {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Disposition {
     /// The game continues; `stack_held` means auto-advance paused before a stack resolution,
-    /// so the caller owes a [`schedule_stack_resolution`] (folded in by [`settle_after_apply`]).
+    /// so the caller owes synchronous arming and an already-armed poller (folded in by [`settle_after_apply`]).
     Live { stack_held: bool },
     /// The engine panicked — quarantine (drop) the table (C3).
     Panicked,
@@ -245,6 +266,8 @@ impl<'a> TableSession<'a> {
             Ok(Ok(result)) => result,
         };
 
+        #[cfg(debug_assertions)]
+        self.table.prune_object_print_overrides();
         self.table.seq += 1;
         self.table.broadcast_seq += 1;
         let seq = self.table.seq;
@@ -261,15 +284,21 @@ impl<'a> TableSession<'a> {
             self.table.stack_hold_remaining_ms()
         };
         // One clone: the broadcast owns a copy; ApplyResult keeps the original for the action log.
-        let _ = self.table.tx.send(Arc::new(PublishedDelta {
+        let state = PublishedState {
             seq,
             broadcast_seq: self.table.broadcast_seq,
-            events: events.clone(),
             game: game.clone(),
-            auto_actions: labels,
             yields: *self.table.chrome.yields(),
             turn_yields: *self.table.chrome.turn_yields(),
             stack_hold_remaining_ms: hold_ms,
+            seats: self.table.seats.clone(),
+            prints: self.table.prints.clone(),
+            object_print_overrides: self.table.current_object_print_overrides().clone(),
+        };
+        let _ = self.table.tx.send(Arc::new(PublishedUpdate::Delta {
+            state,
+            events: events.clone(),
+            auto_actions: labels,
         }));
         // `outcome`, not `winner`: a draw (CR 104.4) ends the game with nobody winning.
         let disposition = if game.outcome().is_some() {
@@ -340,7 +369,12 @@ pub fn settle_after_apply(
             reg.remove(table_id);
         }
         Disposition::Live { stack_held: true } => {
-            schedule_stack_resolution(state.clone(), table_id.to_string(), seq);
+            let armed = reg
+                .get_mut(table_id)
+                .is_some_and(|table| arm_stack_resolution(table, seq));
+            if armed {
+                schedule_armed_stack_resolution(state.clone(), table_id.to_string(), seq);
+            }
         }
         Disposition::Live { stack_held: false } => {}
     }
@@ -370,91 +404,100 @@ fn stack_hold_pass(game: &Game, yields: &[bool; 4], turn_yields: &[bool; 4]) -> 
 /// staleness: any broadcast during the hold bumps `table.seq` (and its own `settle_after_apply`
 /// schedules a fresh hold if one is still owed), so a stale timer just evaporates instead of
 /// double-resolving. [`stack_hold_pass`] re-validates the rest.
-fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
+pub(crate) fn arm_stack_resolution(table: &mut Table, seq: u64) -> bool {
+    table.chrome.clear_hold();
+    let Some(game) = table.game.as_ref() else {
+        return false;
+    };
+    if stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields()).is_none() {
+        return false;
+    }
+    table.chrome.begin_hold(seq, Instant::now());
+    true
+}
+
+pub(crate) fn schedule_armed_stack_resolution(state: AppState, table_id: String, seq: u64) {
     tokio::spawn(async move {
-        {
+        poll_armed_stack_resolution(state, table_id, seq).await;
+    });
+}
+
+async fn poll_armed_stack_resolution(state: AppState, table_id: String, seq: u64) {
+    loop {
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let resolution = {
             let mut reg = lock(&state.reg);
-            if let Some(table) = reg.get_mut(&table_id) {
-                let now = Instant::now();
-                table.chrome.begin_hold(seq, now);
-            }
-        }
-        loop {
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-            let resolution = {
-                let mut reg = lock(&state.reg);
-                let Some(table) = reg.get_mut(&table_id) else {
-                    return;
-                };
-                if table.seq != seq {
-                    table.chrome.clear_hold_if_seq(seq);
-                    return;
-                }
-                let Some((_, started)) = table.chrome.stack_hold() else {
-                    return;
-                };
-                let now = Instant::now();
-                let any_dwell = table.chrome.any_dwell();
-                if now < hold_deadline(started, any_dwell) {
-                    HoldResolution::Continue
-                } else {
-                    table.chrome.clear_hold();
-                    let Some(game) = table.game.as_ref() else {
-                        return;
-                    };
-                    let Some(holder) =
-                        stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields())
-                    else {
-                        return;
-                    };
-                    let mut session = TableSession::new(table);
-                    let wire = schema::WireIntent::PassPriority { player: holder.0 };
-                    let (result, disposition) =
-                        session.submit_system(Intent::PassPriority { player: holder });
-                    let log_row = crate::action_log::format_row(
-                        table.seq,
-                        holder.0,
-                        &wire,
-                        &result,
-                        &result.events,
-                        table.game.as_ref(),
-                    );
-                    let seq = table.seq;
-                    let rating_snapshot = result.accepted.then(|| {
-                        table.game.as_ref().map(|game| RatingSnapshot {
-                            seats: table.seats.to_vec(),
-                            game: game.clone(),
-                            events: result.events.clone(),
-                        })
-                    });
-                    settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
-                    HoldResolution::Applied {
-                        log_row,
-                        rating_snapshot: rating_snapshot.flatten().map(Box::new),
-                    }
-                }
+            let Some(table) = reg.get_mut(&table_id) else {
+                return;
             };
-            match resolution {
-                HoldResolution::Continue => continue,
+            if table.seq != seq {
+                table.chrome.clear_hold_if_seq(seq);
+                return;
+            }
+            let Some((_, started)) = table.chrome.stack_hold() else {
+                return;
+            };
+            let now = Instant::now();
+            let any_dwell = table.chrome.any_dwell();
+            if now < hold_deadline(started, any_dwell) {
+                HoldResolution::Continue
+            } else {
+                table.chrome.clear_hold();
+                let Some(game) = table.game.as_ref() else {
+                    return;
+                };
+                let Some(holder) =
+                    stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields())
+                else {
+                    return;
+                };
+                let mut session = TableSession::new(table);
+                let wire = schema::WireIntent::PassPriority { player: holder.0 };
+                let (result, disposition) =
+                    session.submit_system(Intent::PassPriority { player: holder });
+                let log_row = crate::action_log::format_row(
+                    table.seq,
+                    holder.0,
+                    &wire,
+                    &result,
+                    &result.events,
+                    table.game.as_ref(),
+                );
+                let seq = table.seq;
+                let rating_snapshot = result.accepted.then(|| {
+                    table.game.as_ref().map(|game| RatingSnapshot {
+                        seats: table.seats.to_vec(),
+                        game: game.clone(),
+                        events: result.events.clone(),
+                    })
+                });
+                settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
                 HoldResolution::Applied {
                     log_row,
-                    rating_snapshot,
-                } => {
-                    crate::action_log::append(&table_id, &log_row);
-                    if let Some(snapshot) = rating_snapshot {
-                        crate::ratings::persist_player_lost(
-                            &state.db,
-                            &snapshot.seats,
-                            &snapshot.game,
-                            &snapshot.events,
-                        )
-                        .await;
-                    }
-                    return;
+                    rating_snapshot: rating_snapshot.flatten().map(Box::new),
                 }
             }
+        };
+        match resolution {
+            HoldResolution::Continue => continue,
+            HoldResolution::Applied {
+                log_row,
+                rating_snapshot,
+            } => {
+                crate::action_log::append(&table_id, &log_row);
+                if let Some(snapshot) = rating_snapshot {
+                    crate::ratings::persist_player_lost(
+                        &state.db,
+                        &snapshot.seats,
+                        &snapshot.game,
+                        &snapshot.events,
+                    )
+                    .await;
+                }
+                return;
+            }
         }
-    });
+    }
 }
 
 /// Auto-advance the game past every window the client shouldn't have to act on: a *forced*
@@ -966,13 +1009,19 @@ mod tests {
         assert!(result.accepted);
         assert!(held(disp));
         let broadcast = rx.try_recv().expect("the cast frame broadcasts");
-        assert!(broadcast.auto_actions.is_empty());
+        let PublishedUpdate::Delta { auto_actions, .. } = broadcast.as_ref() else {
+            panic!("ordinary casts publish deltas");
+        };
+        assert!(auto_actions.is_empty());
 
         let (_result, _disp) = fire_stack_hold(&mut table);
         let game = table.game.as_ref().unwrap();
         assert!(game.pending_choice().is_none());
         let broadcast = rx.try_recv().expect("the resolution frame broadcasts");
-        assert_eq!(broadcast.auto_actions[0].key, "auto.only_one_legal_target");
+        let PublishedUpdate::Delta { auto_actions, .. } = broadcast.as_ref() else {
+            panic!("ordinary resolutions publish deltas");
+        };
+        assert_eq!(auto_actions[0].key, "auto.only_one_legal_target");
         assert!(rx.try_recv().is_err());
     }
 
@@ -1016,7 +1065,10 @@ mod tests {
         ));
 
         let broadcast = rx.try_recv().expect("the resolution frame broadcasts");
-        assert!(broadcast.auto_actions.is_empty());
+        let PublishedUpdate::Delta { auto_actions, .. } = broadcast.as_ref() else {
+            panic!("ordinary resolutions publish deltas");
+        };
+        assert!(auto_actions.is_empty());
     }
 
     #[test]
@@ -1909,7 +1961,10 @@ mod tests {
         assert!(result.accepted);
         assert_eq!(table.seq, before + 1);
         let broadcast = rx.try_recv().expect("the flag change reached the stream");
-        assert!(broadcast.yields[1]);
+        let PublishedUpdate::Delta { state, .. } = broadcast.as_ref() else {
+            panic!("ordinary chrome changes publish deltas");
+        };
+        assert!(state.yields[1]);
     }
 
     #[test]
@@ -1964,6 +2019,38 @@ mod tests {
         );
     }
 
+    #[test]
+    fn arm_stack_resolution_rejects_ineligible_tables_and_clears_prior_hold() {
+        let now = Instant::now();
+        let mut missing_game = Table::empty();
+        missing_game.chrome.stamp_hold_for_test(7, now);
+        missing_game.chrome.set_dwell_flag(0, true);
+        assert_eq!(missing_game.chrome.stack_hold(), Some((7, now)));
+        assert!(missing_game.chrome.any_dwell());
+
+        assert!(!arm_stack_resolution(&mut missing_game, 8));
+        assert!(missing_game.chrome.stack_hold().is_none());
+        assert!(!missing_game.chrome.any_dwell());
+
+        let (mut no_eligible_hold, _bear) = bear_table();
+        no_eligible_hold.chrome.stamp_hold_for_test(9, now);
+        no_eligible_hold.chrome.set_dwell_flag(1, true);
+        assert_eq!(no_eligible_hold.chrome.stack_hold(), Some((9, now)));
+        assert!(no_eligible_hold.chrome.any_dwell());
+        assert_eq!(
+            stack_hold_pass(
+                no_eligible_hold.game.as_ref().unwrap(),
+                no_eligible_hold.chrome.yields(),
+                no_eligible_hold.chrome.turn_yields(),
+            ),
+            None,
+        );
+
+        assert!(!arm_stack_resolution(&mut no_eligible_hold, 10));
+        assert!(no_eligible_hold.chrome.stack_hold().is_none());
+        assert!(!no_eligible_hold.chrome.any_dwell());
+    }
+
     #[tokio::test(start_paused = true)]
     async fn the_stack_hold_timer_fires_and_resolves_the_stack() {
         let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
@@ -1973,12 +2060,29 @@ mod tests {
         let seq = table.seq;
         assert!(lock(&state.reg).try_insert("hold".to_string(), table));
 
-        schedule_stack_resolution(state.clone(), "hold".to_string(), seq);
+        let armed_at = Instant::now();
+        {
+            let mut reg = lock(&state.reg);
+            settle_after_apply(&mut reg, &state, "hold", disp, seq);
+            assert_eq!(
+                reg.get("hold").unwrap().chrome.stack_hold(),
+                Some((seq, armed_at)),
+                "ordinary settle arms the hold synchronously under the table lock",
+            );
+        }
+
         tokio::time::sleep(STACK_HOLD * 2).await;
 
         let reg = lock(&state.reg);
-        let game = reg.get("hold").unwrap().game.as_ref().unwrap();
+        let table = reg.get("hold").unwrap();
+        let game = table.game.as_ref().unwrap();
         assert_eq!(game.zone_of(bear), engine::Zone::Battlefield);
+        assert_eq!(
+            table.seq,
+            seq + 1,
+            "one armed task submits exactly one pass"
+        );
+        assert!(table.chrome.stack_hold().is_none());
     }
 
     #[tokio::test(start_paused = true)]
@@ -1988,15 +2092,57 @@ mod tests {
         let (_result, disp) = cast(&mut table, PlayerId(0), bear);
         assert!(held(disp));
         let stale_seq = table.seq;
-        table.seq += 1;
         assert!(lock(&state.reg).try_insert("stale".to_string(), table));
 
-        schedule_stack_resolution(state.clone(), "stale".to_string(), stale_seq);
+        let live_seq = {
+            let mut reg = lock(&state.reg);
+            let table = reg.get_mut("stale").unwrap();
+            assert!(arm_stack_resolution(table, stale_seq));
+            schedule_armed_stack_resolution(state.clone(), "stale".to_string(), stale_seq);
+            table.seq += 1;
+            table.seq
+        };
         tokio::time::sleep(STACK_HOLD * 2).await;
 
         let reg = lock(&state.reg);
-        let game = reg.get("stale").unwrap().game.as_ref().unwrap();
+        let table = reg.get("stale").unwrap();
+        let game = table.game.as_ref().unwrap();
         assert_eq!(game.zone_of(bear), engine::Zone::Stack);
+        assert_eq!(table.seq, live_seq, "the stale task never submits");
+        assert!(
+            table.chrome.stack_hold().is_none(),
+            "the stale task clears its matching hold",
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_stale_stack_hold_timer_does_not_clear_a_newer_hold() {
+        let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+        let (mut table, _bear) = bear_table();
+        let (_result, disp) = cast(&mut table, PlayerId(0), _bear);
+        assert!(held(disp));
+        let stale_seq = table.seq;
+        assert!(lock(&state.reg).try_insert("rearmed".to_string(), table));
+
+        let (new_seq, rearmed_at) = {
+            let mut reg = lock(&state.reg);
+            let table = reg.get_mut("rearmed").unwrap();
+            assert!(arm_stack_resolution(table, stale_seq));
+            schedule_armed_stack_resolution(state.clone(), "rearmed".to_string(), stale_seq);
+            table.seq += 1;
+            let new_seq = table.seq;
+            let rearmed_at = Instant::now();
+            table.chrome.begin_hold(new_seq, rearmed_at);
+            (new_seq, rearmed_at)
+        };
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let reg = lock(&state.reg);
+        assert_eq!(
+            reg.get("rearmed").unwrap().chrome.stack_hold(),
+            Some((new_seq, rearmed_at)),
+            "a stale task clears only the hold carrying its own sequence",
+        );
     }
 
     #[tokio::test(start_paused = true)]
@@ -2008,12 +2154,11 @@ mod tests {
         let seq = table.seq;
         assert!(lock(&state.reg).try_insert("dwell".to_string(), table));
 
-        schedule_stack_resolution(state.clone(), "dwell".to_string(), seq);
-        // Let the hold start stamp land.
-        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         {
             let mut reg = lock(&state.reg);
             let table = reg.get_mut("dwell").unwrap();
+            assert!(arm_stack_resolution(table, seq));
+            schedule_armed_stack_resolution(state.clone(), "dwell".to_string(), seq);
             let dwell = TableSession::new(table).set_dwell(PlayerId(1), true);
             assert!(dwell.accepted);
             assert!(table.stack_hold_remaining_ms() > STACK_HOLD.as_millis() as u32);
@@ -2031,6 +2176,7 @@ mod tests {
         }
 
         tokio::time::sleep(STACK_HOLD_DWELL_EXTRA).await;
+        tokio::task::yield_now().await;
         let reg = lock(&state.reg);
         let game = reg.get("dwell").unwrap().game.as_ref().unwrap();
         assert_eq!(
@@ -2045,7 +2191,7 @@ mod tests {
         let (mut table, bear) = bear_table();
         let (_result, disp) = cast(&mut table, PlayerId(0), bear);
         assert!(held(disp));
-        // Simulate the scheduled hold stamp (schedule_stack_resolution sets this under the lock).
+        // Simulate the synchronous hold stamp installed before timer polling.
         table.chrome.stamp_hold_for_test(table.seq, Instant::now());
         let mut rx = table.tx.subscribe();
         let seq_before = table.seq;
@@ -2057,9 +2203,12 @@ mod tests {
         assert_eq!(table.seq, seq_before);
         assert_eq!(table.broadcast_seq, bcast_before + 1);
         let tick = rx.try_recv().expect("hold tick fans out");
-        assert_eq!(tick.seq, seq_before);
-        assert!(tick.events.is_empty());
-        assert!(tick.stack_hold_remaining_ms > STACK_HOLD.as_millis() as u32);
+        let PublishedUpdate::Delta { state, events, .. } = tick.as_ref() else {
+            panic!("hold ticks remain ordinary deltas");
+        };
+        assert_eq!(state.seq, seq_before);
+        assert!(events.is_empty());
+        assert!(state.stack_hold_remaining_ms > STACK_HOLD.as_millis() as u32);
         assert_eq!(
             table.game.as_ref().unwrap().zone_of(bear),
             engine::Zone::Stack
@@ -2189,9 +2338,14 @@ mod tests {
         let (result, _) = TableSession::new(&mut table).set_yield(PlayerId(0), true);
         assert!(result.accepted);
         let delta = rx.try_recv().expect("drive-only apply publishes a delta");
-        assert_eq!(delta.seq, table.seq);
-        assert_eq!(delta.yields, *table.chrome.yields());
-        assert!(delta.game.player_count() > 0);
+        let PublishedUpdate::Delta { state, .. } = delta.as_ref() else {
+            panic!("ordinary drive-only applies publish deltas");
+        };
+        assert_eq!(state.seq, table.seq);
+        assert_eq!(state.yields, *table.chrome.yields());
+        assert!(state.game.player_count() > 0);
+        assert_eq!(state.seats[0].username, table.seats[0].username);
+        assert_eq!(state.prints, table.prints);
     }
 
     /// Mirrors the client Escape → Exile → target path for Sentinel's Eyes: TakeAction carries

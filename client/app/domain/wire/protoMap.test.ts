@@ -15,6 +15,75 @@ import type { ActionView, CatalogCard, IntentEnvelope } from "./types";
 import { MessageRef } from "./types";
 
 describe("fromProtoWire", () => {
+  it("preserves only stack entry uint64 identity above JavaScript's safe integer range", () => {
+    const first = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+    const second = first + 1n;
+    const decoded = fromProtoWire<{
+      stack: Array<{ entry_id: bigint; source?: number }>;
+      action_id: number;
+      other: { entry_id: number };
+      lookalike: { entry_id: number };
+    }>({
+      stack: [
+        {
+          controller: 0,
+          entryId: 0n,
+          kind: "ability",
+          label: { key: "zero", params: [], children: [] },
+          source: 9,
+        },
+        {
+          controller: 0,
+          entryId: first,
+          kind: "ability",
+          label: { key: "first", params: [], children: [] },
+          source: 9,
+        },
+        {
+          controller: 0,
+          entryId: second,
+          kind: "ability",
+          label: { key: "second", params: [], children: [] },
+          source: 9,
+        },
+      ],
+      actionId: 17n,
+      other: { entryId: 23n },
+      lookalike: {
+        controller: 0,
+        entryId: first,
+        kind: "ability",
+        label: { key: "not-stack", params: [], children: [] },
+      },
+    });
+
+    expect(decoded.stack.map((entry) => entry.entry_id)).toEqual([0n, first, second]);
+    expect(decoded.stack[1]?.entry_id).not.toBe(decoded.stack[2]?.entry_id);
+    expect(decoded.action_id).toBe(17);
+    expect(decoded.other.entry_id).toBe(23);
+    expect(decoded.lookalike.entry_id).toBe(Number(first));
+
+    const frame = fromProtoWire<{ frame: string; state: { stack: Array<{ entry_id: bigint }> } }>({
+      frame: {
+        case: "snapshot",
+        value: {
+          seq: 1n,
+          state: {
+            stack: [
+              {
+                controller: 0,
+                entryId: first,
+                kind: "ability",
+                label: { key: "nested", params: [], children: [] },
+              },
+            ],
+          },
+        },
+      },
+    });
+    expect(frame.frame).toBe("snapshot");
+    expect(frame.state.stack[0]?.entry_id).toBe(first);
+  });
   it("coerces proto bigint action ids to browser numbers", () => {
     const state = fromProtoWire<{ actions: ActionView[] }>({
       actions: [{ id: 123n, kind: "activate", label: "Scry 1", needsTarget: false, section: "battlefield" }],

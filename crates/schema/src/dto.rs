@@ -397,10 +397,12 @@ pub struct ModifierSourceView {
 /// One entry on the stack, for the stack panel. Bottom-first in `VisibleState.stack`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StackObjectView {
+    /// Stable identity for this stack entry, independent of any source object.
+    pub entry_id: u64,
     /// `spell` or `ability`.
     pub kind: String,
-    /// The spell's stack-object id, or the ability's source permanent.
-    pub source: ObjectId,
+    /// The spell's stack-object id or ability source; absent for source-less entries.
+    pub source: Option<ObjectId>,
     pub controller: u8,
     /// Stable label ref (the spell's name as a param, or the ability's effect key).
     pub label: MessageRef,
@@ -419,20 +421,18 @@ pub struct StackObjectView {
     /// Source card display name for art alt / inspect. Empty when anonymized.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub name: String,
-    /// The one printed sentence this ability prints, for the text box of its stack face — an
-    /// ability on the stack is not its whole source card. Empty for a spell (which shows its
-    /// card's own text) and for an ability whose sentence isn't recorded, which shows `label`.
+    /// The one printed sentence this ability prints, for the text box of its stack face.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub ability_oracle: String,
-    /// Last-known renderer characteristics of the source. Stack abilities outlive sacrificed
-    /// sources, so their faces cannot join these facts from [`VisibleState::objects`].
+    /// Last-known renderer characteristics of the source.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_face: Option<StackSourceFaceView>,
-    /// Printed words for the active spell face. Multi-face inline definitions intentionally share
-    /// the physical front's `(card_id, print)`, so these cannot safely occupy the global text book.
-    /// Absent for abilities and for older draining projections.
+    /// Printed words for the spell face actually being cast.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub active_face_text: Option<CardTextView>,
+    /// Explicit public printed rules text, required for source-less authored entries.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub printed_sentences: Vec<String>,
 }
 
 /// Last-known characteristics needed to choose and decorate a stack source's rendered frame.

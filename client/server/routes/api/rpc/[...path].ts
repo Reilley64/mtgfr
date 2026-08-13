@@ -18,7 +18,9 @@ import { HTTP_RESPONSE_STATUS_CODE, httpServerAttrs } from "../../../../app/doma
 import { GrpcCallError, httpStatusOf } from "../../../../app/domain/wire/grpcClient";
 import { dispatchRpc, type RpcOutcome } from "../../../../app/domain/wire/rpcServer";
 import type { StreamFrame } from "../../../../app/domain/wire/types";
+import { stringifyWireJson } from "../../../../app/domain/wire/wireJson";
 import { runWebDb } from "../../../db/client";
+import { sseChunk } from "./sse";
 
 const SESSION_COOKIE = "session";
 const COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days — mirrors crates/server/src/auth.rs
@@ -45,11 +47,7 @@ async function resolveTableAddress(tableId: string): Promise<string | null> {
 }
 
 function jsonResponse(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
-}
-
-function sseChunk(frame: StreamFrame): Uint8Array {
-  return new TextEncoder().encode(`data: ${JSON.stringify(frame)}\n\n`);
+  return new Response(stringifyWireJson(body), { status, headers: { "content-type": "application/json" } });
 }
 
 /** Turn a game stream into a `text/event-stream` `Response`. Pulls the first frame before
@@ -62,7 +60,7 @@ async function streamResponse(frames: AsyncIterable<StreamFrame>): Promise<Respo
     first = await iterator.next();
   } catch (err) {
     if (err instanceof GrpcCallError) {
-      return new Response(JSON.stringify({ error: err.message }), {
+      return new Response(stringifyWireJson({ error: err.message }), {
         status: httpStatusOf(err.code),
         headers: { "content-type": "application/json" },
       });

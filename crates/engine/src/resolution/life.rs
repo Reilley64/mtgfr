@@ -19,7 +19,7 @@ impl Game {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 self.players_in(who, controller, target)
                     .into_iter()
-                    .map(|player| self.life_gain(player, amount, source))
+                    .map(|player| self.life_gain(player, i64::from(amount), source))
                     .collect()
             }
             LifeEffect::Lose { who, amount } => {
@@ -28,7 +28,7 @@ impl Game {
                     .into_iter()
                     .map(|player| Event::LifeChanged {
                         player,
-                        amount: -amount,
+                        amount: -i64::from(amount),
                         source: Some(source),
                     })
                     .collect()
@@ -43,14 +43,14 @@ impl Game {
                 // Exsanguinate gains the total lost across every victim; Zulaport Cutthroat gains
                 // the flat printed amount however many seats it drained.
                 let gain = match sum_gain {
-                    true => amount * losers.len() as i32,
-                    false => amount,
+                    true => i64::from(amount).saturating_mul(losers.len() as i64),
+                    false => i64::from(amount),
                 };
                 let mut events: Vec<Event> = losers
                     .into_iter()
                     .map(|player| Event::LifeChanged {
                         player,
-                        amount: -amount,
+                        amount: -i64::from(amount),
                         source: Some(source),
                     })
                     .collect();
@@ -69,7 +69,7 @@ impl Game {
                     .expect("at least one living player resolves this trigger");
                 self.living_players()
                     .filter_map(|player| {
-                        let delta = highest - self.life(player);
+                        let delta = i64::from(highest) - i64::from(self.life(player));
                         match delta.cmp(&0) {
                             std::cmp::Ordering::Equal => None,
                             std::cmp::Ordering::Greater => {
@@ -96,7 +96,7 @@ impl Game {
                 .players_in(who, controller, target)
                 .into_iter()
                 .flat_map(|other| {
-                    let delta = self.life(other) - self.life(controller);
+                    let delta = i64::from(self.life(other)) - i64::from(self.life(controller));
                     match delta.cmp(&0) {
                         std::cmp::Ordering::Equal => vec![],
                         std::cmp::Ordering::Greater => vec![
@@ -124,7 +124,7 @@ impl Game {
                 // or below zero has nothing left to halve.
                 vec![Event::LifeChanged {
                     player: owner,
-                    amount: -(self.life(owner).max(0) + 1) / 2,
+                    amount: -(i64::from(self.life(owner).max(0)) + 1) / 2,
                     source: Some(source),
                 }]
             }
@@ -134,11 +134,141 @@ impl Game {
     /// A life *gain* event, sized after the recipient's own gain replacements (CR 614) — the
     /// choke every gain in this family goes through, so none of them can skip a Rest for the
     /// Weary-style rider.
-    fn life_gain(&self, player: PlayerId, amount: i32, source: ObjectId) -> Event {
+    fn life_gain(&self, player: PlayerId, amount: i64, source: ObjectId) -> Event {
         Event::LifeChanged {
             player,
             amount: self.life_gain_after_replacements(player, amount),
             source: Some(source),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const P0: PlayerId = PlayerId(0);
+    const P1: PlayerId = PlayerId(1);
+
+    fn source(game: &mut Game) -> ObjectId {
+        game.spawn_on_battlefield(
+            P0,
+            cards::get_by_name("Grizzly Bears").expect("fixture card"),
+        )
+    }
+
+    fn apply_life_effect(
+        game: &mut Game,
+        effect: LifeEffect,
+        source: ObjectId,
+        target: Option<Target>,
+    ) -> Vec<Event> {
+        let minted = game.mint_life(effect, P0, source, target, 0);
+        let mut events = Vec::new();
+        game.apply_effect_events_with_replacements(minted, &mut events);
+        events
+    }
+
+    #[test]
+    fn each_player_becomes_highest_sets_minimum_life_to_maximum_exactly() {
+        let mut game = Game::with_players(2, 0);
+        let source = source(&mut game);
+        game.players[P0.0 as usize].life = i32::MIN;
+        game.players[P1.0 as usize].life = i32::MAX;
+
+        let events = apply_life_effect(
+            &mut game,
+            LifeEffect::EachPlayerBecomesHighest,
+            source,
+            None,
+        );
+
+        assert_eq!(game.life(P0), i32::MAX);
+        assert_eq!(game.life(P1), i32::MAX);
+        assert_eq!(game.players[P0.0 as usize].life_gained_this_turn, u32::MAX);
+        assert!(matches!(
+            events.as_slice(),
+            [Event::LifeChanged { player, amount, .. }]
+                if *player == P0 && *amount == i64::from(u32::MAX)
+        ));
+    }
+
+    #[test]
+    fn exchange_swaps_minimum_and_maximum_life_exactly() {
+        let mut game = Game::with_players(2, 0);
+        let source = source(&mut game);
+        game.players[P0.0 as usize].life = i32::MIN;
+        game.players[P1.0 as usize].life = i32::MAX;
+
+        let events = apply_life_effect(
+            &mut game,
+            LifeEffect::Exchange {
+                who: PlayerSet::TargetOpponent,
+            },
+            source,
+            Some(Target::Player(P1)),
+        );
+
+        assert_eq!(game.life(P0), i32::MAX);
+        assert_eq!(game.life(P1), i32::MIN);
+        assert_eq!(game.players[P0.0 as usize].life_gained_this_turn, u32::MAX);
+        assert_eq!(game.players[P1.0 as usize].life_losses_this_turn, 1);
+        assert_eq!(events.len(), 2, "one logical operation for each player");
+        assert!(events.iter().any(|event| matches!(
+            event,
+            Event::LifeChanged { player, amount, .. }
+                if *player == P0 && *amount == i64::from(u32::MAX)
+        )));
+        assert!(events.iter().any(|event| matches!(
+            event,
+            Event::LifeChanged { player, amount, .. }
+                if *player == P1 && *amount == -i64::from(u32::MAX)
+        )));
+    }
+
+    #[test]
+    fn summed_multiplayer_drain_keeps_the_full_wide_gain() {
+        let mut game = Game::with_players(3, 0);
+        let source = source(&mut game);
+        game.players[P0.0 as usize].life = i32::MIN;
+
+        let events = apply_life_effect(
+            &mut game,
+            LifeEffect::Drain {
+                who: PlayerSet::EachOpponent,
+                amount: Amount::Fixed(i32::MAX),
+                sum_gain: true,
+            },
+            source,
+            None,
+        );
+
+        assert_eq!(game.life(P0), i32::MAX - 1);
+        assert!(events.iter().any(|event| matches!(
+            event,
+            Event::LifeChanged { player, amount, .. }
+                if *player == P0 && *amount == 2 * i64::from(i32::MAX)
+        )));
+    }
+
+    #[test]
+    fn source_owner_loses_half_maximum_life_rounded_up() {
+        let mut game = Game::with_players(2, 0);
+        let source = source(&mut game);
+        game.players[P0.0 as usize].life = i32::MAX;
+
+        let events = apply_life_effect(
+            &mut game,
+            LifeEffect::SourceOwnerLosesHalfTheirLife,
+            source,
+            None,
+        );
+
+        assert_eq!(game.life(P0), 1_073_741_823);
+        assert!(matches!(
+            events.as_slice(),
+            [Event::LifeChanged { player, amount, .. }]
+                if *player == P0 && *amount == -1_073_741_824
+        ));
     }
 }

@@ -124,7 +124,7 @@ function fold(state: VisibleState | null): GameFoldState {
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
@@ -737,7 +737,7 @@ test("stack owns Resolve card, hides primary pass", () => {
   const model = viewModel(
     fold(
       state({
-        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Lightning Bolt"), source: 99 }],
+        stack: [{ entry_id: 1n, controller: 1, kind: "spell", label: testMessageRef("Lightning Bolt"), source: 99 }],
       }),
     ),
   );
@@ -1205,7 +1205,7 @@ test("Space confirms multi on-board choose_target when draft is ready", () => {
     state({
       objects: [a, b],
       pending_choice: pending,
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -1243,7 +1243,7 @@ test("Space confirms on-board assign_combat_damage when draft is ready", () => {
     state({
       objects: [attacker, bear, elf],
       pending_choice: pending,
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -1283,8 +1283,8 @@ test("TargetChosen accumulates multi on-board stack targets until Confirm", () =
     state({
       objects: [spellA, spellB],
       stack: [
-        { controller: 0, kind: "spell", label: testMessageRef("Spell A"), source: 40 },
-        { controller: 0, kind: "spell", label: testMessageRef("Spell B"), source: 41 },
+        { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Spell A"), source: 40 },
+        { entry_id: 2n, controller: 0, kind: "spell", label: testMessageRef("Spell B"), source: 41 },
       ],
       pending_choice: pending,
     }),
@@ -2560,7 +2560,7 @@ test("Space confirms local discard cost when one card selected", () => {
       objects: [caster],
       actions: [castAction],
       can_act: true,
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {

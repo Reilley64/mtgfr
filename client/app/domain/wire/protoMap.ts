@@ -58,7 +58,7 @@ function isMessageParamShape(value: Record<string, unknown>): boolean {
   return typeof value.name === "string" && isPlainObject(value.value) && typeof value.value.case === "string";
 }
 
-function messageParamFromProto(value: Record<string, unknown>): Record<string, unknown> {
+function messageParamFromProto(value: Record<string, unknown>, path: readonly PropertyKey[]): Record<string, unknown> {
   const result: Record<string, unknown> = { name: value.name };
   if (!isPlainObject(value.value) || typeof value.value.case !== "string") return result;
 
@@ -70,7 +70,7 @@ function messageParamFromProto(value: Record<string, unknown>): Record<string, u
       result.bool_value = value.value.value;
       return result;
     case "intValue":
-      result.int_value = convertFromProto(value.value.value);
+      result.int_value = convertFromProto(value.value.value, path);
       return result;
     case "stringValue":
       result.string_value = value.value.value;
@@ -80,14 +80,14 @@ function messageParamFromProto(value: Record<string, unknown>): Record<string, u
   }
 }
 
-function toAmountTuple(item: unknown): unknown {
+function toAmountTuple(item: unknown, path: readonly PropertyKey[]): unknown {
   if (isObjectAmountShape(item)) return [item.id, item.amount];
   if (isPlayerAmountShape(item)) return [item.player, item.amount];
-  return convertFromProto(item);
+  return convertFromProto(item, path);
 }
 
 /** Flatten a oneof wrapper (`kind`/`intent`/…) to a tagged union, or `undefined` if unset. */
-function flattenOneofWrapper(value: Record<string, unknown>): [unknown] | null {
+function flattenOneofWrapper(value: Record<string, unknown>, path: readonly PropertyKey[]): [unknown] | null {
   const keys = Object.keys(value);
   if (keys.length !== 1) return null;
   const [wrapperKey] = keys;
@@ -99,23 +99,30 @@ function flattenOneofWrapper(value: Record<string, unknown>): [unknown] | null {
   if (typeof caseValue !== "string") return null;
 
   const tag = wrapperKey === "frame" ? "frame" : "kind";
-  const inner = convertFromProto(oneof.value ?? {});
+  const inner = convertFromProto(oneof.value ?? {}, path);
   return [{ [tag]: camelToSnake(caseValue), ...(isPlainObject(inner) ? inner : {}) }];
 }
 
-function convertFromProto(value: unknown): unknown {
-  if (typeof value === "bigint") return Number(value);
-  if (Array.isArray(value)) return value.map((item) => convertFromProto(item));
+function isVisibleStackEntryIdPath(path: readonly PropertyKey[]): boolean {
+  // VisibleState is mapped either directly or under SnapshotFrame/DeltaEnvelope `state` after
+  // `flattenOneofWrapper` removes the generated StreamResponse wrapper.
+  const suffix = path[0] === "state" ? path.slice(1) : path;
+  return suffix.length === 3 && suffix[0] === "stack" && typeof suffix[1] === "number" && suffix[2] === "entryId";
+}
+
+function convertFromProto(value: unknown, path: readonly PropertyKey[] = []): unknown {
+  if (typeof value === "bigint") return isVisibleStackEntryIdPath(path) ? value : Number(value);
+  if (Array.isArray(value)) return value.map((item, index) => convertFromProto(item, [...path, index]));
   if (!isPlainObject(value)) return value;
 
   const keys = Object.keys(value);
   if (keys.length === 1 && keys[0] === "ids" && Array.isArray(value.ids)) {
-    return value.ids.map((id) => convertFromProto(id));
+    return value.ids.map((id, index) => convertFromProto(id, [...path, "ids", index]));
   }
 
-  if (isMessageParamShape(value)) return messageParamFromProto(value);
+  if (isMessageParamShape(value)) return messageParamFromProto(value, path);
 
-  const oneof = flattenOneofWrapper(value);
+  const oneof = flattenOneofWrapper(value, path);
   if (oneof !== null) return oneof[0];
 
   const result: Record<string, unknown> = {};
@@ -123,10 +130,11 @@ function convertFromProto(value: unknown): unknown {
     const raw = value[key];
     if (raw === undefined) continue;
     const snakeKey = camelToSnake(key);
+    const childPath = [...path, key];
     const converted =
       Array.isArray(raw) && AMOUNT_TUPLE_KEYS.has(snakeKey)
-        ? raw.map((item) => toAmountTuple(item))
-        : convertFromProto(raw);
+        ? raw.map((item, index) => toAmountTuple(item, [...childPath, index]))
+        : convertFromProto(raw, childPath);
     if (converted === undefined) continue;
     result[snakeKey] = converted;
   }

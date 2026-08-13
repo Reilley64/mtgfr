@@ -527,6 +527,172 @@ pub struct ManaPool {
     pub restricted: [RestrictedSlot; RESTRICTED_SLOTS],
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct PlannerPool {
+    colored: [usize; Color::COUNT],
+    colorless: usize,
+    any: usize,
+    either: [usize; COLOR_PAIRS.len()],
+    of_colors: [usize; 1 << Color::COUNT],
+}
+
+impl PlannerPool {
+    fn from_pool(pool: &ManaPool) -> Self {
+        Self {
+            colored: pool.colored.map(usize::from),
+            colorless: usize::from(pool.colorless),
+            any: usize::from(pool.any),
+            either: pool.either.map(usize::from),
+            of_colors: pool.of_colors.map(usize::from),
+        }
+    }
+
+    fn merge(&mut self, other: &Self) {
+        for i in 0..Color::COUNT {
+            self.colored[i] += other.colored[i];
+        }
+        self.colorless += other.colorless;
+        self.any += other.any;
+        for i in 0..COLOR_PAIRS.len() {
+            self.either[i] += other.either[i];
+        }
+        for i in 0..self.of_colors.len() {
+            self.of_colors[i] += other.of_colors[i];
+        }
+    }
+
+    fn subtract(&mut self, other: &Self) {
+        for i in 0..Color::COUNT {
+            self.colored[i] -= other.colored[i];
+        }
+        self.colorless -= other.colorless;
+        self.any -= other.any;
+        for i in 0..COLOR_PAIRS.len() {
+            self.either[i] -= other.either[i];
+        }
+        for i in 0..self.of_colors.len() {
+            self.of_colors[i] -= other.of_colors[i];
+        }
+    }
+}
+
+/// Exact synthetic mana supply used by affordability and auto-tap planning. Unlike [`ManaPool`],
+/// independently stored sources and color substitutions never collapse into bounded `u8` buckets.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WidenedManaPool {
+    pool: PlannerPool,
+    restricted: Vec<RestrictedSlot>,
+    substitutions: Vec<(Color, Color)>,
+}
+
+impl WidenedManaPool {
+    pub fn from_sources(
+        sources: impl IntoIterator<Item = ManaPool>,
+        substitutions: &[(Color, Color)],
+    ) -> Self {
+        let mut out = Self {
+            substitutions: substitutions.to_vec(),
+            ..Self::default()
+        };
+        for source in sources {
+            out.add_source(source);
+        }
+        out
+    }
+
+    pub fn add_source(&mut self, source: ManaPool) {
+        let mut widened = PlannerPool::from_pool(&source);
+        for i in 0..Color::COUNT {
+            let Some(mask) = widened_mask(&self.substitutions, i) else {
+                continue;
+            };
+            widened.of_colors[mask] += std::mem::take(&mut widened.colored[i]);
+        }
+        self.pool.merge(&widened);
+        self.restricted.extend(
+            source
+                .restricted
+                .into_iter()
+                .filter(|slot| slot.key.is_some() && slot.amount > 0),
+        );
+    }
+
+    fn effective(&self, spell: Option<SpellCharacteristics>) -> PlannerPool {
+        let mut effective = self.pool;
+        for slot in &self.restricted {
+            let Some((base, restriction)) = slot.key else {
+                continue;
+            };
+            if !spell.is_some_and(|s| restriction.allows(s)) {
+                continue;
+            }
+            match base {
+                RestrictedManaBase::Color(c) => {
+                    effective.colored[c.index()] += usize::from(slot.amount)
+                }
+                RestrictedManaBase::Colorless => effective.colorless += usize::from(slot.amount),
+                RestrictedManaBase::Any => effective.any += usize::from(slot.amount),
+            }
+        }
+        effective
+    }
+
+    pub fn can_pay(&self, cost: &Cost, spell: Option<SpellCharacteristics>) -> bool {
+        ManaPool::spend_plan_unrestricted(&self.effective(spell), cost).is_some()
+    }
+
+    /// Spend an activation cost from the synthetic unrestricted supply.
+    pub fn spend(&mut self, cost: &Cost) -> bool {
+        let Some(spend) = ManaPool::spend_plan_unrestricted(&self.pool, cost) else {
+            return false;
+        };
+        self.pool.subtract(&spend);
+        true
+    }
+
+    pub fn color_coverage(&self, color: usize) -> usize {
+        self.pool.colored[color]
+            + self.pool.any
+            + COLOR_PAIRS
+                .iter()
+                .zip(self.pool.either)
+                .filter(|&(&(a, b), _)| a.index() == color || b.index() == color)
+                .map(|(_, n)| n)
+                .sum::<usize>()
+            + self
+                .pool
+                .of_colors
+                .iter()
+                .enumerate()
+                .filter(|&(mask, _)| mask & (1 << color) != 0)
+                .map(|(_, n)| *n)
+                .sum::<usize>()
+    }
+
+    pub fn covers_color(&self, color: usize, need: u8) -> bool {
+        self.color_coverage(color) >= usize::from(need)
+    }
+
+    pub fn colorless(&self) -> usize {
+        self.pool.colorless
+    }
+    pub fn colored(&self, color: usize) -> usize {
+        self.pool.colored[color]
+    }
+    pub fn total(&self) -> usize {
+        self.pool.colored.iter().sum::<usize>()
+            + self.pool.colorless
+            + self.pool.any
+            + self.pool.either.iter().sum::<usize>()
+            + self.pool.of_colors.iter().sum::<usize>()
+            + self
+                .restricted
+                .iter()
+                .map(|slot| usize::from(slot.amount))
+                .sum::<usize>()
+    }
+}
+
 impl ManaPool {
     /// A pool holding `amount` of a single kind of mana.
     pub fn of(mana: Mana, amount: u8) -> ManaPool {
@@ -535,7 +701,7 @@ impl ManaPool {
         pool
     }
 
-    /// Add `amount` of one mana kind.
+    /// Add `amount` of one mana kind, saturating that kind's authoritative `u8` bucket.
     /// Every credit in the pool, whatever its kind. The colored array alone answers "how much mana
     /// is floating?" wrongly: `{C}`, "any color", and the dual/restricted credits a dual or filter
     /// land leaves behind all live outside it.
@@ -553,17 +719,22 @@ impl ManaPool {
                 .sum::<u32>()
     }
 
-    pub fn add(&mut self, mana: Mana, amount: u8) {
-        match mana {
-            Mana::Color(c) => self.colored[c.index()] += amount,
-            Mana::Colorless => self.colorless += amount,
-            Mana::Any => self.any += amount,
-            Mana::Either(a, b) => self.either[color_pair_index(a, b)] += amount,
-            Mana::OfColors(mask) => self.of_colors[mask as usize] += amount,
+    /// Returns the amount the destination bucket accepted. Callers that maintain per-credit
+    /// side state (such as mana provenance) must use this delta rather than the attempted amount.
+    pub fn add(&mut self, mana: Mana, amount: u8) -> u8 {
+        let slot = match mana {
+            Mana::Color(c) => &mut self.colored[c.index()],
+            Mana::Colorless => &mut self.colorless,
+            Mana::Any => &mut self.any,
+            Mana::Either(a, b) => &mut self.either[color_pair_index(a, b)],
+            Mana::OfColors(mask) => &mut self.of_colors[mask as usize],
             Mana::Restricted { base, restriction } => {
-                self.add_restricted(base, restriction, amount)
+                return self.add_restricted(base, restriction, amount);
             }
-        }
+        };
+        let accepted = amount.min(u8::MAX - *slot);
+        *slot += accepted;
+        accepted
     }
 
     /// Remove one credit of exactly `mana`'s kind if present, returning whether it was. Used by
@@ -601,19 +772,22 @@ impl ManaPool {
         base: RestrictedManaBase,
         restriction: SpendRestriction,
         amount: u8,
-    ) {
+    ) -> u8 {
         if amount == 0 {
-            return;
+            return 0;
         }
         let key = Some((base, restriction));
         if let Some(slot) = self.restricted.iter_mut().find(|s| s.key == key) {
-            slot.amount += amount;
-            return;
+            let accepted = amount.min(u8::MAX - slot.amount);
+            slot.amount += accepted;
+            return accepted;
         }
-        if let Some(slot) = self.restricted.iter_mut().find(|s| s.key.is_none()) {
-            slot.key = key;
-            slot.amount = amount;
-        }
+        let Some(slot) = self.restricted.iter_mut().find(|s| s.key.is_none()) else {
+            return 0;
+        };
+        slot.key = key;
+        slot.amount = amount;
+        amount
     }
 
     /// This pool's credits, each wrapped as [`Mana::Restricted`] under `restriction` — the
@@ -778,8 +952,23 @@ impl ManaPool {
     /// between otherwise-equivalent legal spends). Returns the exact multiset to spend, or
     /// `None` if the pool can't cover it. Pure — the caller applies it.
     pub fn spend_plan(&self, cost: &Cost, spell: Option<SpellCharacteristics>) -> Option<ManaPool> {
-        let mut effective = *self;
-        effective.restricted = [RestrictedSlot::default(); RESTRICTED_SLOTS];
+        let effective = self.planner_supply(spell, &[]);
+        let plan = Self::spend_plan_unrestricted(&effective, cost)?;
+        self.restore_plan(plan, spell, &[])
+    }
+
+    fn planner_supply(
+        &self,
+        spell: Option<SpellCharacteristics>,
+        substitutions: &[(Color, Color)],
+    ) -> PlannerPool {
+        let mut effective = PlannerPool::from_pool(self);
+        for i in 0..Color::COUNT {
+            let Some(mask) = widened_mask(substitutions, i) else {
+                continue;
+            };
+            effective.of_colors[mask] += std::mem::take(&mut effective.colored[i]);
+        }
         for slot in self.restricted {
             let Some((base, restriction)) = slot.key else {
                 continue;
@@ -788,44 +977,75 @@ impl ManaPool {
                 continue;
             }
             match base {
-                RestrictedManaBase::Color(c) => effective.colored[c.index()] += slot.amount,
-                RestrictedManaBase::Colorless => effective.colorless += slot.amount,
-                RestrictedManaBase::Any => effective.any += slot.amount,
+                RestrictedManaBase::Color(c) => {
+                    effective.colored[c.index()] += usize::from(slot.amount)
+                }
+                RestrictedManaBase::Colorless => effective.colorless += usize::from(slot.amount),
+                RestrictedManaBase::Any => effective.any += usize::from(slot.amount),
             }
         }
+        effective
+    }
 
-        let plan = effective.spend_plan_unrestricted(cost)?;
-        let mut spend = plan;
+    /// Restore one synthetic planner result to the authoritative source buckets in deterministic
+    /// old order: exact-set credits, widened mono credits by WUBRG order, unrestricted base
+    /// credits, then eligible restricted slots in their stored order.
+    fn restore_plan(
+        &self,
+        plan: PlannerPool,
+        spell: Option<SpellCharacteristics>,
+        substitutions: &[(Color, Color)],
+    ) -> Option<ManaPool> {
+        let mut spend = ManaPool::default();
+        for i in 0..COLOR_PAIRS.len() {
+            spend.either[i] = u8::try_from(plan.either[i]).ok()?;
+        }
+        for mask in 0..spend.of_colors.len() {
+            let real = plan.of_colors[mask].min(usize::from(self.of_colors[mask]));
+            spend.of_colors[mask] = u8::try_from(real).ok()?;
+            let mut widened_need = plan.of_colors[mask] - real;
+            for i in 0..Color::COUNT {
+                if widened_mask(substitutions, i) != Some(mask) {
+                    continue;
+                }
+                let take = widened_need.min(usize::from(self.colored[i]));
+                spend.colored[i] = spend.colored[i].checked_add(u8::try_from(take).ok()?)?;
+                widened_need -= take;
+            }
+            if widened_need != 0 {
+                return None;
+            }
+        }
         for i in 0..Color::COUNT {
-            let real = plan.colored[i].min(self.colored[i]);
-            spend.colored[i] = real;
+            let available = usize::from(self.colored[i] - spend.colored[i]);
+            let real = plan.colored[i].min(available);
+            spend.colored[i] = spend.colored[i].checked_add(u8::try_from(real).ok()?)?;
             take_restricted(
                 self,
                 &mut spend,
                 RestrictedManaBase::Color(Color::ALL[i]),
                 plan.colored[i] - real,
                 spell,
-            );
+            )?;
         }
-        let real_colorless = plan.colorless.min(self.colorless);
-        spend.colorless = real_colorless;
+        let real_colorless = plan.colorless.min(usize::from(self.colorless));
+        spend.colorless = u8::try_from(real_colorless).ok()?;
         take_restricted(
             self,
             &mut spend,
             RestrictedManaBase::Colorless,
             plan.colorless - real_colorless,
             spell,
-        );
-        let real_any = plan.any.min(self.any);
-        spend.any = real_any;
+        )?;
+        let real_any = plan.any.min(usize::from(self.any));
+        spend.any = u8::try_from(real_any).ok()?;
         take_restricted(
             self,
             &mut spend,
             RestrictedManaBase::Any,
             plan.any - real_any,
             spell,
-        );
-
+        )?;
         Some(spend)
     }
 
@@ -835,29 +1055,30 @@ impl ManaPool {
     /// hybrid pip from its own two colors' leftover mono mana (strictly more flexible than a
     /// mono pip, so it goes after them), then a dual credit touching either color, then "any";
     /// each `{C}` pip from colorless mana; generic from whatever's left.
-    fn spend_plan_unrestricted(&self, cost: &Cost) -> Option<ManaPool> {
-        let mut spend = ManaPool::default();
+    fn spend_plan_unrestricted(pool: &PlannerPool, cost: &Cost) -> Option<PlannerPool> {
+        let mut spend = PlannerPool::default();
 
         // Colored pips, most-restricted mana first: the pip's own color, then dual
         // credits, then "any" wildcards. Each step is strictly more flexible than the one
         // before, so spending the restricted mana first never costs a payment.
-        let mut shortfall = [0u8; Color::COUNT];
-        let mut leftover_colored = [0u8; Color::COUNT];
+        let mut shortfall = [0usize; Color::COUNT];
+        let mut leftover_colored = [0usize; Color::COUNT];
         for i in 0..Color::COUNT {
-            spend.colored[i] = self.colored[i].min(cost.colored[i]);
-            shortfall[i] = cost.colored[i] - spend.colored[i];
-            leftover_colored[i] = self.colored[i] - spend.colored[i];
+            spend.colored[i] = pool.colored[i].min(usize::from(cost.colored[i]));
+            shortfall[i] = usize::from(cost.colored[i]) - spend.colored[i];
+            leftover_colored[i] = pool.colored[i] - spend.colored[i];
         }
         // Hybrid pips (CR 107.4e — `{a/b}`), tallied per unordered color pair like `either`
         // credits, so `pips_coverable`'s Hall's-marriage check can fold them in alongside the
         // mono shortfall.
-        let mut hybrid_left = [0u8; COLOR_PAIRS.len()];
+        let mut hybrid_left = [0usize; COLOR_PAIRS.len()];
         for &(a, b) in cost.hybrid {
-            hybrid_left[color_pair_index(a, b)] += 1;
+            let slot = &mut hybrid_left[color_pair_index(a, b)];
+            *slot += 1;
         }
-        let mut either_left = self.either;
-        let mut of_colors_left = self.of_colors;
-        let mut any_left = self.any;
+        let mut either_left = pool.either;
+        let mut of_colors_left = pool.of_colors;
+        let mut any_left = pool.any;
         if !pips_coverable(
             shortfall,
             hybrid_left,
@@ -1027,10 +1248,10 @@ impl ManaPool {
 
         // Colorless {C} pips: only colorless mana can pay these (mana of a color — a dual
         // or "any" credit included — is never colorless).
-        if self.colorless < cost.colorless {
+        if pool.colorless < usize::from(cost.colorless) {
             return None;
         }
-        spend.colorless = cost.colorless;
+        spend.colorless = usize::from(cost.colorless);
 
         // Phyrexian pips (CR 107.4f — `{a/P}`): CR 107.4f frames the mana-or-2-life choice as the
         // caster's own, but this planner instead auto-picks a unit of the pip's own color when one
@@ -1046,14 +1267,13 @@ impl ManaPool {
         // second one ever needs to matter. `Game::settle_payment`'s caller re-derives how many
         // pips went the mana way from this spend's total (see `phyrexian_life_paid_from` in
         // cast.rs) rather than this fn threading the answer back itself.
-        let sum = |xs: &[u8]| xs.iter().map(|&n| u32::from(n)).sum::<u32>();
-        let mut spare = sum(&leftover_colored)
-            + u32::from(self.colorless - spend.colorless)
+        let sum = |xs: &[usize]| xs.iter().sum::<usize>();
+        let mut spare = sum(&leftover_colored) + pool.colorless - spend.colorless
             + sum(&either_left)
             + sum(&of_colors_left)
-            + u32::from(any_left);
+            + any_left;
         for &color in cost.phyrexian {
-            if leftover_colored[color.index()] == 0 || spare <= u32::from(cost.generic) {
+            if leftover_colored[color.index()] == 0 || spare <= usize::from(cost.generic) {
                 continue;
             }
             leftover_colored[color.index()] -= 1;
@@ -1063,13 +1283,13 @@ impl ManaPool {
 
         // Generic: pay from any leftover mana (colored, then colorless, then dual/restricted
         // credits, then "any").
-        let mut generic = cost.generic;
+        let mut generic = usize::from(cost.generic);
         for i in 0..Color::COUNT {
-            let take = (self.colored[i] - spend.colored[i]).min(generic);
+            let take = (pool.colored[i] - spend.colored[i]).min(generic);
             spend.colored[i] += take;
             generic -= take;
         }
-        let take = (self.colorless - spend.colorless).min(generic);
+        let take = (pool.colorless - spend.colorless).min(generic);
         spend.colorless += take;
         generic -= take;
         for (pair, left) in either_left.iter_mut().enumerate() {
@@ -1091,22 +1311,33 @@ impl ManaPool {
         (generic == 0).then_some(spend)
     }
 
+    /// Plan payment with "spend as though" color substitutions without folding independently
+    /// stored credits into a bounded authoritative bucket.
+    pub fn spend_plan_with_substitutions(
+        &self,
+        cost: &Cost,
+        spell: Option<SpellCharacteristics>,
+        subs: &[(Color, Color)],
+    ) -> Option<ManaPool> {
+        let effective = self.planner_supply(spell, subs);
+        let plan = Self::spend_plan_unrestricted(&effective, cost)?;
+        self.restore_plan(plan, spell, subs)
+    }
+
     /// Whether this pool can cover `cost`, given the spell it's paying for (see
     /// [`ManaPool::spend_plan`]).
     pub fn can_pay(&self, cost: &Cost, spell: Option<SpellCharacteristics>) -> bool {
         self.spend_plan(cost, spell).is_some()
     }
 
-    /// This pool with every "you may spend `from` as though it were `to`" substitution in `subs`
-    /// (Sunglasses of Urza, CR 609.4b) folded in: each mono `from` credit is *widened* into a
-    /// [`Mana::OfColors`] credit over `from` plus every color it may be spent as. Widening rather
-    /// than recoloring is the "may" — the credit still pays its own color — and the planner
-    /// already knows how to spend a restricted-set credit, so nothing downstream changes.
-    /// [`ManaPool::unsubstitute`] maps a plan made against this back onto real credits.
+    /// Return a lossy display/diagnostic view of this pool with each mono `from` credit widened
+    /// to the colors allowed by `subs` (Sunglasses of Urza, CR 609.4b).
     ///
-    /// ponytail: a [`Mana::Restricted`] credit keeps its base color — [`ManaPool::spend_plan`]
-    /// folds those in itself, after this has run. No card in the pool prints both restricted mana
-    /// and a substitution; widen inside `spend_plan` if one ever does.
+    /// This representation is not an exact payment supply: widening can saturate an already-full
+    /// [`Mana::OfColors`] bucket and independently stored quantity is then discarded.
+    /// [`ManaPool::unsubstitute`] cannot recover that discarded quantity. Callers MUST NOT use
+    /// either helper for affordability or payment; use [`WidenedManaPool`] or
+    /// [`ManaPool::spend_plan_with_substitutions`] instead.
     pub fn substituted(&self, subs: &[(Color, Color)]) -> ManaPool {
         if subs.is_empty() {
             return *self;
@@ -1116,15 +1347,17 @@ impl ManaPool {
             let Some(mask) = widened_mask(subs, i) else {
                 continue;
             };
-            pool.of_colors[mask] += std::mem::take(&mut pool.colored[i]);
+            pool.of_colors[mask] =
+                pool.of_colors[mask].saturating_add(std::mem::take(&mut pool.colored[i]));
         }
         pool
     }
 
-    /// Map a spend planned against [`ManaPool::substituted`] back onto credits this pool really
-    /// holds: whatever the plan spent beyond the real [`Mana::OfColors`] stock of a widened set is
-    /// mono mana of the color it was widened from. Without this the resulting
-    /// [`Event::ManaSpent`](crate::Event) would name mana the pool never had.
+    /// Best-effort diagnostic inverse of [`ManaPool::substituted`].
+    ///
+    /// This cannot restore quantity discarded when substituted buckets saturated, so it is lossy
+    /// and MUST NOT be used for affordability or payment. Exact callers use [`WidenedManaPool`] or
+    /// [`ManaPool::spend_plan_with_substitutions`].
     pub fn unsubstitute(&self, subs: &[(Color, Color)], mut spend: ManaPool) -> ManaPool {
         if subs.is_empty() {
             return spend;
@@ -1167,9 +1400,9 @@ fn take_restricted(
     pool: &ManaPool,
     spend: &mut ManaPool,
     base: RestrictedManaBase,
-    mut need: u8,
+    mut need: usize,
     spell: Option<SpellCharacteristics>,
-) {
+) -> Option<()> {
     for slot in pool.restricted {
         if need == 0 {
             break;
@@ -1180,14 +1413,16 @@ fn take_restricted(
         if slot_base != base || !spell.is_some_and(|s| restriction.allows(s)) {
             continue;
         }
-        let take = slot.amount.min(need);
-        spend.add_restricted(slot_base, restriction, take);
+        let take = usize::from(slot.amount).min(need);
+        let accepted = spend.add_restricted(
+            slot_base,
+            restriction,
+            u8::try_from(take).expect("bounded by one restricted bucket"),
+        );
+        debug_assert_eq!(usize::from(accepted), take);
         need -= take;
     }
-    debug_assert_eq!(
-        need, 0,
-        "spend_plan's effective pool can't demand more restricted mana than it folded in from these same slots"
-    );
+    (need == 0).then_some(())
 }
 
 /// Whether colored-pip `shortfall`s (mono, singleton demand) and `hybrid` pips (`{a/b}`,
@@ -1200,40 +1435,40 @@ fn take_restricted(
 /// can produce is in the set (an `of_colors` credit's mask is itself such a set of colors). All
 /// 31 subsets of WUBRG, so the check is exact and allocation-free.
 fn pips_coverable(
-    shortfall: [u8; Color::COUNT],
-    hybrid: [u8; COLOR_PAIRS.len()],
-    leftover_colored: [u8; Color::COUNT],
-    either: [u8; COLOR_PAIRS.len()],
-    of_colors: [u8; 1 << Color::COUNT],
-    any: u8,
+    shortfall: [usize; Color::COUNT],
+    hybrid: [usize; COLOR_PAIRS.len()],
+    leftover_colored: [usize; Color::COUNT],
+    either: [usize; COLOR_PAIRS.len()],
+    of_colors: [usize; 1 << Color::COUNT],
+    any: usize,
 ) -> bool {
     for colors in 1u32..(1 << Color::COUNT) {
         let inside = |c: Color| colors & (1 << c.index()) != 0;
-        let demanded: u32 = (0..Color::COUNT)
+        let demanded: usize = (0..Color::COUNT)
             .filter(|&i| colors & (1 << i) != 0)
-            .map(|i| shortfall[i] as u32)
-            .sum::<u32>()
+            .map(|i| shortfall[i])
+            .sum::<usize>()
             + COLOR_PAIRS
                 .iter()
                 .zip(hybrid)
                 .filter(|&(&(a, b), _)| inside(a) && inside(b))
-                .map(|(_, n)| n as u32)
-                .sum::<u32>();
-        let supplied: u32 = any as u32
+                .map(|(_, n)| n)
+                .sum::<usize>();
+        let supplied: usize = any
             + (0..Color::COUNT)
                 .filter(|&i| colors & (1 << i) != 0)
-                .map(|i| leftover_colored[i] as u32)
-                .sum::<u32>()
+                .map(|i| leftover_colored[i])
+                .sum::<usize>()
             + COLOR_PAIRS
                 .iter()
                 .zip(either)
                 .filter(|&(&(a, b), _)| inside(a) || inside(b))
-                .map(|(_, n)| n as u32)
-                .sum::<u32>()
+                .map(|(_, n)| n)
+                .sum::<usize>()
             + (0..of_colors.len())
-                .filter(|&mask| mask as u32 & colors != 0)
-                .map(|mask| of_colors[mask] as u32)
-                .sum::<u32>();
+                .filter(|&mask| mask & colors as usize != 0)
+                .map(|mask| of_colors[mask])
+                .sum::<usize>();
         if demanded > supplied {
             return false;
         }
@@ -1261,6 +1496,109 @@ mod mana_pool_tests {
         pool.add(Mana::Either(Color::Blue, Color::Green), 1);
         pool.add(Mana::OfColors(0b0_0110), 1);
         assert_eq!(pool.total(), 5);
+    }
+
+    #[test]
+    fn add_saturates_every_unrestricted_bucket_at_the_storage_limit() {
+        let kinds = [
+            Mana::Color(Color::Green),
+            Mana::Colorless,
+            Mana::Any,
+            Mana::Either(Color::White, Color::Blue),
+            Mana::OfColors(0b0_0110),
+        ];
+
+        for mana in kinds {
+            let mut pool = ManaPool::of(mana, u8::MAX - 1);
+            pool.add(mana, 2);
+
+            assert_eq!(pool.total(), u32::from(u8::MAX), "{mana:?}");
+        }
+    }
+
+    #[test]
+    fn add_saturates_matching_restricted_credit_without_merging_distinct_restrictions() {
+        let base = RestrictedManaBase::Color(Color::Green);
+        let first = Mana::Restricted {
+            base,
+            restriction: SpendRestriction::InstantOrSorcery,
+        };
+        let second = Mana::Restricted {
+            base,
+            restriction: SpendRestriction::HasX,
+        };
+        let mut pool = ManaPool::of(first, u8::MAX - 1);
+        pool.add(second, 7);
+        pool.add(first, 2);
+
+        assert_eq!(pool.total(), u32::from(u8::MAX) + 7);
+        assert!(pool.restricted.iter().any(|slot| {
+            slot.key == Some((base, SpendRestriction::InstantOrSorcery)) && slot.amount == u8::MAX
+        }));
+        assert!(
+            pool.restricted.iter().any(|slot| {
+                slot.key == Some((base, SpendRestriction::HasX)) && slot.amount == 7
+            })
+        );
+    }
+
+    #[test]
+    fn add_returns_the_amount_accepted_by_the_matching_bucket() {
+        let mut pool = ManaPool::of(Mana::Color(Color::Green), u8::MAX - 1);
+
+        assert_eq!(pool.add(Mana::Color(Color::Green), 3), 1);
+        assert_eq!(pool.add(Mana::Color(Color::Green), 1), 0);
+    }
+
+    #[test]
+    fn add_returns_the_amount_accepted_by_a_matching_restricted_bucket() {
+        let mana = Mana::Restricted {
+            base: RestrictedManaBase::Color(Color::Green),
+            restriction: SpendRestriction::InstantOrSorcery,
+        };
+        let mut pool = ManaPool::of(mana, u8::MAX - 1);
+
+        assert_eq!(pool.add(mana, 3), 1);
+        assert_eq!(pool.add(mana, 1), 0);
+    }
+
+    #[test]
+    fn spend_plan_preserves_credits_across_unrestricted_and_restricted_buckets() {
+        let restricted = Mana::Restricted {
+            base: RestrictedManaBase::Color(Color::Green),
+            restriction: SpendRestriction::InstantOrSorcery,
+        };
+        let mut pool = ManaPool::of(Mana::Color(Color::Green), u8::MAX);
+        pool.add(restricted, 1);
+        let cost = Cost {
+            generic: 1,
+            colored: {
+                let mut pips = [0; Color::COUNT];
+                pips[Color::Green.index()] = u8::MAX;
+                pips
+            },
+            ..Cost::FREE
+        };
+        let spell = SpellCharacteristics {
+            mana_value: 256,
+            has_x: false,
+            is_instant_or_sorcery: true,
+        };
+
+        let spend = pool
+            .spend_plan(&cost, Some(spell))
+            .expect("separately stored restricted credit pays the final generic pip");
+
+        assert_eq!(spend.total(), 256);
+        assert_eq!(spend.colored[Color::Green.index()], u8::MAX);
+        assert!(spend.restricted.iter().any(|slot| {
+            slot.key
+                == Some((
+                    RestrictedManaBase::Color(Color::Green),
+                    SpendRestriction::InstantOrSorcery,
+                ))
+                && slot.amount == 1
+        }));
     }
 
     #[test]
@@ -1364,6 +1702,111 @@ mod mana_pool_tests {
         };
         let spend = pool.spend_plan(&cost, None).expect("two red pays {2}");
         assert_eq!(spend.colored[Color::Red.index()], 2);
+    }
+
+    #[test]
+    fn substituted_spend_plan_preserves_combined_credits_above_one_bucket() {
+        let mask = (1 << Color::Green.index()) | (1 << Color::Blue.index());
+        let mut pool = ManaPool::of(Mana::OfColors(mask as u8), u8::MAX);
+        pool.add(Mana::Color(Color::Green), u8::MAX);
+        let cost = Cost {
+            generic: u8::MAX,
+            colored: {
+                let mut pips = [0; Color::COUNT];
+                pips[Color::Blue.index()] = u8::MAX;
+                pips
+            },
+            ..Cost::FREE
+        };
+
+        let spend = pool
+            .spend_plan_with_substitutions(&cost, None, &[(Color::Green, Color::Blue)])
+            .expect("the original set credits and widened green credits are independently stored");
+
+        assert_eq!(spend.total(), 510);
+        assert_eq!(spend.colored[Color::Green.index()], u8::MAX);
+        assert_eq!(spend.of_colors[mask], u8::MAX);
+    }
+
+    #[test]
+    fn substituted_spend_restores_mono_and_restricted_sources_before_subtraction() {
+        let restricted = Mana::Restricted {
+            base: RestrictedManaBase::Color(Color::Green),
+            restriction: SpendRestriction::InstantOrSorcery,
+        };
+        let mut pool = ManaPool::of(Mana::Color(Color::Green), 1);
+        pool.add(restricted, 1);
+        let cost = Cost {
+            generic: 1,
+            colored: {
+                let mut pips = [0; Color::COUNT];
+                pips[Color::Blue.index()] = 1;
+                pips
+            },
+            ..Cost::FREE
+        };
+        let spell = SpellCharacteristics {
+            mana_value: 2,
+            has_x: false,
+            is_instant_or_sorcery: true,
+        };
+
+        let spend = pool
+            .spend_plan_with_substitutions(&cost, Some(spell), &[(Color::Green, Color::Blue)])
+            .expect("widened green and restricted green cover the cost");
+        pool.subtract(&spend);
+
+        assert_eq!(spend.colored[Color::Green.index()], 1);
+        assert!(spend.restricted.iter().any(|slot| slot.key
+            == Some((
+                RestrictedManaBase::Color(Color::Green),
+                SpendRestriction::InstantOrSorcery
+            ))
+            && slot.amount == 1));
+        assert_eq!(pool.total(), 0);
+    }
+
+    #[test]
+    fn exact_widened_supply_merges_separate_sources_above_one_bucket() {
+        let mask = (1 << Color::Green.index()) | (1 << Color::Blue.index());
+        let set = ManaPool::of(Mana::OfColors(mask as u8), u8::MAX);
+        let green = ManaPool::of(Mana::Color(Color::Green), 1);
+        let cost = Cost {
+            generic: 1,
+            colored: {
+                let mut pips = [0; Color::COUNT];
+                pips[Color::Blue.index()] = u8::MAX;
+                pips
+            },
+            ..Cost::FREE
+        };
+
+        let supply = WidenedManaPool::from_sources([set, green], &[(Color::Green, Color::Blue)]);
+
+        assert!(supply.can_pay(&cost, None));
+    }
+
+    #[test]
+    fn substituted_display_pool_saturates_when_widening_into_a_full_bucket() {
+        let mask = (1 << Color::Green.index()) | (1 << Color::Blue.index());
+        let mut pool = ManaPool::of(Mana::OfColors(mask as u8), u8::MAX);
+        pool.add(Mana::Color(Color::Green), 1);
+
+        let widened = pool.substituted(&[(Color::Green, Color::Blue)]);
+
+        assert_eq!(widened.of_colors[mask], u8::MAX);
+    }
+
+    #[test]
+    fn spend_plan_rejects_more_hybrid_pips_than_any_pool_can_supply_without_overflow() {
+        let hybrid: &'static [(Color, Color)] =
+            Box::leak(vec![(Color::White, Color::Blue); 65_536].into_boxed_slice());
+        let cost = Cost {
+            hybrid,
+            ..Cost::FREE
+        };
+
+        assert!(ManaPool::default().spend_plan(&cost, None).is_none());
     }
 
     #[test]

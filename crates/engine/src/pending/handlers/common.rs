@@ -15,31 +15,32 @@ impl Game {
         keep: i32,
     ) -> (Vec<Event>, i32) {
         let mut events = Vec::new();
-        let mut removed = 0;
-        let plus = (self.permanent(object).plus_counters - keep).max(0);
+        let mut removed = 0_i64;
+        let plus = (i64::from(self.plus_counters(object)) - i64::from(keep))
+            .clamp(0, i64::from(i32::MAX)) as i32;
         if plus > 0 {
             events.push(Event::CountersPlaced {
                 object,
                 count: -plus,
                 source_name: self.def_of(object).name,
             });
-            removed += plus;
+            removed += i64::from(plus);
         }
         if !all_kinds {
-            return (events, removed);
+            return (events, removed.min(i64::from(i32::MAX)) as i32);
         }
         for &kind in CounterKind::ALL.iter() {
-            let count = self.permanent(object).kind_counters[kind as usize] as i32;
+            let count = i32::from(self.permanent(object).kind_counters[kind as usize]);
             if count > 0 {
                 events.push(Event::KindCountersPlaced {
                     object,
                     kind,
                     count: -count,
                 });
-                removed += count;
+                removed += i64::from(count);
             }
         }
-        (events, removed)
+        (events, removed.min(i64::from(i32::MAX)) as i32)
     }
 
     /// Move counters from `from` onto `to` ([`Effect::Counters(CountersEffect::MoveCounters)`]): +1/+1 counters always

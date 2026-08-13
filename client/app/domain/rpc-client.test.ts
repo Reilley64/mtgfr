@@ -2,6 +2,7 @@
 
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
+import * as Stream from "effect/Stream";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { makeClient, orNull } from "./rpc-client";
 
@@ -48,6 +49,103 @@ describe("makeClient", () => {
     expect(calls).toHaveLength(1);
     const url = calls[0][0];
     expect(url.pathname).toBe("/api/rpc/auth/me");
+  });
+
+  it("revives only streamed stack entry ids from lossless decimal strings", async () => {
+    const first = "9007199254740992";
+    const second = "9007199254740993";
+    const response = new Response(
+      `data: ${JSON.stringify({
+        frame: "snapshot",
+        seq: 1,
+        state: {
+          stack: [{ entry_id: first, source: 0 }, { entry_id: second }],
+          lookalike: { entry_id: second },
+        },
+        lookalike: { entry_id: second },
+      })}\n\n`,
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+    const client = makeClient(respondWith(response));
+
+    const frames = Array.from(await Effect.runPromise(Stream.runCollect(client.streamSse("TABLE"))));
+    const frame = frames[0] as unknown as {
+      state: { stack: Array<{ entry_id: bigint; source?: number }>; lookalike: { entry_id: string } };
+      lookalike: { entry_id: string };
+    };
+
+    expect(frame.state.stack.map((entry) => entry.entry_id)).toEqual([BigInt(first), BigInt(second)]);
+    expect(frame.state.stack[0]?.entry_id).not.toBe(frame.state.stack[1]?.entry_id);
+    expect(frame.state.stack[0]?.source).toBe(0);
+    expect(frame.state.lookalike.entry_id).toBe(second);
+    expect(frame.lookalike.entry_id).toBe(second);
+  });
+
+  it("accepts zero and the canonical uint64 maximum for streamed stack entry ids", async () => {
+    const maximum = "18446744073709551615";
+    const response = new Response(
+      `data: ${JSON.stringify({
+        frame: "snapshot",
+        seq: 1,
+        state: { stack: [{ entry_id: "0" }, { entry_id: maximum }] },
+      })}\n\n`,
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+    const client = makeClient(respondWith(response));
+
+    const frames = Array.from(await Effect.runPromise(Stream.runCollect(client.streamSse("TABLE"))));
+    const stack = frames[0]?.frame === "snapshot" ? frames[0].state.stack : [];
+
+    expect(stack.map((entry) => entry.entry_id)).toEqual([0n, BigInt(maximum)]);
+  });
+
+  it.each([
+    ["above uint64 maximum", "18446744073709551616"],
+    ["negative", "-1"],
+    ["leading zero", "01"],
+    ["empty", ""],
+    ["very long", "9".repeat(10_000)],
+  ])("rejects a %s streamed stack entry id through the typed error channel", async (_case, entryId) => {
+    const response = new Response(
+      `data: ${JSON.stringify({ frame: "snapshot", seq: 1, state: { stack: [{ entry_id: entryId }] } })}\n\n`,
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+    const client = makeClient(respondWith(response));
+
+    const error = await Effect.runPromise(Effect.flip(Stream.runCollect(client.streamSse("TABLE"))));
+
+    expect(error).toMatchObject({ _tag: "StreamFrameParseError", message: "Invalid SSE stream frame" });
+    expect(String(error)).toBe("StreamFrameParseError: Invalid SSE stream frame");
+  });
+
+  it.each([
+    ["an unknown frame variant", { frame: "unknown" }],
+    ["a snapshot without a stack", { frame: "snapshot", seq: 1, state: {} }],
+    ["a delta without events", { frame: "delta", seq: 1, state: { stack: [] } }],
+  ])("rejects %s through the typed error channel", async (_case, value) => {
+    const response = new Response(`data: ${JSON.stringify(value)}\n\n`, {
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+    });
+    const client = makeClient(respondWith(response));
+
+    const error = await Effect.runPromise(Effect.flip(Stream.runCollect(client.streamSse("TABLE"))));
+
+    expect(error).toMatchObject({ _tag: "StreamFrameParseError", message: "Invalid SSE stream frame" });
+  });
+
+  it("rejects malformed SSE JSON through the typed error channel without echoing the payload", async () => {
+    const payload = '{"frame":"snapshot","secret":"DO_NOT_ECHO"';
+    const response = new Response(`data: ${payload}\n\n`, {
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+    });
+    const client = makeClient(respondWith(response));
+
+    const error = await Effect.runPromise(Effect.flip(Stream.runCollect(client.streamSse("TABLE"))));
+
+    expect(error).toMatchObject({ _tag: "StreamFrameParseError", message: "Invalid SSE stream frame" });
+    expect(String(error)).not.toContain("DO_NOT_ECHO");
   });
 
   it("posts an empty JSON object on logout — the BFF rejects bodiless POSTs as BadJson", async () => {

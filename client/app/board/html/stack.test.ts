@@ -86,7 +86,7 @@ function gameFold(state: VisibleState): GameFoldState {
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
     },
     tableFeel: {
       land: false,
@@ -127,14 +127,7 @@ function spellOnStack(
   };
   return {
     objects: [spell],
-    stack: [
-      {
-        controller: 0,
-        kind: "spell",
-        label: testMessageRef(label),
-        source: sourceId,
-      },
-    ],
+    stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef(label), source: sourceId }],
   };
 }
 
@@ -168,6 +161,7 @@ function stackedSpells(count: number): {
       zone: ZONE.Stack,
     });
     stack.push({
+      entry_id: BigInt(row + 1),
       controller: 0,
       kind: "spell",
       label: testMessageRef(`Spell ${row}`),
@@ -300,6 +294,7 @@ test("a prepared spell stack face prefers the active back-face words", () => {
   };
   const stack = [
     {
+      entry_id: 1n,
       controller: 0,
       kind: "spell",
       label: testMessageRef("Pack a Punch"),
@@ -358,6 +353,7 @@ test("an ability's stack face shows only the sentence that prints it", () => {
         objects: [arena],
         stack: [
           {
+            entry_id: 1n,
             ability_oracle: sentence,
             controller: 0,
             kind: "ability",
@@ -412,6 +408,7 @@ test("an ability without a recorded sentence uses its label and clears the sourc
         objects: [arena],
         stack: [
           {
+            entry_id: 1n,
             controller: 0,
             kind: "ability",
             label: testMessageRef("Draw a card"),
@@ -530,12 +527,14 @@ test("every triggered ability keeps its face while its source spell is flying on
   });
   const stack: VisibleState["stack"] = [
     {
+      entry_id: 1n,
       controller: 0,
       kind: "spell",
       label: testMessageRef("Source Spell"),
       source: 42,
     },
     {
+      entry_id: 2n,
       ability_oracle: "Whenever you cast this spell, draw a card.",
       controller: 0,
       kind: "ability",
@@ -543,6 +542,7 @@ test("every triggered ability keeps its face while its source spell is flying on
       source: 42,
     },
     {
+      entry_id: 3n,
       ability_oracle: "Whenever you cast this spell, gain 1 life.",
       controller: 0,
       kind: "ability",
@@ -624,6 +624,7 @@ function abilityDuringSourceFlight(kind: "battlefield" | "from-stack"): ViewMode
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "ability",
             label: testMessageRef("Draw a card"),
             source: sourceId,
@@ -659,6 +660,7 @@ test("ability stack face uses entry print when the source id is no longer in obj
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "ability",
             label: testMessageRef("Search your library for a basic land card"),
             source: 77,
@@ -722,6 +724,7 @@ test("an older server tombstone without source face still renders its ability ca
         objects: [],
         stack: [
           {
+            entry_id: 1n,
             controller: 0,
             kind: "ability",
             label: testMessageRef("Search your library for a basic land card"),
@@ -772,6 +775,7 @@ test("an ability with no source metadata still renders a neutral card face", () 
         objects: [],
         stack: [
           {
+            entry_id: 1n,
             controller: 0,
             kind: "ability",
             label: testMessageRef("Create a Treasure token"),
@@ -844,6 +848,7 @@ test("an ability caption lists targets without repeating its generated label", (
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "ability",
             label: testMessageRef("Draw a card"),
             source: 42,
@@ -1233,6 +1238,7 @@ test("pending choose_target does not duplicate a spell already on the stack", ()
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "spell",
             label: testMessageRef("Lightning Bolt"),
             source: bolt.id,
@@ -1318,12 +1324,7 @@ test("a second trigger from one permanent gets its own top face while aiming", (
       gameState({
         objects: [veyran, bear],
         stack: [
-          {
-            controller: 0,
-            kind: "ability",
-            label: testMessageRef("Draw a card"),
-            source: veyran.id,
-          },
+          { entry_id: 1n, controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: veyran.id },
         ],
         pending_choice: {
           kind: "choose_target",
@@ -1355,7 +1356,6 @@ test("short-landscape compact stack exposes its responsive fallback geometry", (
   const layout = stackFanLayout(viewport, 1);
   const placement = stackFanPlacement(layout, 0);
   if (placement == null) throw new Error("missing short-landscape placement");
-
   Scene.scene(
     { update: (m) => [m, []], view: overlayView },
     Scene.given(model),

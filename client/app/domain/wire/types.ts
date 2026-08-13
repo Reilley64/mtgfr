@@ -248,12 +248,16 @@ export type StackObjectView = {
   active_face_text?: CardTextView;
   card_id?: string;
   controller: number;
+  /** Stable engine-owned stack identity; never narrow this uint64 to a JavaScript number. */
+  entry_id: bigint;
   kind: string;
   label: MessageRef;
   name?: string;
   print?: string;
   source_face?: StackSourceFaceView;
-  source: number;
+  printed_sentences?: Array<string>;
+  /** Spell stack object or ability source. Public source-less entries omit it. */
+  source?: number;
   target?: null | WireTarget;
   targets?: Array<WireTarget>;
 };

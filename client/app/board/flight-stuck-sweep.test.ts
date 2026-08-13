@@ -59,7 +59,7 @@ function gameFold(
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
       ...provenance,
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
@@ -241,6 +241,7 @@ const boltInHand = gameFold(1, state({ objects: [bolt(HAND_ID, ZONE.Hand)], acti
 
 const SPELL_ID = 42;
 const stackEntry = {
+  entry_id: 1n,
   controller: 0,
   kind: "spell" as const,
   label: testMessageRef("Lightning Bolt"),

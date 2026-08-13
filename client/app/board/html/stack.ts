@@ -35,11 +35,14 @@ import type { BoardModel } from "../submodel";
 type StackItem = {
   row: number;
   kind: string;
-  source: number;
+  /** Production entry identity. Local staged/pending faces deliberately have no authoritative id. */
+  entryId?: bigint;
+  source?: number;
   imageName: string | null;
   print: string;
   cardId?: string;
   label: string;
+  printedSentences: readonly string[];
   staged: boolean;
   /** The rendered face for every stack entry, including metadata-free tombstones. */
   face: FaceData;
@@ -51,7 +54,7 @@ type StackItem = {
  * permanent must not blank the ability face (ETB triggers would otherwise show only the effect
  * caption). */
 function hideStackRestingFace(board: BoardModel, item: StackItem): boolean {
-  if (item.kind !== "spell") return false;
+  if (item.kind !== "spell" || item.source == null) return false;
   const flight = board.flights.get(item.source);
   if (flight == null || flight.kind !== "stack") return false;
   // Any in-model stack flight still owns the face — including settled frames before FlightsSynced
@@ -74,13 +77,14 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
   const faceOf = (view: ObjectView): FaceData => withText(faceDataFrom(view), view.card_id, view.print ?? "");
 
   const items: StackItem[] = state.stack.map((entry, row) => {
-    const object = state.objects.find((o) => o.id === entry.source);
+    const object = entry.source == null ? undefined : state.objects.find((o) => o.id === entry.source);
     const label = formatMessage(entry.label);
     // Prefer the live object; fall back to entry-carried identity when `source` is a Moved
     // tombstone (sacrifice-as-cost) omitted from `objects`.
     const print = object?.print || entry.print || "";
     const name = object?.name || entry.name || null;
-    const cardId = object?.card_id || entry.card_id || undefined;
+    // Source-less entries must not trigger catalog/card-default inference from an otherwise explicit card id.
+    const cardId = entry.source == null ? undefined : object?.card_id || entry.card_id || undefined;
     // A tombstone is gone from `objects`, so its own identity is all there is to draw a face from.
     // When that identity is unavailable, public stack text still deserves a neutral card face.
     const baseFace =
@@ -88,7 +92,9 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
         ? faceOf(object)
         : entry.source_face != null
           ? withText(faceDataFromStackSource(entry.source_face, print, name ?? label), cardId, print)
-          : withText({ ...BLANK_FACE, print, name: name ?? label }, cardId, print);
+          : entry.source == null
+            ? { ...BLANK_FACE, print, name: name ?? label }
+            : withText({ ...BLANK_FACE, print, name: name ?? label }, cardId, print);
     const spellFace =
       entry.active_face_text == null
         ? baseFace
@@ -98,20 +104,24 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
             oracle: entry.active_face_text.oracle,
             flavor: entry.active_face_text.flavor,
           };
+    const printedSentences = entry.printed_sentences ?? [];
+    const abilityOracle = entry.ability_oracle || printedSentences.join("\n") || label;
     return {
       row,
       kind: entry.kind,
-      source: entry.source,
+      entryId: entry.entry_id,
+      ...(entry.source == null ? {} : { source: entry.source }),
       imageName: entry.kind === "spell" ? label : name,
       print,
       cardId,
       label,
+      printedSentences,
       staged: false,
       // An ability on the stack is the one sentence that prints it, not its source card's whole
       // text box; the flavor belongs to the card, so it goes with the rest of the card's words.
-      face: entry.kind === "ability" ? { ...baseFace, oracle: entry.ability_oracle || label, flavor: "" } : spellFace,
+      face: entry.kind === "ability" ? { ...baseFace, oracle: abilityOracle, flavor: "" } : spellFace,
       accessibleDescription:
-        entry.kind === "ability" ? `${name ?? label}: ${entry.ability_oracle || label}` : undefined,
+        entry.kind === "ability" ? [name, ...printedSentences, abilityOracle].filter(Boolean).join(": ") : undefined,
     };
   });
   if (!showGhost) return items;
@@ -127,6 +137,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       print: card.print ?? "",
       cardId: card.card_id,
       label: card.name,
+      printedSentences: [],
       staged: true,
       face: faceOf(card),
     });
@@ -143,6 +154,7 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
       print: pending.print ?? "",
       cardId: pending.card_id,
       label: pending.name,
+      printedSentences: [],
       staged: true,
       face: faceOf(pending),
     });
@@ -153,13 +165,15 @@ function stackItems(board: BoardModel, state: VisibleState, showGhost: boolean):
 function stackFace(
   opts: {
     row: number;
-    source: number;
+    entryId?: bigint;
+    source?: number;
     imageName: string | null;
     print: string;
     cardId?: string;
     label: string;
     face: FaceData;
     accessibleDescription?: string;
+    printedSentences: readonly string[];
     isTop: boolean;
     staged?: boolean;
     legalTarget?: boolean;
@@ -193,21 +207,31 @@ function stackFace(
     className: "block h-(--card-h) w-(--stack-w) rounded-game",
   });
 
+  const accessibleParts: string[] = [];
+  for (const part of [opts.imageName, opts.label, ...opts.printedSentences]) {
+    if (part == null || accessibleParts.includes(part)) continue;
+    accessibleParts.push(part);
+  }
+  const accessibleLabel = accessibleParts.join(" ");
+  const isLegalTarget = opts.legalTarget && opts.source != null;
   const faceAttrs: Attribute<Message>[] = [
     h.Class(faceClass),
     h.Style(opts.style),
+    h.Key(opts.entryId == null ? `local-${opts.row}` : String(opts.entryId)),
     h.DataAttribute("testid", `stack-face-${opts.row}`),
+    ...(opts.entryId == null ? [] : [h.DataAttribute("stack-entry-id", String(opts.entryId))]),
+    ...(opts.cardId == null ? [] : [h.DataAttribute("inspect-card-id", opts.cardId)]),
     h.Attribute("title", opts.imageName ?? opts.label),
+    h.Role(isLegalTarget ? "button" : "group"),
+    h.Attribute("aria-label", isLegalTarget ? `Target: ${accessibleLabel}` : accessibleLabel),
   ];
   if (opts.staged) {
     faceAttrs.push(h.DataAttribute("staged", "true"));
   }
-  if (opts.legalTarget) {
+  if (isLegalTarget) {
     faceAttrs.push(h.DataAttribute("legal-target", "true"));
     // Legal targeting takes precedence over compact-fan expansion for both pointer and keyboard.
-    faceAttrs.push(h.Role("button"));
     faceAttrs.push(h.Tabindex(0));
-    faceAttrs.push(h.Attribute("aria-label", `Target: ${opts.imageName ?? opts.label}`));
     faceAttrs.push(h.OnClick(TargetChosen({ target: { kind: "object", id: opts.source } })));
     faceAttrs.push(
       h.OnKeyDownPreventDefault((key) => {
@@ -218,7 +242,6 @@ function stackFace(
   } else if (opts.expandOnActivate) {
     faceAttrs.push(h.Role("button"));
     faceAttrs.push(h.Tabindex(0));
-    faceAttrs.push(h.Attribute("aria-label", `Show older stack objects from ${opts.imageName ?? opts.label}`));
     faceAttrs.push(h.OnClick(StackExpandClicked()));
     faceAttrs.push(
       h.OnKeyDownPreventDefault((key) => {
@@ -313,6 +336,7 @@ function compactFanView(
       return stackFace(
         {
           row: item.row,
+          entryId: item.entryId,
           source: item.source,
           imageName: item.imageName,
           print: item.print,
@@ -320,9 +344,10 @@ function compactFanView(
           label: item.label,
           face: item.face,
           accessibleDescription: item.accessibleDescription,
+          printedSentences: item.printedSentences,
           isTop: item.row === items.length - 1,
           staged: item.staged,
-          legalTarget: !item.staged && legalTargets.has(item.source),
+          legalTarget: !item.staged && item.source != null && legalTargets.has(item.source),
           expandOnActivate: layout.hiddenCount > 0,
           cardW: layout.cardW,
           cardH: layout.cardH,
@@ -415,6 +440,7 @@ function stripView(
       return stackFace(
         {
           row: item.row,
+          entryId: item.entryId,
           source: item.source,
           imageName: item.imageName,
           print: item.print,
@@ -422,9 +448,10 @@ function stripView(
           label: item.label,
           face: item.face,
           accessibleDescription: item.accessibleDescription,
+          printedSentences: item.printedSentences,
           isTop,
           staged: item.staged,
-          legalTarget: !item.staged && legalTargets.has(item.source),
+          legalTarget: !item.staged && item.source != null && legalTargets.has(item.source),
           cardW: layout.cardW,
           cardH: layout.cardH,
           positionClass: "top-(--y) left-(--x) z-(--z)",

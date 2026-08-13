@@ -109,8 +109,8 @@ message ObjectView {
 message StackObjectView {
   // "spell" or "ability".
   string kind = 1;
-  // The spell's stack-object id, or the ability's source permanent.
-  uint32 source = 2;
+  // The spell's stack-object id or ability source; absent for source-less entries.
+  optional uint32 source = 2;
   uint32 controller = 3;
   reserved 4;
   // The chosen target, if any.
@@ -127,16 +127,16 @@ message StackObjectView {
   string card_id = 9;
   // Source card's display name for art alt text / inspect (empty when anonymized).
   string name = 10;
-  // The one printed sentence this ability prints, for the text box of its stack face — an
-  // ability on the stack is not its whole source card. Empty for a spell (which shows its
-  // card's own text) and for an ability whose sentence isn't recorded, which shows `label`.
-  string ability_oracle = 11;
-  // Last-known renderer characteristics for the source. This remains authoritative when a
-  // sacrifice-as-cost source is no longer present in `VisibleState.objects`.
-  StackSourceFaceView source_face = 12;
-  // Printed words for the spell face actually being cast. Optional so draining servers/clients
-  // retain the legacy `(card_id, print)` text-book fallback.
-  CardTextView active_face_text = 13;
+  // Stable stack-entry identity, independent of any source object.
+  uint64 entry_id = 11;
+  // Explicit public printed rules text for source-less authored entries.
+  repeated string printed_sentences = 12;
+  // The one printed sentence this ability prints, for the text box of its stack face.
+  string ability_oracle = 13;
+  // Last-known renderer characteristics for the source.
+  StackSourceFaceView source_face = 14;
+  // Printed words for the spell face actually being cast.
+  CardTextView active_face_text = 15;
 }
 
 message StackSourceFaceView {

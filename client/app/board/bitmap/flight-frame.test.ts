@@ -146,27 +146,43 @@ describe("restingPaintChanged", () => {
     };
     const before = restingPaintSnapshot(restingFrame({ cards: [card({ face })] }));
     const after = restingPaintSnapshot(restingFrame({ cards: [card({ face: { ...face, colors: [1] } })] }));
+    expect(restingPaintChanged(before, after)).toBe(true);
+  });
+
+  it("is true when two stack entries share a source but have different lossless entry identity", () => {
+    const source = 9;
+    const first = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+    const second = first + 1n;
+    const before = restingPaintSnapshot({
+      ...restingFrame(),
+      stack: [{ controller: 0, entry_id: first, kind: "ability", label: { key: "card.name", params: [] }, source }],
+    } as never);
+    const after = restingPaintSnapshot({
+      ...restingFrame(),
+      stack: [{ controller: 0, entry_id: second, kind: "ability", label: { key: "card.name", params: [] }, source }],
+    } as never);
 
     expect(restingPaintChanged(before, after)).toBe(true);
   });
 
   it("is true when only stack declared targets change", () => {
-    const before = restingPaintSnapshot(
-      restingFrame({ stack: [{ controller: 0, kind: "spell", label: testMessageRef("Card"), source: 9 }] }),
-    );
-    const after = restingPaintSnapshot(
-      restingFrame({
-        stack: [
-          {
-            controller: 0,
-            kind: "spell",
-            label: testMessageRef("Card"),
-            source: 9,
-            target: { kind: "object", id: 1 },
-          },
-        ],
-      }),
-    );
+    const before = restingPaintSnapshot({
+      ...restingFrame(),
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: { key: "card.name", params: [] }, source: 9 }],
+    } as never);
+    const after = restingPaintSnapshot({
+      ...restingFrame(),
+      stack: [
+        {
+          controller: 0,
+          entry_id: 1n,
+          kind: "spell",
+          label: { key: "card.name", params: [] },
+          source: 9,
+          target: { kind: "object", id: 1 },
+        },
+      ],
+    } as never);
     expect(restingPaintChanged(before, after)).toBe(true);
   });
 

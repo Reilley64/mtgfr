@@ -212,6 +212,7 @@ function stackObjects(count: number): Pick<VisibleState, "objects" | "stack"> {
       }),
     ),
     stack: Array.from({ length: count }, (_, row) => ({
+      entry_id: BigInt(row + 1),
       controller: 0,
       kind: "spell" as const,
       label: testMessageRef(`Spell ${row}`),
@@ -252,7 +253,7 @@ test("priority bar exposes stack presence and uses the reserved offset", () => {
     overlayModel(
       initialBoardModel(),
       gameState({
-        stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
+        stack: [{ entry_id: 1n, controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
       }),
     ),
     resolveBoardCardFaceMounts(),
@@ -310,7 +311,7 @@ function gameFold(state: VisibleState | null = gameState(), log: ReadonlyArray<L
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
@@ -480,9 +481,40 @@ test("turn chrome drives phase and label chrome from data attributes", () => {
   );
 });
 
-test("stack fan expands older faces and Escape restores its four-face compact state", () => {
-  const state = gameState(stackObjects(7));
-  const model = overlayModel(initialBoardModel(), state);
+test("seven authoritative stack entries keep lossless identity through compact, expand, and collapse", () => {
+  const firstId = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+  const ids = Array.from({ length: 7 }, (_, index) => firstId + BigInt(index));
+  const objects = Array.from({ length: 6 }, (_, index) =>
+    card(100 + index, {
+      card_id: `card-${index}`,
+      name: `Known label ${index}`,
+      print: `print-${index}`,
+      zone: ZONE.Stack,
+    }),
+  );
+  const stack: VisibleState["stack"] = ids.map((entry_id, index) =>
+    index < 6
+      ? {
+          controller: 0,
+          entry_id,
+          kind: index < 2 ? "ability" : "spell",
+          label: testMessageRef(`Known label ${index}`),
+          // Two abilities deliberately share one source but retain different entry identity.
+          source: index < 2 ? objects[0]?.id : objects[index]?.id,
+          printed_sentences: [`Known rules ${index}`],
+        }
+      : {
+          card_id: "public-ghost-card",
+          controller: 1,
+          entry_id,
+          kind: "ability",
+          label: testMessageRef("Public ghost label"),
+          name: "Public Ghost",
+          print: "public-ghost-print",
+          printed_sentences: ["Public ghost rules text."],
+        },
+  );
+  const model = overlayModel(initialBoardModel(), gameState({ objects, stack }));
 
   Scene.scene<OverlayModel, Message>(
     {
@@ -497,13 +529,32 @@ test("stack fan expands older faces and Escape restores its four-face compact st
     resolveBoardCardFaceMounts(4),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expectAll(Scene.all.selector('[data-testid^="stack-face-"]')).toHaveCount(4),
+    Scene.expect(Scene.testId("stack-face-3")).toHaveAttr("aria-label", "Known label 3 Known rules 3"),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveAttr(
+      "aria-label",
+      "Public Ghost Public ghost label Public ghost rules text.",
+    ),
+    ...ids
+      .slice(3)
+      .flatMap((id, index) => [
+        Scene.expect(Scene.testId(`stack-face-${index + 3}`)).toHaveAttr("data-stack-entry-id", String(id)),
+      ]),
+    Scene.expect(Scene.testId("stack-face-3")).toHaveAttr("data-inspect-card-id", "card-3"),
+    Scene.expect(Scene.testId("stack-face-6")).not.toHaveAttr("data-inspect-card-id"),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveAttr("title", "Public Ghost"),
     Scene.expect(Scene.testId("stack-expand")).toHaveText("+3"),
     Scene.expect(Scene.testId("stack-expand")).toHaveAccessibleName("Show 3 older stack objects"),
     Scene.click(Scene.testId("stack-expand")),
     resolveBoardCardFaceMounts(3),
-    Scene.expect(Scene.testId("stack-overlay")).toBeAbsent(),
     Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
-    Scene.expect(Scene.testId("stack-face-0")).toExist(),
+    Scene.expectAll(Scene.all.selector('[data-testid^="stack-face-"]')).toHaveCount(7),
+    ...ids.flatMap((id, row) => [
+      Scene.expect(Scene.testId(`stack-face-${row}`)).toHaveAttr("data-stack-entry-id", String(id)),
+    ]),
+    Scene.click(Scene.testId("stack-collapse")),
+    Scene.Mount.expectEnded(BindCardFace, BindCardFace, BindCardFace),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toBeAbsent(),
   );
 
   Scene.scene<OverlayModel, Message>(
@@ -528,7 +579,7 @@ test("stack fan expands older faces and Escape restores its four-face compact st
 
 test("stack context renders resolve stack affordance without an untargeted caption", () => {
   const state = gameState({
-    stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
+    stack: [{ entry_id: 1n, controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
   });
   overlayScene(
     overlayModel(initialBoardModel(), state),
@@ -543,7 +594,7 @@ test("armed stack yield state renders separately", () => {
     overlayModel(
       initialBoardModel(),
       gameState({
-        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }],
+        stack: [{ entry_id: 1n, controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }],
         yielded: true,
       }),
     ),
@@ -3445,6 +3496,7 @@ test("full board view mounts the flight layer above the hand bar", () => {
 
 test("tiny board HUD close controls keep coarse pointer hit targets", () => {
   const stack = Array.from({ length: 6 }, (_, index) => ({
+    entry_id: BigInt(index + 1),
     controller: index % 2,
     kind: "spell" as const,
     label: testMessageRef(`Spell ${index}`),

@@ -1,6 +1,7 @@
 import type { PlayerView, StackObjectView, VisibleState, WireTarget } from "~/wire/types";
 
 export function stackEntryTargets(entry: StackObjectView): WireTarget[] {
+  if (entry.source == null) return [];
   if (entry.targets != null && entry.targets.length > 0) return [...entry.targets];
   if (entry.target != null) return [entry.target];
   return [];

@@ -399,6 +399,7 @@ describe("layout", () => {
       viewport: { width: 1440, height: 900 },
       stack: [
         {
+          entry_id: 1n,
           controller: 0,
           kind: "spell",
           label: testMessageRef("card.name"),

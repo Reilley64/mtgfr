@@ -1,4 +1,4 @@
-//! The pure core of the delta stream (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec): snapshot-then-delta framing, per-viewer
+//! The pure core of the game-state stream (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec): snapshot-first framing, later snapshots or deltas, and per-viewer
 //! redaction, and the seq-dedup boundary that prevents double delivery across the
 //! subscribe/snapshot gap. Pulled out of the `stream` handler in `lib.rs` so this logic has a
 //! test surface with no broadcast channel, keepalive timer, or `Body` involved — the handler
@@ -7,13 +7,13 @@
 use axum::http::StatusCode;
 use engine::{Event, Game, PlayerId};
 use schema::{
-    CardTextView, DeltaCompose, MessageRef, StreamFrame, ViewExtras, VisibleState, card_text,
-    complete_visible, compose_delta,
+    CardTextView, DeltaCompose, MessageRef, ObjectPrintOverrides, StreamFrame, ViewExtras,
+    VisibleState, card_text, complete_visible, compose_delta,
 };
 use tokio::sync::broadcast;
 
 use crate::AppState;
-use crate::session::Broadcast;
+use crate::session::{Broadcast, PublishedUpdate};
 use crate::table::Seat;
 
 /// Map Table-owned policy into the schema DTO that finishes a [`schema::VisibleState`].
@@ -23,6 +23,7 @@ pub fn view_extras(
     seats: &[Seat; 4],
     stack_hold_remaining_ms: u32,
     prints: &[std::collections::HashMap<String, String>; 4],
+    object_print_overrides: &ObjectPrintOverrides,
 ) -> ViewExtras {
     ViewExtras {
         yields: *yields,
@@ -41,20 +42,19 @@ pub fn view_extras(
                 .unwrap_or_default()
         }),
         prints: prints.clone(),
+        object_print_overrides: object_print_overrides.clone(),
     }
 }
 
-/// A resolved subscription to one table's delta stream, ready for a transport (gRPC
+/// A resolved subscription to one table's game-state stream, ready for a transport (gRPC
 /// server-streaming; historically SSE) to pump: the opening snapshot plus everything the caller
-/// needs to keep building later delta frames. Built by [`subscribe`] under the registry lock; the
+/// needs to build later snapshot or delta frames. Built by [`subscribe`] under the registry lock; the
 /// transport shell owns the actual async loop over `rx`.
 pub struct TableSubscription {
     pub rx: broadcast::Receiver<Broadcast>,
     pub snapshot_seq: u64,
     pub snapshot: VisibleState,
     pub viewer: Option<PlayerId>,
-    pub seats: [Seat; 4],
-    pub prints: [std::collections::HashMap<String, String>; 4],
     /// Printed words for the viewer's own deck, sent once with the snapshot.
     pub card_text: Vec<CardTextView>,
     /// The table's `broadcast_seq` at snapshot time — later messages at or below this are
@@ -62,11 +62,11 @@ pub struct TableSubscription {
     pub snapshot_broadcast_seq: u64,
 }
 
-/// Resolve `user_id`'s subscription to `table_id`'s delta stream: their own seat if they have
+/// Resolve `user_id`'s subscription to `table_id`'s game-state stream: their own seat if they have
 /// one, or the public spectator view otherwise (C1/6.3 — the viewer is resolved server-side,
 /// never from the client). `NOT_FOUND` if the table or its game doesn't exist. Subscribes to the
 /// broadcast channel *before* snapshotting, so nothing slips through the subscribe/snapshot gap
-/// (deltas already reflected in the snapshot are dropped later by [`should_deliver`]).
+/// (publications already reflected in the snapshot are dropped later by [`should_deliver`]).
 pub fn subscribe(
     state: &AppState,
     table_id: &str,
@@ -104,8 +104,6 @@ pub fn subscribe(
         snapshot,
         viewer,
         card_text,
-        seats: table.seats.clone(),
-        prints: table.prints.clone(),
         snapshot_broadcast_seq: table.broadcast_seq,
     })
 }
@@ -213,6 +211,7 @@ pub fn table_view_extras(table: &crate::Table) -> ViewExtras {
         &table.seats,
         table.stack_hold_remaining_ms(),
         &table.prints,
+        table.current_object_print_overrides(),
     )
 }
 
@@ -223,6 +222,55 @@ pub fn table_view_extras(table: &crate::Table) -> ViewExtras {
 /// bumping game `seq`, so dwell updates still reach clients.
 pub fn should_deliver(broadcast_seq: u64, snapshot_broadcast_seq: u64) -> bool {
     broadcast_seq > snapshot_broadcast_seq
+}
+
+/// Build a viewer-specific frame from one self-contained publication. Snapshot replacements and
+/// ordinary deltas share the same production visibility projection and publication-carried
+/// presentation extras.
+pub fn frame_for_update(viewer: Option<PlayerId>, update: &PublishedUpdate) -> StreamFrame {
+    match update {
+        PublishedUpdate::Delta {
+            state,
+            events,
+            auto_actions,
+        } => frame_for(
+            viewer,
+            state.seq,
+            events,
+            &state.game,
+            auto_actions.clone(),
+            &view_extras(
+                &state.yields,
+                &state.turn_yields,
+                &state.seats,
+                state.stack_hold_remaining_ms,
+                &state.prints,
+                &state.object_print_overrides,
+            ),
+        ),
+        PublishedUpdate::Snapshot(state) => {
+            let extras = view_extras(
+                &state.yields,
+                &state.turn_yields,
+                &state.seats,
+                state.stack_hold_remaining_ms,
+                &state.prints,
+                &state.object_print_overrides,
+            );
+            let mut visible = complete_visible(&state.game, viewer, &extras);
+            hydrate_active_face_text(&mut visible);
+            let own = match viewer {
+                Some(PlayerId(seat)) => state.prints[seat as usize].clone(),
+                None => Default::default(),
+            };
+            let card_text = public_card_text(&visible, &own);
+            StreamFrame::Snapshot {
+                seq: state.seq,
+                state: visible,
+                card_text,
+            }
+        }
+    }
 }
 
 /// Build the redacted delta frame for one viewer. `viewer` is `None` for a spectator (6.3) —
@@ -265,6 +313,7 @@ pub fn frame_for(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::session::{PublishedState, PublishedUpdate};
     use schema::{DeltaEnvelope, VisibleEvent};
 
     fn def(name: &str) -> engine::CardDef {
@@ -352,7 +401,14 @@ mod tests {
         seats[1].username = Some("bob".into());
         let yields = [true, false, false, false];
         let turn_yields = [false, true, false, false];
-        let extras = view_extras(&yields, &turn_yields, &seats, 900, &Default::default());
+        let extras = view_extras(
+            &yields,
+            &turn_yields,
+            &seats,
+            900,
+            &Default::default(),
+            &Default::default(),
+        );
 
         let StreamFrame::Delta(DeltaEnvelope { state, .. }) =
             frame_for(Some(PlayerId(0)), 1, &[], &game, vec![], &extras)
@@ -374,6 +430,127 @@ mod tests {
         };
         assert!(!p1.yielded);
         assert!(p1.turn_yielded, "viewer P1's turn yield comes from extras");
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn published_state_object_print_overrides_survive_snapshot_and_delta_projection() {
+        let mut game = Game::with_players(2, 7);
+        let object = game.spawn_on_battlefield(PlayerId(0), def("Llanowar Elves"));
+        let hidden = game.spawn_in_hand(PlayerId(0), def("Dark Ritual"));
+        let override_print = "exact-object-print";
+        let hidden_print = "hidden-exact-object-print";
+        let mut table = crate::Table::empty();
+        table
+            .debug
+            .object_prints
+            .insert(object, override_print.to_string());
+        assert_eq!(
+            table_view_extras(&table)
+                .object_print_overrides
+                .get(&object)
+                .map(String::as_str),
+            Some(override_print),
+            "an opening snapshot reads the table-owned exact-object map",
+        );
+        let published = |game: Game| PublishedState {
+            seq: 9,
+            broadcast_seq: 12,
+            game,
+            yields: [false; 4],
+            turn_yields: [false; 4],
+            stack_hold_remaining_ms: 0,
+            seats: std::array::from_fn(|_| Seat::default()),
+            prints: Default::default(),
+            object_print_overrides: std::collections::HashMap::from([
+                (object, override_print.to_string()),
+                (hidden, hidden_print.to_string()),
+            ]),
+        };
+
+        let updates = [
+            PublishedUpdate::Snapshot(published(game.clone())),
+            PublishedUpdate::Delta {
+                state: published(game),
+                events: vec![],
+                auto_actions: vec![],
+            },
+        ];
+        for update in &updates {
+            for viewer in [Some(PlayerId(0)), Some(PlayerId(1)), None] {
+                let state = match frame_for_update(viewer, update) {
+                    StreamFrame::Snapshot { state, .. }
+                    | StreamFrame::Delta(DeltaEnvelope { state, .. }) => state,
+                    StreamFrame::Heartbeat => panic!("publication never maps to a heartbeat"),
+                };
+                assert_eq!(
+                    state
+                        .objects
+                        .iter()
+                        .find(|view| view.id == object)
+                        .unwrap()
+                        .print,
+                    override_print,
+                );
+                if viewer == Some(PlayerId(0)) {
+                    assert_eq!(
+                        state
+                            .objects
+                            .iter()
+                            .find(|view| view.id == hidden)
+                            .unwrap()
+                            .print,
+                        hidden_print,
+                    );
+                } else {
+                    assert!(state.objects.iter().all(|view| view.id != hidden));
+                    assert!(state.objects.iter().all(|view| view.print != hidden_print));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn frame_for_update_maps_snapshot_without_delta_events() {
+        let mut game = Game::new();
+        let shock = def("Shock");
+        let shock_id = shock.id.to_string();
+        let hand_card = game.spawn_in_hand(PlayerId(0), shock);
+        let mut seats = std::array::from_fn(|_| Seat::default());
+        seats[0].username = Some("fresh-alice".into());
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(shock_id, "fresh-print".into());
+        let update = PublishedUpdate::Snapshot(PublishedState {
+            seq: 9,
+            broadcast_seq: 12,
+            game,
+            yields: [false; 4],
+            turn_yields: [false; 4],
+            stack_hold_remaining_ms: 0,
+            seats,
+            prints,
+            object_print_overrides: Default::default(),
+        });
+
+        for viewer in [Some(PlayerId(0)), Some(PlayerId(1)), None] {
+            let StreamFrame::Snapshot { seq, state, .. } = frame_for_update(viewer, &update) else {
+                panic!("an authoritative replacement is always a snapshot");
+            };
+            assert_eq!(seq, 9, "the snapshot carries the publication sequence");
+            assert_eq!(state.players[0].username, "fresh-alice");
+            assert_eq!(state.players[0].hand_count, 1);
+            let visible_hand = state.objects.iter().find(|object| object.id == hand_card);
+            if viewer == Some(PlayerId(0)) {
+                let visible_hand = visible_hand.expect("the owner sees their hand identity");
+                assert_eq!(visible_hand.name, "Shock");
+                assert_eq!(visible_hand.print, "fresh-print");
+            } else {
+                assert!(
+                    visible_hand.is_none(),
+                    "opponents and spectators see only the public hand count",
+                );
+            }
+        }
     }
 
     #[test]
@@ -516,6 +693,7 @@ mod tests {
             &std::array::from_fn(|_| Seat::default()),
             0,
             &prints,
+            &Default::default(),
         );
         let state = complete_visible(&game, Some(PlayerId(0)), &extras);
         let mut book = card_text_book(&prints[0]);
@@ -571,6 +749,7 @@ mod tests {
             &std::array::from_fn(|_| Seat::default()),
             0,
             &prints,
+            &Default::default(),
         );
         (game, extras)
     }

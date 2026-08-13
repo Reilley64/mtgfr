@@ -17,6 +17,9 @@ pub mod beacon;
 pub mod catalog_search;
 mod chrome;
 pub mod db;
+#[cfg(debug_assertions)]
+#[allow(dead_code)]
+pub(crate) mod debug;
 pub mod decks;
 pub mod decks_api;
 pub mod elo;

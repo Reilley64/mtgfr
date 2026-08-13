@@ -1,0 +1,36 @@
+{
+  "cards": [
+    {
+      "card_id": "53f7c868-b03e-4fc2-8dcf-a75bbfa3272b",
+      "printing_id": "11e12a84-e7be-4afc-a230-c2e644743fa8"
+    },
+    {
+      "card_id": "27e9db49-7af7-4bef-ad4c-bf5dfb92030d",
+      "printing_id": "ba0a14ac-037a-42f2-8fc9-2a41275dc7da"
+    },
+    {
+      "card_id": "d0209d3f-3f7e-4fd5-bce5-10bce6f29c86",
+      "printing_id": "ade7d00d-4e7b-46e9-ace1-63f628a589fc"
+    },
+    {
+      "card_id": "f671e3c3-cd59-4d06-a1af-5d04892cf74d",
+      "printing_id": "fc24f763-4c7f-45e4-933b-573d1ace1ddc"
+    },
+    {
+      "card_id": "7ffae8f8-3006-4969-a339-6d30678f87ea",
+      "printing_id": "1ed2b60b-5f20-4ae6-93fb-51540ad9c9e7"
+    },
+    {
+      "card_id": "6d42dff5-97ec-4768-b112-84a3584d0b87",
+      "printing_id": "92b8cffe-4466-48b0-836e-51ba5db36696"
+    }
+  ],
+  "ghost": {
+    "name": "Priority Demonstration",
+    "label": "Debug no-op stack entry",
+    "printing_id": "91fdb56b-54d5-4272-8319-505ff987fe9b",
+    "printed_sentences": [
+      "This debug stack entry resolves without an effect."
+    ]
+  }
+}

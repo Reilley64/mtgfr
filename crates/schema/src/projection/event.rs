@@ -920,7 +920,10 @@ pub(crate) fn project_event(
             source,
         } => VisibleEvent::LifeChanged {
             player: player.0,
-            amount,
+            // Engine events retain the exact i64 logical delta so endpoint-spanning changes stay
+            // one replacement/trigger operation. The existing wire contract is i32; project the
+            // direction and largest representable magnitude while snapshots carry the exact life.
+            amount: amount.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32,
             source,
         },
         Event::DrewFromEmptyLibrary { player } => {

@@ -98,7 +98,9 @@ impl Game {
                 let lethal = if deathtouch {
                     1
                 } else {
-                    (self.toughness(recipient) - self.permanent(recipient).marked_damage).max(0)
+                    self.toughness(recipient)
+                        .saturating_sub(self.permanent(recipient).marked_damage)
+                        .max(0)
                 };
                 amount > 0 && amount < lethal
             })

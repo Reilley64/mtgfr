@@ -838,13 +838,13 @@ impl Game {
         let mut events = Vec::new();
         // "For each of those cards, pay 4 life or put the card on top of your library": every
         // card of the `count` that didn't go back is paid for instead.
-        let declined = (count - cards.len()) as u32 * life_per_declined;
+        let declined = (count - cards.len()) as u64 * u64::from(life_per_declined);
         if declined > 0 {
             self.push_apply(
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(declined as i32),
+                    amount: -i64::try_from(declined).unwrap_or(i64::MAX),
                     source: None,
                 },
             );

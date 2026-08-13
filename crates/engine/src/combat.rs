@@ -454,7 +454,7 @@ impl Game {
     /// Test/setup helper: goad `creature` on behalf of `by` (routed through an event so state
     /// stays mutated only by [`Game::apply`]).
     pub fn goad(&mut self, creature: ObjectId, by: PlayerId) {
-        self.apply(&Event::Goaded {
+        self.apply_recorded(&Event::Goaded {
             object: creature,
             by,
             source_name: "Goad",
@@ -545,18 +545,18 @@ impl Game {
     pub fn tap(&mut self, object: ObjectId) {
         let mut events = Vec::new();
         self.flip_masked(object, &mut events);
-        self.apply(&Event::Tapped { object });
+        self.apply_recorded(&Event::Tapped { object });
     }
 
     /// Test/setup helper: untap `object` (the [`Self::tap`] twin) — for a permanent that entered
     /// tapped (`enters_tapped`) but a test needs to activate its `{T}` ability right away.
     pub fn untap(&mut self, object: ObjectId) {
-        self.apply(&Event::Untapped { object });
+        self.apply_recorded(&Event::Untapped { object });
     }
 
     /// Test/setup helper: remove one counter of `kind` from `object` (routed through an event).
     pub fn remove_counter(&mut self, object: ObjectId, kind: CounterKind) {
-        self.apply(&Event::KindCountersPlaced {
+        self.apply_recorded(&Event::KindCountersPlaced {
             object,
             kind,
             count: -1,
@@ -1980,7 +1980,9 @@ impl Game {
                     let lethal = if deathtouch {
                         1
                     } else {
-                        (self.toughness(blocker) - self.permanent(blocker).marked_damage).max(1)
+                        self.toughness(blocker)
+                            .saturating_sub(self.permanent(blocker).marked_damage)
+                            .max(1)
                     };
                     let assign = remaining.min(lethal);
                     remaining -= assign;
@@ -2392,7 +2394,7 @@ impl Game {
             events,
             Event::LifeChanged {
                 player,
-                amount: self.life_gain_after_replacements(player, amount),
+                amount: self.life_gain_after_replacements(player, i64::from(amount)),
                 source: Some(source),
             },
         );

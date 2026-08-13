@@ -42,6 +42,41 @@ server-run: server-build-prod
     cargo run -p server --release -- serve
 
 [group('server')]
+[doc("List tables through the debug-only authoritative API")]
+debug-tables endpoint='':
+    endpoint={{quote(endpoint)}}; if [[ -n "$endpoint" ]]; then cargo run -p server --bin mtgfr-debug -- tables --endpoint "$endpoint"; else cargo run -p server --bin mtgfr-debug -- tables; fi
+
+[group('server')]
+[doc("Inspect one authoritative debug table")]
+debug-inspect table out='' endpoint='':
+    table={{quote(table)}}; out={{quote(out)}}; endpoint={{quote(endpoint)}}; args=(inspect "$table"); [[ -z "$out" ]] || args+=(--out "$out"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
+
+[group('server')]
+[doc("Apply one protobuf-JSON debug mutation batch")]
+debug-mutate request out='' endpoint='' expected_table_seq='':
+    request={{quote(request)}}; out={{quote(out)}}; endpoint={{quote(endpoint)}}; expected_table_seq={{quote(expected_table_seq)}}; args=(mutate "$request"); [[ -z "$out" ]] || args+=(--out "$out"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); [[ -z "$expected_table_seq" ]] || args+=(--expected-table-seq "$expected_table_seq"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
+
+[group('server')]
+[doc("Save an authoritative debug-table checkpoint")]
+debug-checkpoint table name replace='' expected_table_seq='' out='' endpoint='':
+    table={{quote(table)}}; name={{quote(name)}}; replace={{quote(replace)}}; expected_table_seq={{quote(expected_table_seq)}}; out={{quote(out)}}; endpoint={{quote(endpoint)}}; args=(checkpoint "$table" "$name"); [[ -z "$replace" ]] || args+=(--replace); [[ -z "$expected_table_seq" ]] || args+=(--expected-table-seq "$expected_table_seq"); [[ -z "$out" ]] || args+=(--out "$out"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
+
+[group('server')]
+[doc("Restore an authoritative debug-table checkpoint")]
+debug-restore table name expected_debug_revision='' expected_table_seq='' out='' endpoint='':
+    table={{quote(table)}}; name={{quote(name)}}; expected_debug_revision={{quote(expected_debug_revision)}}; expected_table_seq={{quote(expected_table_seq)}}; out={{quote(out)}}; endpoint={{quote(endpoint)}}; args=(restore "$table" "$name"); [[ -z "$expected_debug_revision" ]] || args+=(--expected-debug-revision "$expected_debug_revision"); [[ -z "$expected_table_seq" ]] || args+=(--expected-table-seq "$expected_table_seq"); [[ -z "$out" ]] || args+=(--out "$out"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
+
+[group('server')]
+[doc("Install the checked seven-entry authoritative stack fixture")]
+debug-stack-seven table endpoint='':
+    table={{quote(table)}}; endpoint={{quote(endpoint)}}; args=(stack-fixture "$table"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
+
+[group('server')]
+[doc("Read an authoritative debug-table journal")]
+debug-journal table out='' endpoint='':
+    table={{quote(table)}}; out={{quote(out)}}; endpoint={{quote(endpoint)}}; args=(journal "$table"); [[ -z "$out" ]] || args+=(--out "$out"); [[ -z "$endpoint" ]] || args+=(--endpoint "$endpoint"); cargo run -p server --bin mtgfr-debug -- "${args[@]}"
+
+[group('server')]
 [doc("Regenerate Effect-gRPC clients from proto into gitignored client/lib/wire/generated (ADR 0032)")]
 server-codegen:
     cd client && bun run gen
@@ -61,8 +96,24 @@ proto-breaking:
     cd client && PATH="$PWD/node_modules/.bin:$PATH" bunx --bun buf breaking --against '../.git#branch=origin/main,subdir=proto' ../proto
 
 [group('server')]
-[doc("proto-lint + proto-breaking")]
-proto-check: proto-lint proto-breaking
+[doc("Fail if debug protobuf artifacts appear in browser wire generation")]
+debug-ts-exclusion:
+    ./scripts/check_debug_ts_exclusion.sh
+
+[group('server')]
+[doc("Check debug CLI just recipes preserve arguments without shell evaluation")]
+debug-cli-check:
+    ./scripts/test_debug_just_recipes.sh
+    ./scripts/test_debug_shell_gates.sh
+
+[group('server')]
+[doc("Build debug and release servers and prove the release omits the debug API")]
+debug-release-isolation:
+    ./scripts/check_debug_release_absence.sh
+
+[group('server')]
+[doc("proto-lint + proto-breaking + debug client and CLI checks")]
+proto-check: proto-lint proto-breaking debug-ts-exclusion debug-cli-check
 
 # ── Docs / OpenSpec ───────────────────────────────────────────────────────────────────
 

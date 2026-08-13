@@ -87,8 +87,6 @@ impl pb::game_service_server::GameService for GameSvc {
             snapshot_seq,
             snapshot,
             viewer,
-            seats,
-            prints,
             card_text,
             snapshot_broadcast_seq,
         } = stream::subscribe(&self.state, &table_id, user.id)
@@ -111,24 +109,10 @@ impl pb::game_service_server::GameService for GameSvc {
                 tokio::select! {
                     msg = rx.recv() => {
                         let Ok(msg) = msg else { break };
-                        if !stream::should_deliver(msg.broadcast_seq, snapshot_broadcast_seq) {
+                        if !stream::should_deliver(msg.broadcast_seq(), snapshot_broadcast_seq) {
                             continue;
                         }
-                        let extras = stream::view_extras(
-                            &msg.yields,
-                            &msg.turn_yields,
-                            &seats,
-                            msg.stack_hold_remaining_ms,
-                            &prints,
-                        );
-                        let mut frame = stream::frame_for(
-                            viewer,
-                            msg.seq,
-                            &msg.events,
-                            &msg.game,
-                            msg.auto_actions.clone(),
-                            &extras,
-                        );
+                        let mut frame = stream::frame_for_update(viewer, &msg);
                         stream::retain_new_card_text(&mut frame, &mut known_card_text);
                         yield Ok(map::stream_frame_to_pb(frame));
                     }

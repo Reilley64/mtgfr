@@ -384,6 +384,7 @@ describe("sceneShapes", () => {
       stack: [
         {
           controller: 0,
+          entry_id: 1n,
           kind: "spell",
           label: testMessageRef("Lightning Bolt"),
           source: 9,

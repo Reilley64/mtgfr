@@ -460,6 +460,7 @@ describe("paintBitmapLayer", () => {
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "spell",
             label: testMessageRef("Lightning Bolt"),
             source: 9,
@@ -1518,7 +1519,7 @@ describe("flight clock helpers", () => {
       frame({
         cards: [],
         flights: [held],
-        stack: [{ controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 91 }],
+        stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 91 }],
       }),
     );
 
@@ -1547,7 +1548,7 @@ describe("flight clock helpers", () => {
       frame({
         cards: [],
         flights: [held],
-        stack: [{ controller: 0, kind: "ability", label: testMessageRef("Bolt trigger"), source: 91 }],
+        stack: [{ entry_id: 1n, controller: 0, kind: "ability", label: testMessageRef("Bolt trigger"), source: 91 }],
       }),
     );
 

@@ -4,6 +4,8 @@
 pub mod auth_ctx;
 mod auth_svc;
 mod cards_svc;
+#[cfg(debug_assertions)]
+mod debug_svc;
 mod decks_svc;
 mod game_svc;
 pub(crate) mod map;
@@ -18,22 +20,55 @@ pub mod pb {
     tonic::include_proto!("mtgfr.v1");
 }
 
+/// Generated debug-only types, clients, service traits, and protobuf-JSON mappings.
+#[cfg(debug_assertions)]
+#[allow(clippy::useless_borrows_in_formatting)]
+pub mod debug_pb {
+    tonic::include_proto!("mtgfr.debug.v1");
+    include!(concat!(env!("OUT_DIR"), "/mtgfr.debug.v1.serde.rs"));
+}
+
 use std::future::Future;
 use std::net::SocketAddr;
 
+use tokio::net::TcpListener;
+use tokio_stream::wrappers::TcpListenerStream;
 use tonic::transport::Server;
 
 use crate::AppState;
 
 use self::trace::TraceLayer;
 
-/// Build and serve every gRPC service on `addr`, sharing `state` with the Axum app. Runs until
+/// Bind `addr` and serve every gRPC service, sharing `state` with the Axum app. Runs until
 /// `shutdown` resolves (SIGTERM/Ctrl-C — see `main.rs::await_shutdown_signal`).
 pub async fn serve(
     addr: SocketAddr,
     state: AppState,
     shutdown: impl Future<Output = ()> + Send + 'static,
-) -> Result<(), tonic::transport::Error> {
+) -> anyhow::Result<()> {
+    let listener = TcpListener::bind(addr).await?;
+    serve_with_listener(listener, state, shutdown).await
+}
+
+/// Serve every gRPC service from an already-bound listener.
+///
+/// Keeping ownership of the listener across startup lets callers bind port zero without a
+/// drop-and-rebind race.
+pub async fn serve_with_listener(
+    listener: TcpListener,
+    state: AppState,
+    shutdown: impl Future<Output = ()> + Send + 'static,
+) -> anyhow::Result<()> {
+    let router = production_router(&state);
+    serve_router(router, listener, state, shutdown).await?;
+    Ok(())
+}
+
+type ProductionRouter = tonic::transport::server::Router<
+    tower::layer::util::Stack<TraceLayer, tower::layer::util::Identity>,
+>;
+
+fn production_router(state: &AppState) -> ProductionRouter {
     Server::builder()
         .layer(TraceLayer)
         .add_service(pb::auth_service_server::AuthServiceServer::new(
@@ -52,8 +87,33 @@ pub async fn serve(
             game_svc::GameSvc::new(state.clone()),
         ))
         .add_service(pb::tables_service_server::TablesServiceServer::new(
-            tables_svc::TablesSvc::new(state),
+            tables_svc::TablesSvc::new(state.clone()),
         ))
-        .serve_with_shutdown(addr, shutdown)
+}
+
+#[cfg(debug_assertions)]
+async fn serve_router(
+    router: ProductionRouter,
+    listener: TcpListener,
+    state: AppState,
+    shutdown: impl Future<Output = ()> + Send + 'static,
+) -> Result<(), tonic::transport::Error> {
+    router
+        .add_service(debug_pb::debug_service_server::DebugServiceServer::new(
+            debug_svc::DebugSvc::new(state),
+        ))
+        .serve_with_incoming_shutdown(TcpListenerStream::new(listener), shutdown)
+        .await
+}
+
+#[cfg(not(debug_assertions))]
+async fn serve_router(
+    router: ProductionRouter,
+    listener: TcpListener,
+    _state: AppState,
+    shutdown: impl Future<Output = ()> + Send + 'static,
+) -> Result<(), tonic::transport::Error> {
+    router
+        .serve_with_incoming_shutdown(TcpListenerStream::new(listener), shutdown)
         .await
 }

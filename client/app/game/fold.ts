@@ -21,7 +21,7 @@ export type FoldProvenance = {
   landPlayFrom: Map<number, number>;
   zonePileEntrances: Map<number, ZonePileEntrance>;
   stackEntrances: Map<number, { controller: number; from: number }>;
-  priorStackObjectIds: Set<number>;
+  priorStackEntryIds: Set<bigint>;
 };
 
 /** One-shot table-feel flags from the most recent delta (one cue per kind per delta). */
@@ -53,7 +53,7 @@ function emptyProvenance(): FoldProvenance {
     landPlayFrom: new Map(),
     zonePileEntrances: new Map(),
     stackEntrances: new Map(),
-    priorStackObjectIds: new Set(),
+    priorStackEntryIds: new Set(),
   };
 }
 
@@ -122,11 +122,14 @@ export function applyDeltaPure(prev: GameFoldState, delta: DeltaEnvelope): GameF
     auto: true,
   }));
   const lines = [...eventLines, ...autoLines];
-  const priorStackObjectIds = new Set(prev.state?.stack.map((stackObject) => stackObject.source) ?? []);
+  const priorStackEntryIds = new Set(prev.state?.stack.map((stackObject) => stackObject.entry_id) ?? []);
+  const priorStackSourceIds = new Set(
+    prev.state?.stack.flatMap((stackObject) => (stackObject.source == null ? [] : [stackObject.source])) ?? [],
+  );
   const priorBattlefieldIds = new Set(
     (prev.state?.objects ?? []).filter((object) => object.zone === 2 /* Battlefield */).map((object) => object.id),
   );
-  const provenance = extractProvenance(delta.events, priorStackObjectIds, prev.state?.viewer ?? 0, priorBattlefieldIds);
+  const provenance = extractProvenance(delta.events, priorStackSourceIds, prev.state?.viewer ?? 0, priorBattlefieldIds);
 
   return {
     ...prev,
@@ -142,7 +145,7 @@ export function applyDeltaPure(prev: GameFoldState, delta: DeltaEnvelope): GameF
       landPlayFrom: provenance.landPlays,
       zonePileEntrances: provenance.zonePileEntrances,
       stackEntrances: provenance.stackEntrances,
-      priorStackObjectIds,
+      priorStackEntryIds,
     },
     tableFeel: {
       land: provenance.landPlays.size > 0,

@@ -298,7 +298,7 @@ describe("pendingTargetingOverlay", () => {
     const bolt = object({ id: 42, zone: ZONE.Stack, name: "Bolt", print: "bolt-print" });
     const bear = object({ id: 7 });
     const game = state([bolt, bear]);
-    game.stack = [{ controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 42 }];
+    game.stack = [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 42 }];
     game.pending_choice = {
       kind: "choose_target",
       label: testMessageRef("Bolt"),
@@ -354,7 +354,7 @@ describe("pendingTargetingOverlay", () => {
     });
     const infected = object({ id: 7, plus_counters: 1 });
     const game = state([atomize, infected]);
-    game.stack = [{ controller: 0, kind: "spell", label: testMessageRef("Atomize"), source: 42 }];
+    game.stack = [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Atomize"), source: 42 }];
     game.pending_choice = {
       kind: "proliferate",
       player: 0,
@@ -374,7 +374,7 @@ describe("pendingTargetingOverlay", () => {
     const veyran = object({ id: 3, name: "Veyran, Voice of Duality", print: "veyran-print" });
     const bear = object({ id: 7 });
     const game = state([veyran, bear]);
-    game.stack = [{ controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: 3 }];
+    game.stack = [{ entry_id: 1n, controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: 3 }];
     game.pending_choice = {
       kind: "choose_target",
       label: testMessageRef("Target creature gets +1/+1"),

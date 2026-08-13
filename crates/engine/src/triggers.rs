@@ -4830,7 +4830,7 @@ impl Game {
             }
             Condition::AnOpponentHasLifeAtMost { at_most } => self
                 .living_players()
-                .any(|p| p != ctx.controller && self.life(p) <= at_most as i32),
+                .any(|p| p != ctx.controller && i64::from(self.life(p)) <= i64::from(at_most)),
             // Corrupted (CR 702.165): "an opponent has three or more poison counters" — an
             // existential over living opponents, same shape as the life check above.
             Condition::AnOpponentHasPoisonAtLeast { at_least } => self.living_players().any(|p| {
@@ -5973,10 +5973,10 @@ impl Game {
     /// [`push_ability_group`](Self::push_ability_group) threading a chosen `{X}` (CR 107.3) onto
     /// each ability — for an activated ability whose cost contains `{X}`, or a CR 707.10c copy of
     /// one, whose `Amount::X` reads that value at resolution — plus the multiset of mana actually
-    /// spent activating it (`spent_mana`, [`StackItem::Ability::spent_mana`] — Illusionary Mask's
+    /// spent activating it (`spent_mana`, [`StackPayload::Ability::spent_mana`] — Illusionary Mask's
     /// CR 107.3 payability test; all zeroes except a real activation payment). `activated` marks
     /// the placed item as an activated (vs triggered) ability — see
-    /// [`StackItem::Ability::activated`].
+    /// [`StackPayload::Ability::activated`].
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn push_ability_group_with_x(
         &mut self,

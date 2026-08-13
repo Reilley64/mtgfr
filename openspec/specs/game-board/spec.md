@@ -219,6 +219,17 @@ Resolved target captions SHALL list every destination below the stack card. Gene
 - **WHEN** a sacrificed land's ability remains on the stack after the source leaves the visible object list
 - **THEN** the stack face still draws with the land frame and the source's last-known renderer characteristics
 
+
+Each authoritative stack face SHALL use the lossless domain `bigint` `entry_id`, revived from the BFF SSE canonical `uint64` decimal-string representation, as its DOM identity while preserving bottom-to-top projection order; entries that share a source SHALL remain distinct. Faces SHALL accept an optional source: source-backed entries MAY use their visible object metadata, while a source-less entry SHALL render only its explicit public name, formatted label, printing, and printed sentences. An optional public `card_id` on a source-less entry SHALL remain wire metadata and MUST NOT be forwarded to catalog inspect, object lookup, card-default or deck-preference inference, or rendered as inspect identity; source-less entries likewise SHALL NOT use printing-overlay inference. Every face SHALL expose a stable accessible name combining its deduplicated explicit name, formatted label, and printed sentences independently of card-face Mount readiness. Source-less entries SHALL produce no target arrows or object-target controls.
+
+#### Scenario: Seven-entry horizontal fan includes a source-less face
+- **WHEN** six source-backed entries and one source-less public entry arrive in one production visible state
+- **THEN** the newest four ordinary `stack-face-*` nodes render in the compact horizontal fan, explicit expansion reveals all seven bottom-to-top, and collapse preserves their entry identities and explicit public metadata
+
+#### Scenario: Same-source abilities stay distinct
+- **WHEN** two abilities have the same source but different `entry_id` values, including values above JavaScript's safe integer range
+- **THEN** both faces remain distinct and no bigint-to-number conversion merges their DOM identity, repaint fingerprint, or provenance identity
+
 #### Scenario: Multi-target caption
 - **WHEN** a stack object has multiple resolved targets
 - **THEN** the caption lists all labels joined with `, ` after ` → `

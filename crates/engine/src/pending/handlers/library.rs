@@ -51,8 +51,7 @@ impl Game {
                     card: base + i as u32,
                     from,
                 };
-                self.apply(&event);
-                events.push(event);
+                self.push_apply(&mut events, event);
             }
         }
 
@@ -799,8 +798,8 @@ impl Game {
         match milled {
             // Dredge: mill exactly N, then return the dredger to hand instead of drawing.
             Some((id, n)) => {
-                let mill = self.mill_events(player, n as u32);
-                self.apply_all(&mill);
+                let mut mill = self.mill_events(player, n as u32);
+                self.apply_all_recorded(&mut mill);
                 events.extend(mill);
                 let returned = Event::ReturnedToHand {
                     card: self.next_object_id(),
@@ -810,8 +809,8 @@ impl Game {
             }
             // Declined: the normal single draw happens.
             None => {
-                let drawn = self.draw_events(player, 1);
-                self.apply_all(&drawn);
+                let mut drawn = self.draw_events(player, 1);
+                self.apply_all_recorded(&mut drawn);
                 events.extend(drawn);
             }
         }

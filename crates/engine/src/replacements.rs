@@ -448,8 +448,8 @@ impl ReplacementRegistry {
             CounterRecipient::Permanent(id) => (game.controller_of(id), Some(id)),
             CounterRecipient::Player(player) => (player, None),
         };
-        let mut add = 0;
-        let mut times = 1;
+        let mut add = 0_i128;
+        let mut times = 1_i128;
         let mut halvings = 0u32;
         for effect in &self.effects {
             let ReplacementEffect::CounterReplacement {
@@ -498,15 +498,15 @@ impl ReplacementRegistry {
             {
                 continue;
             }
-            add += *next_add;
-            times *= *next_times;
+            add = add.saturating_add(i128::from(*next_add));
+            times = times.saturating_mul(i128::from(*next_times));
             halvings += u32::from(*halve);
         }
-        let mut n = (base + add) * times;
+        let mut n = i128::from(base).saturating_add(add).saturating_mul(times);
         for _ in 0..halvings {
             n /= 2;
         }
-        n
+        n.clamp(i128::from(i32::MIN), i128::from(i32::MAX)) as i32
     }
 
     pub(crate) fn additional_enter_counters(
@@ -515,7 +515,7 @@ impl ReplacementRegistry {
         entered: ObjectId,
         controller: PlayerId,
     ) -> i32 {
-        let mut total = 0;
+        let mut total = 0_i64;
         for effect in &self.effects {
             let ReplacementEffect::CreaturesYouControlEnterWithCounters {
                 source,
@@ -532,9 +532,9 @@ impl ReplacementRegistry {
             if !game.permanent_matches(filter, entered, controller, Some(*source)) {
                 continue;
             }
-            total += game.resolve_count(*count, controller, *source, None, 0) as i32;
+            total += i64::from(game.resolve_count(*count, controller, *source, None, 0));
         }
-        total
+        total.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32
     }
 
     pub(crate) fn token_replaced_amount(&self, recipient: PlayerId, base: u32) -> u32 {
@@ -554,21 +554,18 @@ impl ReplacementRegistry {
         base * product
     }
 
-    pub(crate) fn life_gain_replaced_amount(&self, recipient: PlayerId, base: i32) -> i32 {
+    pub(crate) fn life_gain_replaced_amount(&self, recipient: PlayerId, base: i64) -> i64 {
         if base <= 0 {
             return base;
         }
-        let mut total = 0;
-        for effect in &self.effects {
+        let addends = self.effects.iter().filter_map(|effect| {
             let ReplacementEffect::LifeGainReplacement { controller, plus } = effect else {
-                continue;
+                return None;
             };
-            if *controller != recipient {
-                continue;
-            }
-            total += *plus;
-        }
-        base + total
+            (*controller == recipient).then_some(i128::from(*plus))
+        });
+        let total = addends.fold(i128::from(base), |sum, plus| sum + plus);
+        total.clamp(i128::from(i32::MIN), i128::from(u32::MAX)) as i64
     }
 }
 
@@ -587,7 +584,8 @@ impl Game {
             && amount > 0
             && self.life_gain_becomes_draw(player)
         {
-            self.draw_with_replacements(vec![(player, amount as u32)], DrawAfter::Nothing, events);
+            let draws = amount.clamp(0, i64::from(u32::MAX)) as u32;
+            self.draw_with_replacements(vec![(player, draws)], DrawAfter::Nothing, events);
             return;
         }
         let entry = match &event {
@@ -655,5 +653,132 @@ impl Game {
                 source_name: printed.name,
             },
         );
+    }
+}
+
+#[cfg(test)]
+mod endpoint_tests {
+    use super::*;
+
+    #[test]
+    fn cancelling_extreme_counter_addends_are_order_independent() {
+        let recipient = PlayerId(0);
+        let mut game = Game::with_players(2, 0);
+        let object = game.spawn_on_battlefield(
+            recipient,
+            cards::get_by_name("Grizzly Bears").expect("fixture card"),
+        );
+        let registry = |addends: &[i32]| ReplacementRegistry {
+            effects: addends
+                .iter()
+                .map(|&add| ReplacementEffect::CounterReplacement {
+                    source: object,
+                    controller: recipient,
+                    add,
+                    times: 1,
+                    halve: false,
+                    other: false,
+                    any_kind: true,
+                    placer: None,
+                    recipients: CounterRecipients::Permanents,
+                    filter: None,
+                })
+                .collect(),
+        };
+        let first = registry(&[i32::MAX, 1, -i32::MAX]);
+        let second = registry(&[-i32::MAX, i32::MAX, 1]);
+
+        assert_eq!(
+            first.counter_replaced_amount(
+                &game,
+                recipient,
+                CounterRecipient::Permanent(object),
+                true,
+                10,
+            ),
+            11
+        );
+        assert_eq!(
+            second.counter_replaced_amount(
+                &game,
+                recipient,
+                CounterRecipient::Permanent(object),
+                true,
+                10,
+            ),
+            11
+        );
+    }
+
+    #[test]
+    fn many_counter_doublers_clamp_without_overflowing() {
+        let recipient = PlayerId(0);
+        let mut game = Game::with_players(2, 0);
+        let object = game.spawn_on_battlefield(
+            recipient,
+            cards::get_by_name("Grizzly Bears").expect("fixture card"),
+        );
+        let registry = ReplacementRegistry {
+            effects: (0..100)
+                .map(|_| ReplacementEffect::CounterReplacement {
+                    source: object,
+                    controller: recipient,
+                    add: 0,
+                    times: 2,
+                    halve: false,
+                    other: false,
+                    any_kind: true,
+                    placer: None,
+                    recipients: CounterRecipients::Permanents,
+                    filter: None,
+                })
+                .collect(),
+        };
+
+        assert_eq!(
+            registry.counter_replaced_amount(
+                &game,
+                recipient,
+                CounterRecipient::Permanent(object),
+                true,
+                1,
+            ),
+            i32::MAX
+        );
+    }
+
+    #[test]
+    fn wide_life_gain_replacement_clamps_without_overflowing() {
+        let recipient = PlayerId(0);
+        let registry = ReplacementRegistry {
+            effects: vec![ReplacementEffect::LifeGainReplacement {
+                controller: recipient,
+                plus: 1,
+            }],
+        };
+
+        assert_eq!(
+            registry.life_gain_replaced_amount(recipient, i64::MAX),
+            i64::from(u32::MAX)
+        );
+    }
+
+    #[test]
+    fn cancelling_extreme_life_gain_addends_are_order_independent() {
+        let recipient = PlayerId(0);
+        let effects = |pluses: &[i32]| ReplacementRegistry {
+            effects: pluses
+                .iter()
+                .map(|&plus| ReplacementEffect::LifeGainReplacement {
+                    controller: recipient,
+                    plus,
+                })
+                .collect(),
+        };
+        let first = effects(&[i32::MAX, 1, -i32::MAX]);
+        let second = effects(&[-i32::MAX, i32::MAX, 1]);
+
+        assert_eq!(first.life_gain_replaced_amount(recipient, 10), 11);
+        assert_eq!(second.life_gain_replaced_amount(recipient, 10), 11);
     }
 }

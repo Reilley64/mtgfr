@@ -103,7 +103,7 @@ impl Game {
         {
             events.push(Event::LifeChanged {
                 player,
-                amount: life_gained,
+                amount: i64::from(life_gained),
                 source: Some(source),
             });
         }
@@ -393,7 +393,7 @@ impl Game {
         if !self.has_keyword(source, Keyword::Infect) {
             events.push(Event::LifeChanged {
                 player,
-                amount: -amount,
+                amount: -i64::from(amount),
                 source: Some(source),
             });
             return (events, amount);
@@ -503,7 +503,7 @@ impl Game {
         }
         Some(Event::LifeChanged {
             player: controller,
-            amount: self.life_gain_after_replacements(controller, gain),
+            amount: self.life_gain_after_replacements(controller, i64::from(gain)),
             source: Some(source),
         })
     }
@@ -774,7 +774,7 @@ impl Game {
         else {
             unreachable!("resolve_deal_damage_to_entering received a non-family effect")
         };
-        let evs = self.execute_effect(Effect::Damage(effect), controller, source, target, x);
+        let mut evs = self.execute_effect(Effect::Damage(effect), controller, source, target, x);
         // Either form of dealt damage counts (CR 119.3): an infect source's hit lands as -1/-1
         // counters rather than marked damage (CR 702.90b), and still satisfies "is dealt damage".
         let damage_landed = evs.iter().any(|e| {
@@ -787,7 +787,7 @@ impl Game {
                     }
             )
         });
-        self.apply_all(&evs);
+        self.apply_all_recorded(&mut evs);
         events.extend(evs);
         if !damage_landed {
             return;
@@ -815,7 +815,7 @@ impl Game {
         let player = self.controller_of(source);
         Some(Event::LifeChanged {
             player,
-            amount: self.life_gain_after_replacements(player, amount),
+            amount: self.life_gain_after_replacements(player, i64::from(amount)),
             source: Some(source),
         })
     }

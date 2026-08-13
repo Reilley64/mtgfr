@@ -26,8 +26,22 @@ The contract SHALL expose Buf STANDARD `*Service` service names for authenticati
 - **WHEN** an unauthenticated caller submits a game intent
 - **THEN** the request is rejected
 
+### Requirement: The debug protobuf package remains outside production wire surfaces
+
+The debug-only `mtgfr.debug.v1` package SHALL have separate generated Rust bindings and a separate descriptor; those bindings SHALL be linked and exposed only when debug assertions are enabled. The package SHALL NOT be included in the production descriptor or browser-generated clients. Its additive `DebugService` contract SHALL contain exactly six development RPCs (`ListTables`, `InspectTable`, `MutateTable`, `CheckpointTable`, `RestoreCheckpoint`, and `GetDebugJournal`) and the typed mutation union SHALL contain exactly fifteen arms: the original arms one through eleven retain their values, coherent pending-orchestration clearing remains arm eleven, and `ReplaceStack`, `PushStack`, `PopStack`, and `SetObjectPrintOverride` are arms twelve, thirteen, fourteen, and fifteen respectively. Stack inspection SHALL append stable entry identity, authoritative targets, and optional public-ghost metadata, and the original typed error reasons zero through seventeen SHALL retain their values while unsupported-stack-construction is appended at value eighteen. The service SHALL remain a direct development gRPC surface rather than weakening authentication on ordinary game, deck, rating, or seed services or adding a browser or BFF route.
+
+#### Scenario: Browser generation excludes the expanded debug package
+
+- **WHEN** browser bindings are regenerated after the checkpoint, restore, journal, and clear-pending symbols are added to the separate debug proto input
+- **THEN** no generated browser path or symbol contains `mtgfr.debug.v1`, `DebugService`, or any of those debug-only messages and methods
+
+#### Scenario: Production descriptor excludes the debug package
+
+- **WHEN** the release server descriptor is generated
+- **THEN** it contains the ordinary production services and no debug package or service
+
 ### Requirement: Browser reaches the API through a same-origin backend
-Browsers SHALL speak a same-origin RPC surface to the web backend. The backend SHALL terminate the session cookie and forward the resolved session token as gRPC metadata to the API. The live game stream SHALL be a server-streaming RPC on the API, bridged by the backend to a browser-safe server-push channel. Health probes MAY live on a separate HTTP port from gRPC. Native WebSocket is not part of the protocol.
+Browsers SHALL speak a same-origin RPC surface to the web backend. The backend SHALL terminate the session cookie and forward the resolved session token as gRPC metadata to the API. The live game stream SHALL be a server-streaming RPC on the API, bridged by the backend to a browser-safe server-push channel. At that JSON/SSE boundary, the backend SHALL encode any bigint as its exact decimal string rather than narrow it to a JavaScript number; the browser SHALL revive only production `state.stack[*].entry_id` canonical `uint64` decimal strings (`0` through `18446744073709551615`) to the domain `bigint` shape, leaving decimal-looking strings elsewhere unchanged. Malformed JSON, unknown frame variants, structurally invalid frame envelopes, and non-canonical or out-of-range stack entry IDs SHALL fail through a typed stream parse error without echoing the rejected payload or identifier, and the live-game subscriber SHALL handle that failure through its ordinary reconnect path rather than as a defect. Health probes MAY live on a separate HTTP port from gRPC. Native WebSocket is not part of the protocol.
 
 #### Scenario: Session cookie never leaves the backend
 - **WHEN** the backend dials the API for an authenticated call
@@ -36,6 +50,10 @@ Browsers SHALL speak a same-origin RPC surface to the web backend. The backend S
 #### Scenario: Stream connect failure before first event
 - **WHEN** the backend cannot establish the game stream
 - **THEN** the failure is observable as an HTTP-shaped error before any stream event is delivered
+
+#### Scenario: Invalid decimal stack identity reconnects through the typed stream path
+- **WHEN** an SSE frame contains a non-canonical or out-of-range decimal `state.stack[*].entry_id`
+- **THEN** parsing returns the sanitized typed stream error without echoing the identifier, and the subscriber enters its ordinary reconnect path rather than narrowing or accepting the value
 
 ### Requirement: Per-viewer redaction happens before bytes leave the API
 The rules engine SHALL emit full-information events and game state and remain audience-unaware. A projection layer SHALL map those to a per-viewer visible state and visible events, stripping or blanking facts the viewer must not see, before any response leaves the API process. Spectators and eliminated or non-seated observers SHALL receive the public projection (viewer sentinel 255): public zones and counts only — no hand or library identities.
@@ -71,12 +89,54 @@ Each viewer's visible state SHALL carry turn structure, per-seat public player v
 - **WHEN** an attacker became blocked and its blockers later leave combat
 - **THEN** the combat view still lists that attacker among blocked attackers for the rest of combat
 
-### Requirement: Stream opens with snapshot then self-sufficient deltas
-A connecting client SHALL receive an initial snapshot frame at the current sequence number, then delta frames and heartbeats. Each delta SHALL carry a monotonic sequence watermark, a batch of already-redacted visible events, the viewer's complete visible state after those events, and optional auto-action notices for forced or automatic submissions in the frame. Clients SHALL fold by replacing the board from state and appending events to the log without a mid-stream snapshot refetch. On reconnect after a sequence gap, the client SHALL open a new stream and treat the opening snapshot as resume. Heartbeat frames SHALL exist to prevent edge-proxy idle timeouts and MUST be forwarded on the browser-facing push channel.
+### Requirement: Stack views preserve identity and optional source presence
+
+`StackObjectView` SHALL retain `source` as presence-aware optional field tag 2, SHALL carry the stable engine-owned `uint64 entry_id` at tag 11 without narrowing or lossy conversion, and SHALL carry explicit public `printed_sentences` at repeated string tag 12. An ordinary spell or ability SHALL project `source` as present with its stack object or ability source id. A source-independent public ghost SHALL project `source` as absent, with no target or targets, and SHALL carry only its explicit public renderer metadata. The production stack projection shape SHALL support both forms even though only a debug-assertion-only engine constructor can create the ghost. Browser mapping SHALL preserve this `entry_id` as `bigint` while retaining the established numeric mapping for other production IDs. This additive production message shape SHALL NOT expose the debug protobuf package, add a browser debug RPC, or add a BFF debug route.
+
+#### Scenario: Ordinary stack entry preserves source and wide identity
+- **WHEN** an ordinary spell or ability with a stack-entry identity above JavaScript's safe integer range is mapped to `StackObjectView`
+- **THEN** tag 2 is present with its source and tag 11 preserves the exact `u64` value
+
+#### Scenario: Browser mapping keeps adjacent wide stack identities distinct
+- **WHEN** two stack entries carry adjacent `entry_id` values above `Number.MAX_SAFE_INTEGER`
+- **THEN** the BFF SSE payload carries two exact decimal JSON strings and the browser domain receives two exact distinct `bigint` values while unrelated bigint-backed IDs retain their existing numeric domain shape and lookalike decimal strings remain strings
+
+#### Scenario: Public ghost projects without a source
+- **WHEN** a game containing a debug-authored public ghost is projected through the production visible-state contract
+- **THEN** tag 2 is absent, targets are empty, tag 11 carries its stable identity, and tag 12 carries its explicit public printed sentences
+
+#### Scenario: Stack shape does not create a browser debug operation
+- **WHEN** production browser bindings are generated with the expanded `StackObjectView`
+- **THEN** they contain the production stack fields but no debug package, debug service, debug RPC, or mutation route
+
+### Requirement: Exact-object printing overlays preserve visibility
+
+Production projection MAY receive a transient Printing UUID map keyed by exact `ObjectId`. For an ordinary object already admitted to a viewer's visible state, or an ordinary visible stack entry with an object source, a nonempty exact-object print SHALL take precedence over the owning seat's Card-id deck preference, which SHALL take precedence over the `CardDef` default print. Projection SHALL consult the exact-object map only after visibility admits the object or stack metadata. A source-less public ghost SHALL use only its explicit public print and SHALL NOT infer art from this map, a deck preference, or a card default.
+
+Every self-contained published snapshot or delta SHALL carry the exact-object map captured with its game state so a later ordinary publication does not revert already-overridden visible art. The map remains presentation input rather than serialized `Game` state or an additional wire payload.
+
+#### Scenario: Same card identity has different exact art
+- **WHEN** two public objects with the same Card id have different exact-object Printing UUIDs
+- **THEN** every owner, opponent, and spectator projection shows the matching exact print on each visible object and ordinary stack source, ahead of deck preference and default art
+
+#### Scenario: Hidden exact art does not reveal identity
+- **WHEN** an exact-object print exists for a hand or library object hidden from an opponent or spectator
+- **THEN** projection reveals neither the object, its card identity, nor its Printing UUID, and the overlay does not cause hidden-object inference
+
+### Requirement: Stream snapshots and deltas are ordered first-class frames
+A connecting client SHALL receive an initial snapshot frame at the current sequence number, then ordered delta, replacement snapshot, and heartbeat frames. Each delta SHALL carry a monotonic sequence watermark, a batch of already-redacted visible events, the viewer's complete visible state after those events, and optional auto-action notices for forced or automatic submissions in the frame. A midstream replacement snapshot SHALL be a first-class frame at its own monotonic sequence watermark, SHALL contain a complete state freshly projected for that viewer, and SHALL establish the baseline for every later delta without inventing incremental events. Clients SHALL fold snapshots by replacing the board and SHALL fold deltas by replacing the board from state and appending the events to the log. They SHALL NOT reorder visible events across frames or fetch a side snapshot. On reconnect after a sequence gap, the client SHALL open a new stream and treat the opening snapshot as resume. Heartbeat frames SHALL exist to prevent edge-proxy idle timeouts and MUST be forwarded on the browser-facing push channel.
 
 #### Scenario: Fresh table opens on snapshot
 - **WHEN** a newly seeded table has produced no events yet
 - **THEN** the first stream frame is a snapshot at the current sequence
+
+#### Scenario: Authoritative edit publishes a midstream snapshot
+- **WHEN** an out-of-band authoritative debug mutation commits while ordinary viewers are connected
+- **THEN** each viewer receives a separate complete replacement snapshot through the unchanged production redaction boundary, and subsequent deltas follow it in sequence order
+
+#### Scenario: Restored snapshots preserve monotonic stream order
+- **WHEN** a debug checkpoint restores an earlier authoritative game while owner, opponent, and spectator streams remain connected
+- **THEN** the restored state is projected separately for each viewer in a complete replacement snapshot at a new monotonically increasing live sequence, and the next accepted ordinary intent publishes the following delta without exposing another viewer's private zones
 
 #### Scenario: Delta needs no side refetch
 - **WHEN** a client receives a delta envelope
@@ -110,6 +170,20 @@ The public part of the book SHALL be derived from the already-redacted visible s
 #### Scenario: Two seats play different printings of one card
 - **WHEN** two visible objects share an oracle card id but use different printing ids
 - **THEN** the stream carries one text record per printing and the client retains both records
+
+### Requirement: Wide internal life changes retain direction on the visible wire
+
+An authoritative life-change event MAY carry an internal `i64` amount while the existing visible event amount remains `i32`. Projection SHALL preserve the exact amount when representable and otherwise clamp a positive amount to `i32::MAX` or a negative amount to `i32::MIN`; it SHALL NOT wrap, reverse direction, split the logical event, or alter event ordering. The visible state carried with the frame, and any replacement snapshot, SHALL expose the exact resulting stored `i32` life total independently of the clamped visible event amount.
+
+#### Scenario: Endpoint-spanning gain projects without reversal
+
+- **WHEN** one positive internal life event is larger than the visible `i32` event field
+- **THEN** the visible event amount is `i32::MAX`, the event remains one ordered event, and the accompanying visible state carries the exact resulting stored life
+
+#### Scenario: Endpoint-spanning loss projects without reversal
+
+- **WHEN** one negative internal life event is smaller than the visible `i32` event field can represent
+- **THEN** the visible event amount is `i32::MIN`, the event remains one ordered event, and the accompanying visible state carries the exact resulting stored life
 
 ### Requirement: Mulligan progress is snapshot-sourced on the wire
 Until explicit mulligan visible-event arms exist on the stream contract, the API MUST NOT emit empty or placeholder mulligan event oneofs. Clients SHALL treat visible-state mulliganing and per-player mulligan status fields as the source of truth for mulligan UI. Keep and mulligan intents SHALL exist as dedicated intent arms; the authenticated seat SHALL be stamped at the projection boundary so a client cannot keep or mulligan for another player by altering the payload.

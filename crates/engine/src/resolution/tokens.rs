@@ -402,8 +402,8 @@ impl Game {
         let TokenEffect::Create { enters_with, .. } = effect else {
             unreachable!("resolve_create_token received a non-family effect")
         };
-        let evs = self.execute_effect(Effect::Token(effect), controller, source, target, x);
-        self.apply_all(&evs);
+        let mut evs = self.execute_effect(Effect::Token(effect), controller, source, target, x);
+        self.apply_all_recorded(&mut evs);
         let minted: Vec<ObjectId> = evs
             .iter()
             .filter_map(|e| match e {

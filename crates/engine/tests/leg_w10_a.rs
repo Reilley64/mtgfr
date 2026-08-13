@@ -389,7 +389,7 @@ fn reverberation_turns_a_sorcerys_damage_back_on_its_caster() {
     cast(&mut game, PlayerId(0), soul, None).expect("P0 casts the sorcery");
     // Casting mints a new object id for the stack copy (CR 400.7) — that is what Reverberation
     // names, not the card that was in hand.
-    let StackEntry::Spell(soul_on_stack) = game.stack()[0] else {
+    let StackEntryKind::Spell(soul_on_stack) = game.stack()[0].kind else {
         panic!("the sorcery is on the stack");
     };
     cast(

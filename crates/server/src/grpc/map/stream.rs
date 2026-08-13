@@ -74,6 +74,8 @@ pub fn stack_object_view_to_pb(entry: StackObjectView) -> pb::StackObjectView {
         ability_oracle: entry.ability_oracle,
         source_face: entry.source_face.map(stack_source_face_view_to_pb),
         active_face_text: entry.active_face_text.map(card_text_to_pb),
+        entry_id: entry.entry_id,
+        printed_sentences: entry.printed_sentences,
     }
 }
 
@@ -1829,8 +1831,9 @@ mod tests {
                 modifiers: vec![],
             }],
             stack: vec![StackObjectView {
+                entry_id: 9_007_199_254_740_993,
                 kind: "spell".into(),
-                source: 10,
+                source: Some(10),
                 controller: 0,
                 label: MessageRef::key("test.shock"),
                 target: Some(schema::WireTarget::Player { player: 1 }),
@@ -1847,6 +1850,7 @@ mod tests {
                     oracle: "Shock deals 2 damage to any target.".into(),
                     flavor: "A spark is enough.".into(),
                 }),
+                printed_sentences: vec!["Explicit public text".into()],
             }],
             combat: CombatView::default(),
             can_act: true,
@@ -1961,6 +1965,9 @@ mod tests {
                 pb::wire_target::PlayerTarget { player: 1 }
             ))
         );
+        assert_eq!(st.stack[0].source, Some(10));
+        assert_eq!(st.stack[0].entry_id, 9_007_199_254_740_993);
+        assert_eq!(st.stack[0].printed_sentences, ["Explicit public text"]);
     }
 
     #[test]
