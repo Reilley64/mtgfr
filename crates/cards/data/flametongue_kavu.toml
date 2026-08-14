@@ -1,6 +1,5 @@
 # When this creature enters, it deals 4 damage to target creature.
 name = "Flametongue Kavu"
-sets = ["c14", "cm2", "cmd", "dd2", "dmr", "e01", "f05", "gn3", "hop", "jmp", "jvc", "pls", "plst", "prm", "pz1", "td0", "vma", "wc01", "wc02"]
 otags = ["burn-creature", "spot-removal", "triggered-ability", "virtual-vanilla"]
 oracle = "When this creature enters, it deals 4 damage to target creature."
 subtypes = ["Kavu"]
@@ -18,6 +17,7 @@ toughness = 2
 
 # When this creature enters, it deals 4 damage to target creature.
 [[abilities]]
+oracle = "When this creature enters, it deals 4 damage to target creature."
 timing = "etb"
 
 # it deals 4 damage to target creature.

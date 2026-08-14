@@ -76,21 +76,22 @@ export function parseRetryAfterMs(header: string | null, nowMs: number = Date.no
   return DEFAULT_RETRY_AFTER_MS;
 }
 
-function fetchPrintSearchPage(url: string): Effect.Effect<Response, Error> {
+function fetchScryfall(url: string, init?: RequestInit): Effect.Effect<Response, Error> {
   return Effect.gen(function* () {
     let retries = 0;
     while (true) {
       const res = yield* Effect.tryPromise({
         try: () =>
           fetch(url, {
-            headers: { Accept: "application/json", "User-Agent": SCRYFALL_UA },
+            ...init,
+            headers: { Accept: "application/json", "User-Agent": SCRYFALL_UA, ...init?.headers },
           }),
         catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
       });
 
       if (res.status !== 429) return res;
       if (retries >= MAX_429_RETRIES) {
-        return yield* Effect.fail(new Error(`Scryfall print search failed (${res.status})`));
+        return yield* Effect.fail(new Error(`Scryfall refused (${res.status})`));
       }
 
       retries += 1;
@@ -113,7 +114,7 @@ export function printSearchUrl(oracleId: string): string {
  *  themselves so each page can be shown as it lands instead of after the last one. */
 export function searchPrintPage(url: string): Effect.Effect<PrintPage, Error> {
   return Effect.gen(function* () {
-    const res = yield* fetchPrintSearchPage(url);
+    const res = yield* fetchScryfall(url);
     if (!res.ok) {
       return yield* Effect.fail(new Error(`Scryfall print search failed (${res.status})`));
     }

@@ -5,6 +5,7 @@ import type { GameFoldState } from "../game/fold";
 import { applyPublishedFrame, type BitmapFrame, bitmapFrameNeedsRaf, tickFlightClock } from "./bitmap/mount";
 import { layout, ZONE } from "./geometry/layout";
 import { FlightsSynced, HandActionActivated } from "./messages";
+import { spawnFlight } from "./motion/flights";
 import { BOARD_VIEWPORT, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
 type BoardModel = ReturnType<typeof initialBoardModel>;
@@ -58,7 +59,7 @@ function gameFold(
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
       ...provenance,
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
@@ -71,6 +72,8 @@ function forest(id: number, zone: number): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "land", colors: [] },
     mana_cost: { generic: 0, colored: [0, 0, 0, 0, 0] },
     marked_damage: 0,
@@ -99,6 +102,7 @@ function frameOf(model: BoardModel, fold: GameFoldState): BitmapFrame {
     dpr: model.dpr,
     camera: model.camera,
     cards: layout(visible, visible.viewer),
+    hoveredAttachmentId: model.hoveredAttachmentId,
     viewer: visible.viewer,
     players: visible.players,
     priority: visible.priority,
@@ -133,7 +137,13 @@ type Sim = {
 function newSim(model: BoardModel): Sim {
   return {
     model,
-    clock: { liveFlights: [], liveExitFx: [], liveDragGhost: null, lastRestingSnapshot: null },
+    clock: {
+      liveFlights: [],
+      liveExitFx: [],
+      liveDragGhost: null,
+      liveAttachmentHover: new Map(),
+      lastRestingSnapshot: null,
+    },
     frame: null,
     now: 0,
   };
@@ -186,6 +196,8 @@ function bolt(id: number, zone: number): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
     marked_damage: 0,
@@ -229,6 +241,7 @@ const boltInHand = gameFold(1, state({ objects: [bolt(HAND_ID, ZONE.Hand)], acti
 
 const SPELL_ID = 42;
 const stackEntry = {
+  entry_id: 1n,
   controller: 0,
   kind: "spell" as const,
   label: testMessageRef("Lightning Bolt"),
@@ -324,4 +337,54 @@ describe("a played card is never left stuck at the end of its flight", () => {
       });
     }
   }
+
+  it("releases a settled held flight when a tapped permanent arrives", () => {
+    const tappedPermanent = { ...forest(PERMANENT_ID, ZONE.Battlefield), tapped: true };
+    const tappedFold = gameFold(2, state({ objects: [tappedPermanent], actions: [] }));
+    const held = {
+      ...spawnFlight({
+        id: PERMANENT_ID,
+        print: "forest-print",
+        name: "Forest",
+        x: 400,
+        y: 300,
+        scale: 1,
+        targetX: 400,
+        targetY: 300,
+        targetScale: 1,
+        kind: "battlefield",
+        fromCardId: HAND_ID,
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+    const authoritativeModel = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      flights: new Map([[PERMANENT_ID, held]]),
+      handHidden: new Set([HAND_ID]),
+      hideCardIds: new Set([PERMANENT_ID]),
+      ownedIds: new Set([PERMANENT_ID]),
+    };
+    const clock = {
+      liveFlights: [held],
+      liveExitFx: [],
+      liveDragGhost: null,
+      liveAttachmentHover: new Map(),
+      lastRestingSnapshot: null,
+    };
+
+    const first = applyPublishedFrame(clock, frameOf(authoritativeModel, tappedFold));
+    expect(first.sync).not.toBeNull();
+
+    if (first.sync == null) throw new Error("expected publish-time flight handoff");
+    const released = updateBoard(authoritativeModel, FlightsSynced(first.sync), tappedFold, "T1")[0];
+    expect(released.flights.size).toBe(0);
+    expect(released.hideCardIds.size).toBe(0);
+
+    const repaint = applyPublishedFrame(first.state, frameOf(released, tappedFold));
+    expect(repaint.paintResting).toBe(true);
+    expect(repaint.frame.cards.find((card) => card.id === PERMANENT_ID)?.tapped).toBe(true);
+    expect(repaint.sync).toBeNull();
+  });
 });

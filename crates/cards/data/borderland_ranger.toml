@@ -1,7 +1,6 @@
 # When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand,
 # then shuffle.
 name = "Borderland Ranger"
-sets = ["avr", "e02", "m10", "plst", "td0"]
 otags = ["triggered-ability", "tutor-land-basic", "tutor-to-hand", "type-errata", "virtual-vanilla"]
 subtypes = ["Human", "Scout", "Ranger"]
 id = "ffe25048-0bd4-49b5-aecb-2b1b57fb8d8b"
@@ -20,6 +19,7 @@ toughness = 2
 # When this creature enters, you may search your library for a basic land card, reveal it, put it
 # into your hand, then shuffle.
 [[abilities]]
+oracle = "When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle."
 timing = "etb"
 optional = true
 

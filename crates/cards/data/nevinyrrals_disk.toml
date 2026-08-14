@@ -2,7 +2,6 @@
 # {1}, {T}: Destroy all artifacts, creatures, and enchantments.
 name = "Nevinyrral's Disk"
 otags = ["activated-ability", "anagram", "namesake-spell", "removal-artifact", "removal-creature", "removal-destroy", "removal-enchantment", "sweeper", "symmetrical", "vanity-card", "virtual-legendary"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ath", "c13", "c14", "c16", "c17", "ced", "cei", "cmm", "cmr", "ema", "fbb", "lea", "leb", "me1", "mh2", "prm", "ptc", "sum", "v10", "vma", "wc97", "wc98"]
 id = "96230edf-568a-47dd-b877-9d92aa58fac8"
 default_print = "8436c720-ff96-4475-8320-d0d1e0c23f2a"
 oracle = "This artifact enters tapped.\n{1}, {T}: Destroy all artifacts, creatures, and enchantments."
@@ -16,6 +15,7 @@ type = "artifact"
 
 # {1}, {T}: Destroy all artifacts, creatures, and enchantments.
 [[abilities]]
+oracle = "{1}, {T}: Destroy all artifacts, creatures, and enchantments."
 timing = "activated"
 taps_self = true
 

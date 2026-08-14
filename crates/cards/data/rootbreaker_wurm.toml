@@ -1,6 +1,5 @@
 # Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)
 name = "Rootbreaker Wurm"
-sets = ["9ed", "td0", "tmp", "tpr"]
 otags = ["french-vanilla", "tmp-storyline-in-cards"]
 oracle = "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)"
 subtypes = ["Wurm"]

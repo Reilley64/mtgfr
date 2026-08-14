@@ -5,7 +5,6 @@
 # in for it (same shortcut Dig Through Time's `look_at_top` takes elsewhere in the pool).
 name = "Prophetic Bolt"
 otags = ["burn-any", "cycle-2x2-draft-signpost", "cycle-apc-r-two-color", "cycle-vma-draft-signpost", "hand-neutral", "impulse", "pure-draw", "single-target-instant-sorcery", "spot-removal"]
-sets = ["2x2", "apc", "c15", "c20", "cmd", "ddj", "plst", "vma"]
 id = "d5e4bf5e-1a66-4315-8c82-640c27977b88"
 default_print = "9f482559-c09f-4261-9715-76fc11014a20"
 oracle = "Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of your library in any order."
@@ -21,6 +20,7 @@ type = "instant"
 # Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into
 # your hand and the rest on the bottom of your library in any order.
 [[abilities]]
+oracle = "Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of your library in any order."
 timing = "spell"
 
 # Prophetic Bolt deals 4 damage to any target.

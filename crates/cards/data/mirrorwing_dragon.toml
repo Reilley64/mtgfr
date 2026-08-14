@@ -2,7 +2,6 @@
 # Whenever a player casts an instant or sorcery spell that targets only this creature, that player copies that spell for
 # each other creature they control that the spell could target. Each copy targets a different one of those creatures.
 name = "Mirrorwing Dragon"
-sets = ["emn", "inr", "j25", "pemn", "sir", "soc", "tle"]
 id = "9ea14a03-c6a2-49ec-953d-4249a2c27e1d"
 default_print = "6ba557ab-9d80-4d0a-bddb-ec230cc4437d"
 otags = ["cast-trigger", "copy-instant", "copy-sorcery", "copy-spell", "evasion", "hate-instant", "hate-sorcery", "heroic", "radiate", "synergy-instant", "synergy-sorcery"]
@@ -23,6 +22,7 @@ toughness = 5
 # copies that spell for each other creature they control that the spell could target. Each copy
 # targets a different one of those creatures.
 [[abilities]]
+oracle = "Whenever a player casts an instant or sorcery spell that targets only this creature, that player copies that spell for each other creature they control that the spell could target. Each copy targets a different one of those creatures."
 timing = "spell_targets_this"
 spell_filter = "instant_or_sorcery"
 

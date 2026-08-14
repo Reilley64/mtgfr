@@ -4,7 +4,6 @@
 # creatures it's being blocked by or is blocking.)
 name = "Timber Wolves"
 otags = ["french-vanilla", "real-life-animal-name"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "35d07ac9-b184-4b5f-8192-34b1db042f69"
 default_print = "0d24fc87-7b30-4c99-a525-b1746821391c"
 oracle = "Banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)"

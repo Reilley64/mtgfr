@@ -2045,6 +2045,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::Etb),
             effect: Effect::Draw(DrawEffect::Cards {
                 who: PlayerSet::You,
@@ -2057,6 +2058,7 @@ static TWO_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cost: Cost::FREE,
         },
         Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::Etb),
             effect: Effect::Life(LifeEffect::Gain {
                 who: PlayerSet::You,
@@ -2148,6 +2150,7 @@ static PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Damage(DamageEffect::Target {
             amount: Amount::Fixed(2),
@@ -2252,6 +2255,7 @@ static MAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -2340,6 +2344,7 @@ static MAY_PAY_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -2453,6 +2458,7 @@ static LOOK_DIG: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Dig(DigEffect::LookAtTop {
             count: 3,
@@ -2549,6 +2555,7 @@ static LOOK_DIG_MANDATORY_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Dig(DigEffect::LookAtTop {
             count: 7,
@@ -2646,6 +2653,7 @@ static LOOK_DIG_TO_BATTLEFIELD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Dig(DigEffect::LookAtTop {
             count: 3,
@@ -2916,6 +2924,7 @@ static INKLING_SUBTYPED: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 /// Combat Calligrapher's "Inklings can't attack you or planeswalkers you control" static.
 static CALLIGRAPHER_STATIC: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::CantBeAttackedBy {
             filter: PermanentFilter {
@@ -2935,6 +2944,7 @@ static CALLIGRAPHER_STATIC: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 /// planeswalkers you control" static (just the restriction; not the end-step drain).
 static ERIETTE_STATIC: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::CantBeAttackedBy {
             filter: PermanentFilter {
@@ -5706,6 +5716,7 @@ static PUMP_POWER_PLUS_2: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(2),
@@ -5798,6 +5809,7 @@ static GRANT_FLYING: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(0),
@@ -5888,6 +5900,7 @@ static GRANT_INDESTRUCTIBLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(0),
@@ -5979,6 +5992,7 @@ static DESTROY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Creature,
@@ -6080,6 +6094,7 @@ static DESTROY_NONARTIFACT_NONBLACK: LazyLock<CardDef> = LazyLock::new(|| CardDe
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter {
@@ -6185,6 +6200,7 @@ static DESTROY_ANY_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::NONE)),
@@ -6286,6 +6302,7 @@ static DESTROY_NONBASIC_LAND: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter {
@@ -6390,6 +6407,7 @@ static EXILE_FROM_ANY_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::CreatureCardInAnyGraveyard,
@@ -6489,6 +6507,7 @@ static EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| C
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::CardInGraveyard {
@@ -6591,6 +6610,7 @@ static EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: LazyLock<CardDef> = LazyLock::
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter {
@@ -6692,6 +6712,7 @@ static EXILE_SMALL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter {
@@ -6793,6 +6814,7 @@ static EXILE_ENCHANTMENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ENCHANTMENT)),
@@ -6891,6 +6913,7 @@ static EXILE_ARTIFACT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ARTIFACT)),
@@ -7146,6 +7169,7 @@ static MASS_INDESTRUCTIBLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn {
             power: Amount::Fixed(0),
@@ -7235,6 +7259,7 @@ static MASS_FLYING_PER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn {
             power: Amount::PerCreatureYouControl,
@@ -7325,6 +7350,7 @@ static GRANT_UNBLOCKABLE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(0),
@@ -7937,6 +7963,7 @@ static GROWTH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::Fixed(2),
@@ -8152,6 +8179,7 @@ static MAKE_INKLINGS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Token(TokenEffect::Create {
             token: INKLING.clone(),
@@ -8582,6 +8610,7 @@ fn a_targeted_drain_can_be_sized_by_x() {
 /// instant/sorcery copy trigger so a sorcery cast can be measured without the copy interfering).
 static CAST_X_DOUBLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::CastXReplacement { times: 2 }),
         optional: false,
@@ -8739,6 +8768,7 @@ fn max_payable_x_for_pay_life_x_returns_life() {
 /// (CR 707.10 — copy an activated ability whose cost contains {X}).
 static X_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -8782,6 +8812,7 @@ static X_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 /// activation cost contains no `{X}`, so Unbound Flourishing's copy trigger must ignore it.
 static FIXED_DRAW_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -9914,6 +9945,7 @@ static PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::Life(LifeEffect::Gain {
             who: PlayerSet::You,
@@ -10000,6 +10032,7 @@ static MAKE_PEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Token(TokenEffect::Create {
             token: PEST.clone(),
@@ -10441,6 +10474,7 @@ static HERALD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Attacks),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -11802,6 +11836,7 @@ fn lifelink_gains_life_equal_to_combat_damage() {
 static LIFELINK_PINGER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: arc_slice([Keyword::Lifelink]),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: true,
@@ -11936,6 +11971,7 @@ static LIFELINK_BLAST_EACH_PLAYER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     ..sorcery(
         "Lifelink Blast Each Player (test)",
         &[Ability {
+            oracle: None,
             timing: Timing::Spell,
             effect: Effect::Damage(DamageEffect::ToPlayers {
                 who: PlayerSet::EachPlayer,
@@ -12970,6 +13006,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
     // A static grant of "{T}: Add {G}" on artifacts — the planner must use ability_at indices
     // past the permanent's own abilities (Treasure/Goldspan-style addressing).
     const GRANT: &[Ability] = &[Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::GrantManaAbility {
             filter: PermanentFilter {
@@ -14088,8 +14125,8 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
     assert_eq!(stack.len(), 2, "trigger (bottom) + Shock (top)");
     assert!(
         matches!(
-            stack[0],
-            StackEntry::Ability {
+            stack[0].kind,
+            StackEntryKind::Ability {
                 effect: Effect::Draw(DrawEffect::Cards {
                     who: PlayerSet::You,
                     count: Amount::Fixed(1)
@@ -14100,8 +14137,8 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         "bottom of stack is the ETB draw trigger; got {:?}",
         stack[0]
     );
-    match &stack[1] {
-        StackEntry::Spell(id) => {
+    match &stack[1].kind {
+        StackEntryKind::Spell(id) => {
             assert_eq!(game.def_of(*id).name, "Shock", "top of stack is Shock")
         }
         other => panic!("expected Shock spell on top; got {other:?}"),
@@ -14687,6 +14724,7 @@ static TARGET_OPPONENT_DRAWS_THREE: LazyLock<CardDef> = LazyLock::new(|| CardDef
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::TargetOpponent,
@@ -16065,6 +16103,7 @@ static ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::Anthem {
             power: Amount::Fixed(1),
@@ -16688,6 +16727,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
     // is leaked rather than a `const`, mirroring
     // `remove_counter_cost_lethal_shrink_dies_to_state_based_actions`'s pattern.
     let mover_abilities: &'static [Ability] = Box::leak(Box::new([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Zone(ZoneEffect::ReturnExiledCardToOwnersGraveyard { exiled: exiled_ox }),
         optional: false,
@@ -16907,6 +16947,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Static,
             effect: Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::Fixed(2),
@@ -16919,6 +16960,7 @@ static TEST_COUNTER_SHEDDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cost: Cost::FREE,
         },
         Ability {
+            oracle: None,
             timing: Timing::Activated(ActivationCost {
                 activator: Activator::Controller,
                 taps_self: false,
@@ -17108,6 +17150,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -17189,6 +17232,7 @@ static TEST_SAC_A_FOOD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 static TEST_SAC_A_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Test Sac A Creature",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -17323,6 +17367,7 @@ fn sacrifice_creature_cost_still_rejects_a_noncreature_permanent() {
 static TEST_NONTOKEN_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Test Nontoken Counter",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -17746,6 +17791,7 @@ static DESTROY_ENCHANTMENT_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ENCHANTMENT)),
@@ -17880,6 +17926,7 @@ static RED_WHITE_ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Test Red-White Anthem Lord",
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Static,
             effect: Effect::Static(StaticEffect::Anthem {
                 power: Amount::Fixed(1),
@@ -17908,6 +17955,7 @@ static RED_WHITE_ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cost: Cost::FREE,
         },
         Ability {
+            oracle: None,
             timing: Timing::Static,
             effect: Effect::Static(StaticEffect::Anthem {
                 power: Amount::Fixed(1),
@@ -18771,6 +18819,74 @@ fn study_hall_provenance_is_cleared_when_the_pool_empties() {
     assert!(
         game.pending_choice().is_none(),
         "no scry: the tagged mana was cleared with the pool before this cast",
+    );
+}
+
+#[test]
+fn path_of_ancestry_full_bucket_does_not_tag_old_mana_as_newly_produced() {
+    let mut game = Game::new();
+    let mut green = [0u8; Color::COUNT];
+    green[Color::Green.index()] = 1;
+    game.designate_commander(PlayerId(0), one_mana_commander(&["Elf"], green));
+    let path = game.spawn_on_battlefield(
+        PlayerId(0),
+        CardDef {
+            enters_tapped: false,
+            ..card("Path of Ancestry")
+        },
+    );
+    for _ in 0..13 {
+        game.fund_mana(PlayerId(0));
+    }
+    assert_eq!(game.mana_in_pool(PlayerId(0), Color::Green), u8::MAX);
+    game.stack_library(PlayerId(0), &[VANILLA.clone(), VANILLA.clone()]);
+    let elf = game.spawn_in_hand(
+        PlayerId(0),
+        CardDef {
+            cost: Cost {
+                colored: green,
+                ..Cost::FREE
+            },
+            subtypes: arc_slice(["Elf"]),
+            ..creature("Elvish Warrior", 2, 2, &[])
+        },
+    );
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: path,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(game.mana_in_pool(PlayerId(0), Color::Green), u8::MAX);
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: elf,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        multikicker_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "the full bucket accepted no Path mana, so spending old green mana must not scry"
     );
 }
 
@@ -20375,6 +20491,7 @@ fn copy_enchantment_copies_an_aura_and_enters_attached_after_a_host_pick() {
 /// mass token conversion, in one begin-combat `Sequence`.
 fn brudiclad() -> CardDef {
     let abilities: &'static [Ability] = Box::leak(Box::new([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::BeginCombat),
         effect: Effect::Sequence {
             steps: Arc::from([
@@ -21882,6 +21999,7 @@ fn an_untapped_dual_land_counts_both_colors_toward_castability() {
 fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
     let hybrid: &'static [(Color, Color)] = Box::leak(Box::new([(a, b)]));
     let abilities: &'static [Ability] = Box::leak(Box::new([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: true,
@@ -22264,6 +22382,7 @@ static DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -22993,6 +23112,7 @@ static WATCHES_CREATURE_DIES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::CreatureDies),
         effect: Effect::Life(LifeEffect::Drain {
             who: PlayerSet::TargetPlayer,
@@ -23125,6 +23245,7 @@ static WATCHES_CREATURE_DIES_ONCE_EACH_TURN: LazyLock<CardDef> = LazyLock::new(|
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::CreatureDies),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -23423,6 +23544,7 @@ static WATCHES_ANY_SACRIFICE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::AnyPlayerSacrifices {
             filter: PermanentFilter {
                 other: true,
@@ -24036,6 +24158,7 @@ static UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Upkeep),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -24149,6 +24272,7 @@ static GRAVEYARD_UPKEEP_RETURN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Upkeep),
         effect: Effect::Zone(ZoneEffect::ReturnThisToHand),
         optional: false,
@@ -24731,6 +24855,7 @@ static EACH_UPKEEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::EachUpkeep),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -24863,6 +24988,7 @@ static END_STEP_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::EndStep),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -24967,6 +25093,7 @@ static BEGIN_COMBAT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::BeginCombat),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -25103,6 +25230,7 @@ static GAIN_LIFE_ETB: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Life(LifeEffect::Gain {
             who: PlayerSet::You,
@@ -25188,6 +25316,7 @@ static LIFE_GAIN_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::YouGainLife),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -25386,6 +25515,7 @@ static MAGECRAFT_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Magecraft),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -25912,6 +26042,7 @@ static INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Life(LifeEffect::Gain {
             who: PlayerSet::You,
@@ -26003,6 +26134,7 @@ static BECOMES_TARGETED_TREASURE_MAKER: LazyLock<CardDef> = LazyLock::new(|| Car
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::BecomesTargeted {
             who: BecomesTargetedScope::This,
         }),
@@ -26128,6 +26260,7 @@ static AURA_CAST_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::CastSpell {
             filter: SpellFilter::Aura,
             caster: WatchedPlayer::You,
@@ -26266,6 +26399,7 @@ static X_INSTANT_FILLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Life(LifeEffect::Gain {
             who: PlayerSet::You,
@@ -26561,7 +26695,7 @@ fn animar_grows_when_you_cast_a_creature_spell() {
         "the cast trigger stacks above the creature spell it watched"
     );
     assert!(
-        matches!(g.stack()[1], StackEntry::Ability { .. }),
+        matches!(g.stack()[1].kind, StackEntryKind::Ability { .. }),
         "the triggered ability is on top, resolving first"
     );
 
@@ -26818,6 +26952,7 @@ static DRAW_ONE_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::TargetPlayer,
@@ -26958,9 +27093,9 @@ fn top_spell(game: &Game) -> ObjectId {
     game.stack()
         .iter()
         .rev()
-        .find_map(|entry| match *entry {
-            StackEntry::Spell(id) => Some(id),
-            StackEntry::Ability { .. } => None,
+        .find_map(|entry| match entry.kind.clone() {
+            StackEntryKind::Spell(id) => Some(id),
+            StackEntryKind::Ability { .. } | StackEntryKind::DebugNoOp { .. } => None,
         })
         .expect("a spell is on the stack")
 }
@@ -27518,6 +27653,7 @@ static COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Misc(MiscEffect::CounterTargetSpell {
             unless_pays: None,
@@ -28653,6 +28789,7 @@ static X_EXILE_SELF_ON_RESOLVE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Zone(ZoneEffect::ExileSelfOnResolve),
         optional: false,
@@ -30773,9 +30910,11 @@ fn mirrorwing_dragon_copies_spell_targeting_only_it_per_other_creature() {
     );
     let ids: Vec<ObjectId> = spells
         .iter()
-        .map(|entry| match *entry {
-            StackEntry::Spell(id) => id,
-            StackEntry::Ability { .. } => panic!("no ability should remain on the stack"),
+        .map(|entry| match entry.kind.clone() {
+            StackEntryKind::Spell(id) => id,
+            StackEntryKind::Ability { .. } | StackEntryKind::DebugNoOp { .. } => {
+                panic!("no ability should remain on the stack")
+            }
         })
         .collect();
     let original = ids[0];
@@ -30912,6 +31051,7 @@ static FLIGHT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::GrantToAttached {
             power: Amount::Fixed(0),
@@ -31013,6 +31153,7 @@ static PRO_WHITE_CLOAK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::GrantToAttached {
             power: Amount::Fixed(0),
@@ -31121,6 +31262,7 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
 static FALLEN_IDEAL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Fallen Ideal (test)",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::GrantToAttached {
             power: Amount::Fixed(0),
@@ -31155,6 +31297,7 @@ static FALLEN_IDEAL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 static VOW_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Vow (test)",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::GrantToAttached {
             power: Amount::Fixed(0),
@@ -31224,6 +31367,7 @@ static MUTATION: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::SetAttachedBasePt {
             power: Amount::Fixed(0),
@@ -31343,6 +31487,7 @@ static ANGEL_ANTHEM: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     default_print: "",
     kind: CardKind::Enchantment,
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::Anthem {
             power: Amount::Fixed(0),
@@ -31551,6 +31696,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::Attacks),
             effect: Effect::Life(LifeEffect::Gain {
                 who: PlayerSet::You,
@@ -31563,6 +31709,7 @@ static MUTABLE_FLYER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cost: Cost::FREE,
         },
         Ability {
+            oracle: None,
             timing: Timing::Activated(ActivationCost {
                 activator: Activator::Controller,
                 taps_self: false,
@@ -33387,6 +33534,7 @@ static WATCHES_HOST_DIES_DRAW: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::EnchantedCreatureDies),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -35006,6 +35154,7 @@ static CONTROL_ATTACHED_AURA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: arc_slice([Keyword::Flash]),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::ControlAttached),
         optional: false,
@@ -36007,7 +36156,10 @@ fn augusta_attack_exiles_each_graveyard_and_counters_target_per_nonland() {
     // The reflexive trigger is a real, respondable stack object between the fan-out and the counter
     // placement — it has not resolved yet, so no counters are on the attacker.
     assert!(
-        matches!(game.stack().last(), Some(StackEntry::Ability { .. })),
+        matches!(
+            game.stack().last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability { .. })
+        ),
         "the reflexive counter trigger is on the stack, awaiting a response window"
     );
     assert_eq!(
@@ -36958,6 +37110,7 @@ fn wild_mongrel_ability_rejected_with_no_legal_discard_pick() {
 /// `Trigger::YouDiscard` watcher a discard-cost payment must fire.
 static YOU_DISCARD_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::YouDiscard),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -37094,6 +37247,7 @@ fn wild_mongrel_color_choice_reverts_at_cleanup() {
 /// (exile-self) ability.
 static RELIC_SHAPED_TARGET_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: true,
@@ -40026,6 +40180,7 @@ static RETURN_LAND_FROM_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand {
             target: TargetSpec::CardInGraveyard {
@@ -40173,6 +40328,7 @@ static RETURN_SORCERY_FROM_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(|| CardD
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand {
             target: TargetSpec::CardInGraveyard {
@@ -40452,6 +40608,7 @@ static EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: LazyLock<CardDef> = LazyLock::new(||
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::CardInGraveyard {
@@ -40670,6 +40827,7 @@ static REPLENISH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Zone(ZoneEffect::MassReturnFromGraveyard {
             filter: CardFilter::Enchantment,
@@ -40815,6 +40973,7 @@ static MASS_RETURN_ALL_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Zone(ZoneEffect::MassReturnFromGraveyard {
             filter: CardFilter::Creature,
@@ -44533,6 +44692,7 @@ static NARROW_REATTACH: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         ..PermanentFilter::of(TypeSet::CREATURE)
     }),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::PermanentEnters {
             filter: PermanentFilter::of(TypeSet::CREATURE),
             controller: WatchedPlayer::Opponent,
@@ -44743,6 +44903,7 @@ static STEAL_UNTIL_EOT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Control(ControlEffect::GainControlUntilEndOfTurn {
             target: TargetSpec::Creature,
@@ -44845,6 +45006,7 @@ static RUBINIA: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     world: false,
     may_choose_not_to_untap: true,
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: true,
@@ -45267,6 +45429,7 @@ static MELODY: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Control(ControlEffect::GainControl {
             target: TargetSpec::Permanent(PermanentFilter {
@@ -45363,6 +45526,7 @@ fn gain_control_is_permanent_unlike_gain_control_until_end_of_turn() {
 static STEAL_PERMANENT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Steal Permanent (test)",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Control(ControlEffect::GainControl {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::NONE)),
@@ -46535,6 +46699,7 @@ fn entrancing_melody_gains_permanent_control_of_a_mana_value_x_creature() {
 static REVERT_ALL_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Revert All Creatures To Owners (test)",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: true,
@@ -46967,7 +47132,10 @@ fn kinetic_ooze_x10_doubling_targets_are_chosen_at_placement() {
         1,
         "the ETB ability is on the stack, not yet resolved"
     );
-    assert!(matches!(game.stack()[0], StackEntry::Ability { .. }));
+    assert!(matches!(
+        game.stack()[0].kind,
+        StackEntryKind::Ability { .. }
+    ));
 
     resolve_top_of_stack(&mut game); // destroy, draw, and doubling all apply to their targets.
 
@@ -47271,6 +47439,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Spell,
             effect: Effect::Damage(DamageEffect::Target {
                 amount: Amount::Fixed(2),
@@ -47299,6 +47468,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             condition: None,
         },
         Ability {
+            oracle: None,
             timing: Timing::Spell,
             effect: Effect::Token(TokenEffect::CreateTreasure {
                 count: Amount::Fixed(1),
@@ -47312,6 +47482,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             condition: None,
         },
         Ability {
+            oracle: None,
             timing: Timing::Spell,
             effect: Effect::Life(LifeEffect::Gain {
                 who: PlayerSet::You,
@@ -47324,6 +47495,7 @@ static CHOOSE_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             condition: None,
         },
         Ability {
+            oracle: None,
             timing: Timing::Spell,
             effect: Effect::Life(LifeEffect::Gain {
                 who: PlayerSet::You,
@@ -47728,6 +47900,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Spell,
             effect: Effect::Damage(DamageEffect::Target {
                 amount: Amount::Fixed(2),
@@ -47756,6 +47929,7 @@ static CHOOSE_ONE_OR_MORE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             condition: None,
         },
         Ability {
+            oracle: None,
             timing: Timing::Spell,
             effect: Effect::Life(LifeEffect::Gain {
                 who: PlayerSet::You,
@@ -48142,6 +48316,7 @@ static FIGHT_SPELL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Misc(MiscEffect::Fight {
             enemy: None,
@@ -49624,6 +49799,7 @@ static GRAVEYARD_EXIT_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::CardsLeaveYourGraveyard),
         effect: Effect::Token(TokenEffect::Create {
             token: INKLING.clone(),
@@ -49989,6 +50165,7 @@ fn pack_a_punch() -> CardDef {
         keywords: empty_slice(),
         conditional_keywords: empty_slice(),
         abilities: arc_slice([Ability {
+            oracle: None,
             timing: Timing::Spell,
             effect: Effect::Sequence {
                 steps: Arc::from([
@@ -50116,6 +50293,7 @@ fn kirol() -> CardDef {
         keywords: empty_slice(),
         conditional_keywords: empty_slice(),
         abilities: arc_slice([Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::CardsLeaveYourGraveyard),
             effect: Effect::Misc(MiscEffect::BecomePrepared),
             optional: false,
@@ -50469,6 +50647,7 @@ static PETTY_THEFT_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Zone(ZoneEffect::ReturnToHand {
             target: TargetSpec::Permanent(PermanentFilter {
@@ -50660,6 +50839,7 @@ static GROVES_BOUNTY_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::X,
@@ -51409,6 +51589,7 @@ static BRAINGEYSER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::TargetPlayer,
@@ -51500,6 +51681,7 @@ fn dirgur_test() -> CardDef {
         keywords: empty_slice(),
         conditional_keywords: empty_slice(),
         abilities: arc_slice([Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::CastSpell {
                 filter: SpellFilter::InstantOrSorcery,
                 caster: WatchedPlayer::You,
@@ -51944,6 +52126,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         keywords: empty_slice(),
         conditional_keywords: empty_slice(),
         abilities: arc_slice([Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::CastSpell {
                 filter: SpellFilter::InstantOrSorcery,
                 caster: WatchedPlayer::You,
@@ -52806,6 +52989,7 @@ fn firemane_commando_lets_attacker_draw_when_they_dont_attack_you() {
 /// A loyalty ability at sorcery speed with no other cost: its only cost is the loyalty change.
 fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
     Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -54437,6 +54621,7 @@ static CREATURE_TUTOR: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Dig(DigEffect::SearchLibrary {
             filter: CardFilter::Creature,
@@ -57176,6 +57361,7 @@ static MASS_SHOCK: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Damage(DamageEffect::EachCreature {
             amount: Amount::Fixed(2),
@@ -57265,6 +57451,7 @@ static MASS_BOUNCE_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Zone(ZoneEffect::ReturnAllToHand {
             filter: PermanentFilter::of(TypeSet::CREATURE),
@@ -57434,6 +57621,7 @@ static POPULATE_AT_END_STEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::EndStep),
         effect: Effect::Token(TokenEffect::CreateCopy {
             target: TargetSpec::CreatureTokenYouControl,
@@ -58237,6 +58425,7 @@ static MAKE_TREASURES: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(3),
@@ -58716,6 +58905,7 @@ static DEEKAH_MAGECRAFT_FRACTAL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Magecraft),
         effect: Effect::Token(TokenEffect::Create {
             token: creature("Fractal", 0, 0, &[]),
@@ -59018,6 +59208,7 @@ static MANAFORM_HELLKITE_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: arc_slice([Keyword::Flying]),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::CastSpell {
             filter: SpellFilter::NoncreatureSpells,
             caster: WatchedPlayer::You,
@@ -59428,6 +59619,7 @@ static ROOTHA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::BeginCombat),
         effect: Effect::Token(TokenEffect::Create {
             token: ROOTHA_ELEMENTAL_TOKEN.clone(),
@@ -59644,6 +59836,7 @@ static RIONYA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::BeginCombat),
         effect: Effect::Token(TokenEffect::CreateCopy {
             target: TargetSpec::Permanent(PermanentFilter {
@@ -59919,6 +60112,7 @@ static IMPULSE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -60153,6 +60347,7 @@ static RANDOM_GRAVEYARD_EXILE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -60456,6 +60651,7 @@ fn modal_dragon() -> CardDef {
         keywords: empty_slice(),
         conditional_keywords: empty_slice(),
         abilities: arc_slice([Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::Dies),
             effect: Effect::ChooseOne {
                 options: Arc::from([
@@ -60696,8 +60892,8 @@ fn modal_dies_trigger_chooses_its_mode_at_placement_then_resolves_the_branch() {
 
     // The chosen branch — a concrete Treasures ability, not a "choose one" — is now on the stack,
     // public before any response window, and has not resolved yet.
-    match game.stack().last() {
-        Some(StackEntry::Ability { effect, .. }) => assert!(
+    match game.stack().last().map(|entry| &entry.kind) {
+        Some(StackEntryKind::Ability { effect, .. }) => assert!(
             matches!(effect, Effect::Token(TokenEffect::CreateTreasure { .. })),
             "the chosen Treasures branch is what's on the stack, got {effect:?}"
         ),
@@ -62306,6 +62502,7 @@ static NO_MAX_HAND_SIZE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::NoMaximumHandSize),
         optional: false,
@@ -62422,6 +62619,7 @@ macro_rules! amount_spell {
             keywords: empty_slice(),
             conditional_keywords: empty_slice(),
             abilities: arc_slice([Ability {
+                oracle: None,
                 timing: Timing::Spell,
                 effect: $effect,
                 optional: false,
@@ -62683,6 +62881,7 @@ macro_rules! hydra_with_etb {
             conditional_keywords: empty_slice(),
             abilities: arc_slice([
                 Ability {
+                    oracle: None,
                     timing: Timing::Static,
                     effect: Effect::Static(StaticEffect::EntersWithCounters {
                         amount: Amount::X,
@@ -62695,6 +62894,7 @@ macro_rules! hydra_with_etb {
                     cost: Cost::FREE,
                 },
                 Ability {
+                    oracle: None,
                     timing: Timing::Triggered(Trigger::Etb),
                     effect: Effect::Token(TokenEffect::CreateTreasure {
                         count: $count,
@@ -64001,6 +64201,7 @@ fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
 /// A single spell-timing ability whose one effect is `effect`.
 const fn spell_ability(effect: Effect) -> Ability {
     Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect,
         optional: false,
@@ -64765,9 +64966,9 @@ fn take_action_activates_viscera_seer_with_a_creature_sacrifice() {
         "the chosen creature was sacrificed as an activation cost",
     );
     assert!(
-        game.stack()
-            .iter()
-            .any(|entry| matches!(entry, StackEntry::Ability { source, .. } if *source == seer)),
+        game.stack().iter().any(
+            |entry| matches!(&entry.kind, StackEntryKind::Ability { source, .. } if *source == seer)
+        ),
         "the non-mana activated ability was put on the stack",
     );
 }
@@ -67109,6 +67310,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Static,
             effect: Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::Fixed(2),
@@ -67121,6 +67323,7 @@ static TEST_STEELBANE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cost: Cost::FREE,
         },
         Ability {
+            oracle: None,
             timing: Timing::Activated(ActivationCost {
                 activator: Activator::Controller,
                 taps_self: false,
@@ -67317,6 +67520,7 @@ fn remove_counter_cost_lethal_shrink_dies_to_state_based_actions() {
     // it drops the creature to 0 toughness, which the SBA sweep (CR 704.5f) then kills.
     let abilities: &'static [Ability] = Box::leak(Box::new([
         Ability {
+            oracle: None,
             timing: Timing::Static,
             effect: Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::Fixed(1),
@@ -67595,6 +67799,7 @@ static WATCHES_ENCHANTMENTS_ENTER: LazyLock<CardDef> = LazyLock::new(|| CardDef 
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::PermanentEnters {
             filter: PermanentFilter::of(TypeSet::ENCHANTMENT),
             controller: WatchedPlayer::You,
@@ -67772,6 +67977,7 @@ static WATCHES_OPPONENT_LANDFALL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::PermanentEnters {
             filter: PermanentFilter::of(TypeSet::LAND),
             controller: WatchedPlayer::Opponent,
@@ -70852,6 +71058,7 @@ static SAPROLING_ANTHEM: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::Anthem {
             power: Amount::Fixed(1),
@@ -70988,6 +71195,7 @@ static TAP_TWO_PERMANENTS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Control(ControlEffect::TapTarget {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::NONE)),
@@ -71087,6 +71295,7 @@ static COUNTER_EACH_UP_TO_TWO: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::Fixed(1),
@@ -72128,6 +72337,7 @@ static MASS_HEXPROOF_TO_MODIFIED: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn {
             power: Amount::Fixed(0),
@@ -73157,6 +73367,7 @@ fn faerie_mastermind_fires_once_when_an_opponent_draws_two_at_once() {
     // A one-shot "target player draws two cards" — the two draws share a batch.
     let mut def = DRAW_ONE_TARGET.clone();
     def.abilities = arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::TargetPlayer,
@@ -73317,7 +73528,10 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
     .expect("Hydroid Krasis is castable");
     let hydroid_on_stack = top_spell(&game);
     assert!(
-        matches!(game.stack().last(), Some(StackEntry::Ability { .. })),
+        matches!(
+            game.stack().last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability { .. })
+        ),
         "the cast trigger is placed above the spell"
     );
 
@@ -74021,6 +74235,7 @@ static TEST_STUDY_COUNTER_SOURCE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::EntersWithCounters {
             amount: Amount::Fixed(3),
@@ -76780,6 +76995,7 @@ static GRANT_HEXPROOF_ANY_TARGET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(0),
@@ -77051,6 +77267,7 @@ fn culling_ritual_adds_mana_per_permanent_destroyed() {
 /// permanents back below ten after the city's blessing is granted, to prove it's sticky.
 static SACRIFICE_A_CREATURE_OUTLET: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -77420,6 +77637,7 @@ static ZERO_POWER_WITH_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::EntersWithCounters {
             amount: Amount::Fixed(1),
@@ -78116,8 +78334,8 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
     );
     assert!(
         matches!(
-            stack.last(),
-            Some(StackEntry::Ability {
+            stack.last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability {
                 effect: Effect::Dig(DigEffect::Cascade { .. }),
                 ..
             })
@@ -78296,8 +78514,8 @@ fn throes_of_chaos_cascades_on_cast() {
     assert_eq!(stack.len(), 2, "cascade trigger + Throes of Chaos");
     assert!(
         matches!(
-            stack.last(),
-            Some(StackEntry::Ability {
+            stack.last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability {
                 effect: Effect::Dig(DigEffect::Cascade { .. }),
                 ..
             })
@@ -78356,8 +78574,8 @@ fn demonstrate_declined_copies_nothing() {
     assert_eq!(stack.len(), 2, "demonstrate trigger (top) + the cast spell");
     assert!(
         matches!(
-            stack.last(),
-            Some(StackEntry::Ability {
+            stack.last().map(|entry| &entry.kind),
+            Some(StackEntryKind::Ability {
                 effect: Effect::Copy(CopyEffect::Demonstrate { .. }),
                 ..
             })
@@ -81365,6 +81583,7 @@ fn umbral_collar_zealot_cannot_sacrifice_itself() {
 /// A free, sorcery-speed activated ability that levels its Class source up to `level`.
 const fn level_up_ability(level: u8) -> Ability {
     Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -81444,6 +81663,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         level_up_ability(2),
         level_up_ability(3),
         Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::Upkeep),
             effect: Effect::Life(LifeEffect::Gain {
                 who: PlayerSet::You,
@@ -81456,6 +81676,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cost: Cost::FREE,
         },
         Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::EndStep),
             effect: Effect::Life(LifeEffect::Gain {
                 who: PlayerSet::You,
@@ -81506,6 +81727,7 @@ static TEST_CLASS: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 static TEST_LOSE_1_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Test Lose 1 Life",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -82028,6 +82250,7 @@ fn intermediate_chirography_level_two_counters_on_first_life_loss() {
 static TEST_MODIFIED_DEATH_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Test Modified Death Watcher",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -82678,6 +82901,7 @@ static SCREAM_EXILE_RETURN_CREATURES: LazyLock<CardDef> = LazyLock::new(|| CardD
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters {
             counters: 1,
@@ -83211,6 +83435,7 @@ fn manifest_noncreature_cannot_be_turned_face_up() {
 /// A "when this is turned face up, draw a card" ability (CR 702.37f — a morph turned-face-up
 /// trigger), for the synthetic morph creature below.
 const TURNED_FACE_UP_DRAW: Ability = Ability {
+    oracle: None,
     timing: Timing::Triggered(Trigger::TurnedFaceUp),
     effect: Effect::Draw(DrawEffect::Cards {
         who: PlayerSet::You,
@@ -83381,6 +83606,7 @@ static HARD_COUNTER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 /// Willbender's turned-face-up trigger (CR 702.37f): "When this creature is turned face up, change
 /// the target of target spell or ability with a single target."
 const WILLBENDER_RETARGET: Ability = Ability {
+    oracle: None,
     timing: Timing::Triggered(Trigger::TurnedFaceUp),
     effect: Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility {
         target: TargetSpec::SingleTargetSpellOnStack,
@@ -83627,6 +83853,7 @@ static MULTI_BOLT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
         speed: SpellSpeed::Instant,
     },
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Damage(DamageEffect::Target {
             amount: Amount::Fixed(1),
@@ -83664,6 +83891,7 @@ static MULTI_BOLT: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 /// A synthetic Wild Ricochet: a free instant with the retarget-then-copy body above.
 fn wild_ricochet() -> CardDef {
     let abilities: &'static [Ability] = Box::leak(Box::new([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Sequence {
             steps: Arc::from([
@@ -84482,6 +84710,7 @@ fn plain_morph_creature_does_not_flip_on_damage() {
 
 /// A plain enter-the-battlefield draw, reused by the trigger-doubling test creatures.
 const ETB_DRAW: Ability = Ability {
+    oracle: None,
     timing: Timing::Triggered(Trigger::Etb),
     effect: Effect::Draw(DrawEffect::Cards {
         who: PlayerSet::You,
@@ -84497,6 +84726,7 @@ const ETB_DRAW: Ability = Ability {
 /// "Whenever you cast a spell, draw a card" — fires on both an instant and a creature cast, so it
 /// distinguishes Veyran's instant/sorcery-cause gate from a bare "you control" doubling.
 const CAST_WATCH_DRAW: Ability = Ability {
+    oracle: None,
     timing: Timing::Triggered(Trigger::CastSpell {
         filter: SpellFilter::AllSpells,
         caster: WatchedPlayer::You,
@@ -84539,6 +84769,7 @@ static CAST_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
 /// (Veyran's second-ability mechanic, isolated from her own magecraft pump).
 static INSTANT_CAUSE_DOUBLER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::TriggerDoubling {
             source_subtypes: &[],
@@ -84571,8 +84802,8 @@ fn draw_triggers_on_stack(game: &Game) -> usize {
         .iter()
         .filter(|e| {
             matches!(
-                e,
-                StackEntry::Ability {
+                &e.kind,
+                StackEntryKind::Ability {
                     effect: Effect::Draw(DrawEffect::Cards { .. }),
                     ..
                 }
@@ -84633,8 +84864,8 @@ fn harmonic_prodigy_does_not_double_its_own_prowess() {
         .iter()
         .filter(|e| {
             matches!(
-                e,
-                StackEntry::Ability {
+                &e.kind,
+                StackEntryKind::Ability {
                     effect: Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn { .. }),
                     ..
                 }
@@ -85129,6 +85360,7 @@ fn moments_peace_flashback_from_graveyard() {
 /// A test permanent carrying only Tajic's prevention static (2/3, like the real card).
 static TAJIC_STATIC: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::PreventNoncombatDamageToOtherCreaturesYouControl),
         optional: false,
@@ -86732,6 +86964,7 @@ fn looter_il_kor_combat_damage_to_opponent_draws_then_discards() {
 static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::DealsDamageToOpponent),
             effect: Effect::Draw(DrawEffect::Cards {
                 who: PlayerSet::You,
@@ -86744,6 +86977,7 @@ static OPPONENT_DAMAGE_WATCHER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             condition: None,
         },
         Ability {
+            oracle: None,
             timing: Timing::Activated(ActivationCost {
                 activator: Activator::Controller,
                 taps_self: false,
@@ -88119,6 +88353,7 @@ fn seal_of_cleansing_sacrifices_itself_to_destroy_an_artifact() {
 /// these tests exercise).
 static ETB_GAIN_LIFE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Life(LifeEffect::Gain {
             who: PlayerSet::You,
@@ -90410,6 +90645,7 @@ static MAY_DRAW_UPKEEP: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Upkeep),
         effect: Effect::Draw(DrawEffect::Cards {
             who: PlayerSet::You,
@@ -91170,6 +91406,7 @@ static TEST_MINUS_ONE_COUNTER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| Car
     },
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Static,
             effect: Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::Fixed(1),
@@ -91182,6 +91419,7 @@ static TEST_MINUS_ONE_COUNTER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| Car
             cost: Cost::FREE,
         },
         Ability {
+            oracle: None,
             timing: Timing::Activated(ActivationCost {
                 activator: Activator::Controller,
                 taps_self: false,
@@ -91672,6 +91910,7 @@ static DIES_FODDER: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::Life(LifeEffect::Gain {
             who: PlayerSet::You,
@@ -92323,6 +92562,7 @@ static FLIPPER_BACK: LazyLock<CardDef> =
 fn flipper_front() -> CardDef {
     CardDef {
         abilities: arc_slice([Ability {
+            oracle: None,
             timing: Timing::Activated(ActivationCost {
                 activator: Activator::Controller,
                 mana: Cost::FREE,
@@ -94530,6 +94770,7 @@ static BLOCKING_ANTHEM_LORD: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     default_print: "",
     kind: CardKind::Enchantment,
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::Anthem {
             power: Amount::Fixed(1),
@@ -95268,6 +95509,7 @@ static TEST_LAND_WITH_CHARGE_COUNTERS: LazyLock<CardDef> = LazyLock::new(|| Card
     keywords: empty_slice(),
     conditional_keywords: empty_slice(),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::EntersWithCounters {
             amount: Amount::Fixed(2),
@@ -96176,6 +96418,7 @@ fn magmatic_force_deals_three_at_the_beginning_of_each_upkeep() {
 /// Riku's *first* ability ("whenever you cast an instant or sorcery spell").
 static MAKE_TEST_TOKEN: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Token(TokenEffect::Create {
             token: creature("Squirrel", 1, 1, &[]),
@@ -101919,6 +102162,7 @@ fn power_fists_trigger_stops_once_it_moves_to_another_creature() {
 static ONE_WAY_FIGHT_SPELL: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "One-Way Fight (test)",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Spell,
         effect: Effect::Misc(MiscEffect::Fight {
             enemy: None,
@@ -102214,6 +102458,7 @@ static RAMPAGING_YAO_GUAI_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     conditional_keywords: empty_slice(),
     abilities: arc_slice([
         Ability {
+            oracle: None,
             timing: Timing::Static,
             effect: Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::X,
@@ -102226,6 +102471,7 @@ static RAMPAGING_YAO_GUAI_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
             cost: Cost::FREE,
         },
         Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::Etb),
             effect: Effect::Destroy(DestroyEffect::Target {
                 target: TargetSpec::Permanent(PermanentFilter::of(
@@ -102861,6 +103107,7 @@ static TEST_MINUS_ONE_EACH_TARGET_PLAYER: LazyLock<CardDef> = LazyLock::new(|| C
     name: "Test Minus-Each Artifact",
     kind: CardKind::Artifact,
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Counters(CountersEffect::PutCountersEach {
             filter: PermanentFilter {
@@ -103898,6 +104145,7 @@ fn plague_stinger_flies_and_infects() {
 /// without also exercising mana payment (Alpha Deathclaw's real cost is `{5}{B}{G}`).
 const fn monstrosity_ability(count: u8) -> Ability {
     Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: false,
@@ -103958,6 +104206,7 @@ static MONSTROSITY_TRIGGER_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDe
     abilities: arc_slice([
         monstrosity_ability(4),
         Ability {
+            oracle: None,
             timing: Timing::Triggered(Trigger::BecomesMonstrous),
             effect: Effect::Life(LifeEffect::Gain {
                 who: PlayerSet::You,
@@ -104586,6 +104835,7 @@ fn multikicker_count_is_rejected_on_a_spell_without_multikicker() {
 /// gain reads that tally back through `Amount::CountersRemovedThisWay`.
 static TEST_CULL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             activator: Activator::Controller,
             taps_self: true,
@@ -104680,6 +104930,7 @@ fn remove_all_but_one_plus_one_counter_gains_one_life_each() {
 /// `kind_counters` — without a second card on the battlefield.
 static TEST_SWEEP_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             taps_self: true,
             mana: Cost::FREE,
@@ -104815,6 +105066,7 @@ fn remove_all_but_one_plus_one_counter_is_a_no_op_with_no_counters() {
 /// *second* removal took off — nothing — rather than the first's count.
 static TEST_DOUBLE_REMOVAL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             taps_self: true,
             mana: Cost::FREE,
@@ -104920,6 +105172,7 @@ fn a_second_removal_that_takes_nothing_reads_zero_rather_than_the_first_count() 
 /// they are gone.
 static TEST_BRANCHED_REMOVAL_CREATURE: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Activated(ActivationCost {
             taps_self: false,
             mana: Cost::FREE,
@@ -105133,6 +105386,7 @@ static TOXIC_2_2: LazyLock<CardDef> =
 static TOXIC_AURA_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Toxic 2 Aura (test)",
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Static,
         effect: Effect::Static(StaticEffect::GrantToAttached {
             power: Amount::Fixed(0),
@@ -105167,6 +105421,7 @@ static TOXIC_PINGER_TEST: LazyLock<CardDef> = LazyLock::new(|| CardDef {
     name: "Toxic pinger (test)",
     keywords: arc_slice([Keyword::Toxic(1)]),
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Damage(DamageEffect::Target {
             amount: Amount::Fixed(2),
@@ -106948,6 +107203,7 @@ static TEST_PLUS_COUNTERS_ON_YOUR_LANDS: LazyLock<CardDef> = LazyLock::new(|| Ca
     name: "Test Land Grower",
     kind: CardKind::Artifact,
     abilities: arc_slice([Ability {
+        oracle: None,
         timing: Timing::Triggered(Trigger::Etb),
         effect: Effect::Counters(CountersEffect::PutCountersEach {
             filter: PermanentFilter {

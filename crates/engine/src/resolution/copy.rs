@@ -359,9 +359,12 @@ impl Game {
                 // response) before this watch's trigger resolved — nothing left to copy. The watch
                 // sits directly above the original (CR 603.3b), so it's the topmost stack ability
                 // with that source.
-                let Some((copied_effect, copied_target, copied_x, copied_activated)) =
-                    self.stack.iter().rev().find_map(|item| match item.clone() {
-                        StackItem::Ability {
+                let Some((copied_effect, copied_target, copied_x, copied_activated)) = self
+                    .stack
+                    .iter()
+                    .rev()
+                    .find_map(|item| match item.payload.clone() {
+                        StackPayload::Ability {
                             source,
                             effect,
                             target,

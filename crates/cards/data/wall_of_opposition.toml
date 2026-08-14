@@ -2,7 +2,6 @@
 # {1}: This creature gets +1/+0 until end of turn.
 name = "Wall of Opposition"
 otags = ["activated-ability", "drawback", "firebreathing", "mana-sink"]
-sets = ["bchr", "chr", "leg"]
 id = "30254aa2-2307-4f42-926a-54a416f55f87"
 default_print = "23243752-25c5-407e-9ce4-4bc1f02d01c1"
 oracle = "Defender (This creature can't attack.)\n{1}: This creature gets +1/+0 until end of turn."
@@ -20,6 +19,7 @@ toughness = 6
 
 # {1}: This creature gets +1/+0 until end of turn.
 [[abilities]]
+oracle = "{1}: This creature gets +1/+0 until end of turn."
 timing = "activated"
 activation_cost = { generic = 1 }
 

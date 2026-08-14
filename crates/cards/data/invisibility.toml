@@ -2,7 +2,6 @@
 # Enchanted creature can't be blocked except by Walls.
 name = "Invisibility"
 otags = ["gives-unblockable", "hate-typal-non-wall", "single-english-word-name"]
-sets = ["2ed", "30a", "8ed", "ced", "cei", "lea", "leb", "m15", "plst"]
 id = "de26b0c6-dfb7-45a8-9d7f-f8d45522d675"
 default_print = "de833d23-2abd-42c3-a38f-f16813aaee4e"
 oracle = "Enchant creature\nEnchanted creature can't be blocked except by Walls."
@@ -19,6 +18,7 @@ type = "aura"
 
 # Enchanted creature can't be blocked except by Walls.
 [[abilities]]
+oracle = "Enchanted creature can't be blocked except by Walls."
 timing = "static"
 
 # Enchanted creature can't be blocked except by Walls. (Authored inverted, as every "can't be

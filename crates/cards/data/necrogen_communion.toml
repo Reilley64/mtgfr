@@ -6,7 +6,6 @@ id = "ff58459a-0015-4012-86c0-580da4e02676"
 default_print = "6ac8cd7c-992f-4953-b5bf-42e5a9ff09ad"
 otags = ["cheat-death", "death-trigger", "gives-toxic", "protects-creature"]
 oracle = "Enchant creature you control\nEnchanted creature has toxic 2. (Players dealt combat damage by it also get two poison counters.)\nWhen enchanted creature dies, return that card to the battlefield under your control."
-sets = ["one"]
 subtypes = ["Aura"]
 enchant = { types = "creature", controller = "you" }
 
@@ -19,6 +18,7 @@ type = "aura"
 
 # Enchanted creature has toxic 2. (Players dealt combat damage by it also get two poison counters.)
 [[abilities]]
+oracle = "Enchanted creature has toxic 2. (Players dealt combat damage by it also get two poison counters.)"
 timing = "static"
 
 # Enchanted creature has toxic 2.
@@ -29,6 +29,7 @@ keywords = [{ toxic = 2 }]
 
 # When enchanted creature dies, return that card to the battlefield under your control.
 [[abilities]]
+oracle = "When enchanted creature dies, return that card to the battlefield under your control."
 timing = "enchanted_creature_dies"
 
 # return that card to the battlefield under your control

@@ -3,7 +3,6 @@
 # Other Zombies have "{B}: Regenerate this permanent."
 name = "Zombie Master"
 otags = ["evasion", "gives-swampwalk", "keyword-anthem", "noncreature-typal", "protects-creature", "regenerates-other", "symmetrical", "typal-zombie", "type-errata-lord"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "drc", "fbb", "lea", "leb", "mb2", "me4", "pw24", "sld", "sum"]
 id = "5446c92f-ff22-4e9b-a2f6-e64c8560c1e0"
 default_print = "d9b2accc-11e8-4bfd-97fc-d2f6bcd94c26"
 oracle = "Other Zombie creatures have swampwalk. (They can't be blocked as long as defending player controls a Swamp.)\nOther Zombies have \"{B}: Regenerate this permanent.\""
@@ -21,6 +20,7 @@ toughness = 3
 # Other Zombie creatures have swampwalk. (They can't be blocked as long as defending player
 # controls a Swamp.)
 [[abilities]]
+oracle = "Other Zombie creatures have swampwalk. (They can't be blocked as long as defending player controls a Swamp.)"
 timing = "static"
 
 # Other Zombie creatures have swampwalk.
@@ -34,6 +34,7 @@ keywords = [{ landwalk = "swamp" }]
 
 # Other Zombies have "{B}: Regenerate this permanent."
 [[abilities]]
+oracle = "Other Zombies have \"{B}: Regenerate this permanent.\""
 timing = "static"
 
 # Other Zombies have "{B}: Regenerate this permanent."

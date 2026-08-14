@@ -2,7 +2,6 @@
 # At the beginning of your upkeep, change this creature's base toughness to 1 plus the number of
 # creature cards in your graveyard. (This effect lasts indefinitely.)
 name = "Wall of Tombstones"
-sets = ["leg"]
 id = "2412a8a2-d028-44f1-8979-add9ec953759"
 default_print = "55da1e86-fe18-486a-b510-f941e6f6e378"
 oracle = "Defender (This creature can't attack.)\nAt the beginning of your upkeep, change this creature's base toughness to 1 plus the number of creature cards in your graveyard. (This effect lasts indefinitely.)"
@@ -21,6 +20,7 @@ toughness = 1
 # At the beginning of your upkeep, change this creature's base toughness to 1 plus the number of
 # creature cards in your graveyard. (This effect lasts indefinitely.)
 [[abilities]]
+oracle = "At the beginning of your upkeep, change this creature's base toughness to 1 plus the number of creature cards in your graveyard. (This effect lasts indefinitely.)"
 timing = "upkeep"
 
 # change this creature's base toughness to 1 plus the number of creature cards in your graveyard.

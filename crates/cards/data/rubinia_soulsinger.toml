@@ -2,7 +2,6 @@
 # {T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains
 # tapped.
 name = "Rubinia Soulsinger"
-sets = ["bchr", "c13", "chr", "cma", "leg", "me3", "oc13", "td0"]
 otags = ["activated-ability", "cycle-c13-reprint-commander", "deprecated-legend-type", "theft-creature", "unique-type-line"]
 subtypes = ["Faerie"]
 id = "bd3eeaba-964b-49ea-bb11-5875a78b8a4c"
@@ -27,6 +26,7 @@ toughness = 3
 # {T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains
 # tapped.
 [[abilities]]
+oracle = "{T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains tapped."
 timing = "activated"
 taps_self = true
 

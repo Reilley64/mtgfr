@@ -109,10 +109,10 @@ impl Game {
                 return Err(Reject::CannotPayCost);
             }
         }
-        if cost.additional.pay_life_x && self.life(player) < x as i32 {
+        if cost.additional.pay_life_x && i64::from(self.life(player)) < i64::from(x) {
             return Err(Reject::CannotPayCost);
         }
-        if self.life(player) < cost.additional.pay_life as i32 {
+        if i64::from(self.life(player)) < i64::from(cost.additional.pay_life) {
             return Err(Reject::CannotPayCost);
         }
         // "Reveal a creature card from your hand" (CR 601.2g — Disaster Radius): can't be cast
@@ -515,7 +515,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(2 * i32::from(phyrexian_life)),
+                    amount: -i64::from(2 * i32::from(phyrexian_life)),
                     source: Some(object),
                 },
             );
@@ -590,7 +590,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(x as i32),
+                    amount: -i64::from(x),
                     source: Some(object),
                 },
             );
@@ -602,7 +602,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(cost.additional.pay_life as i32),
+                    amount: -i64::from(cost.additional.pay_life),
                     source: Some(object),
                 },
             );
@@ -1238,7 +1238,7 @@ impl Game {
         // affordable (CR 119.4 — life down to and including 0); below the cost the land just
         // enters tapped with no prompt, handled by `Game::enters_tapped` at `Event::LandPlayed`.
         if let Some(life) = printed.enters_tapped_unless_you_pay_life
-            && self.life(player) >= life as i32
+            && i64::from(self.life(player)) >= i64::from(life)
         {
             pending::raise_choice(
                 self,
@@ -1277,7 +1277,7 @@ impl Game {
             player,
             tapped,
         }];
-        self.apply_all(&events);
+        self.apply_all_recorded(&mut events);
         // A land's own as-enters static (CR 616.1 — Vivid Crag's "enters with two charge
         // counters"): no spell/target context at this special action, unlike the cast-resolution
         // choke `push_enters_with_counters` also serves.
@@ -2553,7 +2553,7 @@ impl Game {
         let target = match ability.effect.target() {
             spec @ (TargetSpec::ThisPermanent | TargetSpec::EnchantedCreature) => {
                 // An activated ability carries no {X} (mirrors `run`'s "abilities (CR 602, CR 113)
-                // carry no X" for `StackItem::Ability`).
+                // carry no X" for `StackPayload::Ability`).
                 let legal = self.legal_targets_for(spec, object, player, source_colors, 0);
                 match legal.first() {
                     Some(&fixed) => Some(fixed),
@@ -2777,7 +2777,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -pay_life,
+                    amount: -i64::from(pay_life),
                     source: Some(object),
                 },
             );
@@ -2880,7 +2880,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(cost.self_damage as i32),
+                    amount: -i64::from(cost.self_damage),
                     source: Some(object),
                 },
             );
@@ -2920,6 +2920,8 @@ impl Game {
             // mana ability to do *only* that) resolves both steps in order instead of hitting
             // the private mint's `Sequence => unreachable!()` guard; behavior-preserving for the
             // common bare-`AddMana` case, which still falls through `run`'s catch-all to mint+apply.
+            let mut provenance_pool = self.players[player.0 as usize].mana_pool;
+            let mana_event_start = events.len();
             self.run(
                 effect.clone(),
                 ResolveCtx {
@@ -2942,7 +2944,7 @@ impl Game {
             // `&self` mint `AddMana` arm) because this is where the source id and the
             // resolved `ManaAdded` events coexist.
             if effect.tracks_mana_provenance() {
-                for event in &events {
+                for event in &events[mana_event_start..] {
                     let Event::ManaAdded {
                         player: p,
                         mana,
@@ -2955,7 +2957,8 @@ impl Game {
                     if p != player {
                         continue;
                     }
-                    for _ in 0..amount {
+                    let accepted = provenance_pool.add(mana, amount);
+                    for _ in 0..accepted {
                         self.players[player.0 as usize]
                             .mana_provenance
                             .push((object, mana));

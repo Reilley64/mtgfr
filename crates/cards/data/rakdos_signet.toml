@@ -1,6 +1,5 @@
 # {1}, {T}: Add {B}{R}.
 name = "Rakdos Signet"
-sets = ["aa1", "afc", "arc", "brc", "c16", "c17", "c20", "clu", "cma", "cmd", "dis", "dsc", "gk2", "lcc", "mm3", "ncc", "otc", "prm", "rvr", "scd", "sld", "td0", "voc"]
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
 oracle = "{1}, {T}: Add {B}{R}."
 id = "3adb7681-977f-4a32-9ec8-51481b958268"
@@ -14,6 +13,7 @@ type = "artifact"
 
 # {1}, {T}: Add {B}{R}.
 [[abilities]]
+oracle = "{1}, {T}: Add {B}{R}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

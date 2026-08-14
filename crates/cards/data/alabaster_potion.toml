@@ -3,7 +3,6 @@
 # • Prevent the next X damage that would be dealt to any target this turn.
 name = "Alabaster Potion"
 otags = ["damage-prevention", "lifegain", "modal", "single-target-instant-sorcery"]
-sets = ["4bb", "4ed", "5ed", "itp", "leg", "me3", "ren", "rqs"]
 id = "2fcca686-03c8-4407-9f9f-2b7462470044"
 default_print = "8ce1f383-258d-4fa1-a3c7-3424bb2e568c"
 oracle = "Choose one —\n• Target player gains X life.\n• Prevent the next X damage that would be dealt to any target this turn."

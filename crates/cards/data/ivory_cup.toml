@@ -1,7 +1,6 @@
 # Whenever a player casts a white spell, you may pay {1}. If you do, you gain 1 life.
 name = "Ivory Cup"
 otags = ["cast-trigger", "cycle-lea-lucky-charm", "hate-white", "repeatable-lifegain", "synergy-white", "toll"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "8e2017c3-057d-4e30-bd60-f486fddbc6ca"
 default_print = "76aaff1a-6796-4728-bdb5-bcdc79c9b98c"
 oracle = "Whenever a player casts a white spell, you may pay {1}. If you do, you gain 1 life."
@@ -14,6 +13,7 @@ type = "artifact"
 
 # Whenever a player casts a white spell, you may pay {1}. If you do, you gain 1 life.
 [[abilities]]
+oracle = "Whenever a player casts a white spell, you may pay {1}. If you do, you gain 1 life."
 timing = "cast_spell"
 spell_filter = { color = "white" }
 caster = "any_player"

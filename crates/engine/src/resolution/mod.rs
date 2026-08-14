@@ -59,7 +59,7 @@ pub(crate) struct ResolveCtx {
     pub(crate) targets_second: TargetList,
     pub(crate) x: u32,
     /// The multiset of mana actually spent activating the resolving ability
-    /// ([`StackItem::Ability::spent_mana`]), read by [`Effect::Choice(ChoiceEffect::CastCreatureFaceDown)`]'s CR 107.3
+    /// ([`StackPayload::Ability::spent_mana`]), read by [`Effect::Choice(ChoiceEffect::CastCreatureFaceDown)`]'s CR 107.3
     /// payability test. All zeroes except when [`Game::resolve_top`] resolves a real activation —
     /// the pending-answer paths that reconstruct a ctx pass zeroes (none can reach
     /// `CastCreatureFaceDown`, which pauses only on its own choice).

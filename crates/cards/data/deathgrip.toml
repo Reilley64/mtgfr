@@ -1,7 +1,6 @@
 # {B}{B}: Counter target green spell.
 name = "Deathgrip"
 otags = ["activated-ability", "color-break", "counterspell-reusable", "hate-green", "repeatable-crime", "single-english-word-name"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "20ae75a7-14ca-4366-af0a-3f3f02159f3f"
 default_print = "fe9210db-2ab3-42e6-be04-790917092317"
 oracle = "{B}{B}: Counter target green spell."
@@ -14,6 +13,7 @@ type = "enchantment"
 
 # {B}{B}: Counter target green spell.
 [[abilities]]
+oracle = "{B}{B}: Counter target green spell."
 timing = "activated"
 
 [abilities.activation_cost]

@@ -6,7 +6,6 @@ id = "bdfcf7df-8c06-4abe-af41-eccabb9fc2c8"
 default_print = "9e8f7fbc-bf2a-43c1-a88d-807c1e7dab69"
 otags = ["activated-ability", "exponential", "gives-pp-counters", "gives-trample", "scales-with-damage-dealt", "slith-ability", "triggered-ability"]
 oracle = "Equipped creature has trample and \"Whenever this creature deals combat damage to a player, put that many +1/+1 counters on it.\"\nEquip {2}"
-sets = ["pip"]
 subtypes = ["Equipment"]
 
 [cost]
@@ -19,6 +18,7 @@ type = "artifact"
 # Equipped creature has trample and "Whenever this creature deals combat damage to a player, put
 # that many +1/+1 counters on it."
 [[abilities]]
+oracle = "Equipped creature has trample and \"Whenever this creature deals combat damage to a player, put that many +1/+1 counters on it.\""
 timing = "static"
 
 # Equipped creature has trample and "Whenever this creature deals combat damage to a player, put
@@ -33,6 +33,7 @@ granted_ability = { trigger = { deals_combat_damage_to_player = { who = "this" }
 
 # Equip {2}
 [[abilities]]
+oracle = "Equip {2}"
 timing = "activated"
 
 [abilities.activation_cost]

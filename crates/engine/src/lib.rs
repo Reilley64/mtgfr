@@ -65,6 +65,9 @@ pub use state::{ControlCondition, DyingCreatureStats};
 pub(crate) use state::{Modifier, ModifierDuration, ModifierKind};
 pub use types::*;
 
+#[cfg(debug_assertions)]
+pub mod debug;
+
 /// Keyword-trigger obligations queued outside ordinary triggered abilities and drained when the
 /// normal pending-trigger queue empties.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -98,6 +101,11 @@ pub struct Game {
     pub(crate) objects: Vec<Object>,
     /// Spells/abilities waiting to resolve, last element = top of stack.
     pub(crate) stack: Vec<StackItem>,
+    /// Monotonic source of identity for stack entries. `None` means all nonzero IDs were issued.
+    pub(crate) next_stack_entry_id: Option<std::num::NonZeroU64>,
+    /// The first allocation error raised while applying the current candidate transaction.
+    /// `submit` discards that candidate, preserving the accepted state exactly.
+    pub(crate) stack_entry_id_error: Option<StackEntryIdExhausted>,
     /// The player whose turn it is.
     pub(crate) active_player: PlayerId,
     /// The current step of the active player's turn.
@@ -291,9 +299,26 @@ impl Game {
         fields(accepted = tracing::field::Empty)
     )]
     pub fn submit(&mut self, intent: Intent) -> Result<Vec<Event>, Reject> {
-        let result = self.submit_inner(intent);
-        tracing::Span::current().record("accepted", result.is_ok());
-        result
+        // Intent handlers apply events incrementally because later rules decisions read earlier
+        // facts. Run the whole intent on a candidate so an allocator failure at any insertion in
+        // the batch cannot expose partial costs, zones, objects, orchestration, or events.
+        let mut candidate = self.clone();
+        candidate.stack_entry_id_error = None;
+        let result = candidate.submit_inner(intent);
+        if candidate.stack_entry_id_error.is_some() {
+            tracing::Span::current().record("accepted", false);
+            return Err(Reject::StackEntryIdExhausted);
+        }
+        let events = match result {
+            Ok(events) => events,
+            Err(reject) => {
+                tracing::Span::current().record("accepted", false);
+                return Err(reject);
+            }
+        };
+        *self = candidate;
+        tracing::Span::current().record("accepted", true);
+        Ok(events)
     }
 
     fn submit_inner(&mut self, intent: Intent) -> Result<Vec<Event>, Reject> {

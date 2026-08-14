@@ -2,7 +2,6 @@
 # Whenever equipped creature dies, draw two cards.
 # Equip {1}
 name = "Skullclamp"
-sets = ["40k", "blc", "brc", "c14", "c15", "c16", "c17", "c20", "clb", "cma", "cmd", "dst", "fic", "moc", "msc", "pip", "plst", "sld", "td0", "tdc", "v09", "vma"]
 otags = ["activated-ability", "death-trigger", "draw-engine", "flowstone", "hand-positive", "repeatable-pure-draw"]
 oracle = "Equipped creature gets +1/-1.\nWhenever equipped creature dies, draw two cards.\nEquip {1}"
 subtypes = ["Equipment"]
@@ -17,6 +16,7 @@ type = "artifact"
 
 # Equipped creature gets +1/-1.
 [[abilities]]
+oracle = "Equipped creature gets +1/-1."
 timing = "static"
 
 # Equipped creature gets +1/-1.
@@ -28,6 +28,7 @@ toughness = -1
 
 # Whenever equipped creature dies, draw two cards.
 [[abilities]]
+oracle = "Whenever equipped creature dies, draw two cards."
 timing = "enchanted_creature_dies"
 
 # draw two cards.
@@ -38,6 +39,7 @@ count = 2
 
 # Equip {1}
 [[abilities]]
+oracle = "Equip {1}"
 timing = "activated"
 
 [abilities.activation_cost]

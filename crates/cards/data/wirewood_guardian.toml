@@ -1,7 +1,6 @@
 # Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put it into your hand,
 # then shuffle.)
 name = "Wirewood Guardian"
-sets = ["plst", "scg", "td0"]
 otags = ["activate-from-hand", "cheaper-than-mv", "french-vanilla", "tutor-land-forest", "tutor-to-hand", "virtual-vanilla"]
 subtypes = ["Elf", "Mutant"]
 id = "61ade140-5b11-4882-82e5-a075fc80b260"

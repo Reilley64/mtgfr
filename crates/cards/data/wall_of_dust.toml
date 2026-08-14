@@ -2,7 +2,6 @@
 # Whenever this creature blocks a creature, that creature can't attack during its controller's next turn.
 name = "Wall of Dust"
 otags = ["block-trigger", "prevent-attack", "typal-wall"]
-sets = ["4bb", "4ed", "leg", "ren"]
 id = "14895574-9c87-4e80-9bc9-cc3dd22a42b8"
 default_print = "aaf53dfe-5d48-4811-b2f5-5a5c1cb462ca"
 oracle = "Defender (This creature can't attack.)\nWhenever this creature blocks a creature, that creature can't attack during its controller's next turn."

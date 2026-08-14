@@ -1,7 +1,6 @@
 # Whenever a player casts a spell, counter it unless that player pays {3}.
 name = "Nether Void"
 otags = ["cast-tax", "cast-trigger", "counterspell-automatic", "counterspell-reusable", "counterspell-soft", "symmetrical"]
-sets = ["leg", "me3", "prm"]
 id = "53bab610-1d27-4897-a4ad-cfecca82b811"
 default_print = "a3452173-01e1-4a4a-981e-e6b6dea61c61"
 oracle = "Whenever a player casts a spell, counter it unless that player pays {3}."
@@ -16,6 +15,7 @@ type = "enchantment"
 
 # Whenever a player casts a spell, counter it unless that player pays {3}.
 [[abilities]]
+oracle = "Whenever a player casts a spell, counter it unless that player pays {3}."
 timing = "cast_spell"
 caster = "any_player"
 

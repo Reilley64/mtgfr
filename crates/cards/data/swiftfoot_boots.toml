@@ -6,7 +6,6 @@ otags = ["activated-ability", "french-vanilla-equipment", "gives-haste", "gives-
 id = "c8b143ad-43ec-4e0d-a440-e348daa31391"
 default_print = "6675632d-d74a-4b1e-8539-ac678d5545a5"
 oracle = "Equipped creature has hexproof and haste. (It can't be the target of spells or abilities your opponents control. It can attack and {T} no matter when it came under your control.)\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)"
-sets = ["msc"]
 subtypes = ["Equipment"]
 
 [cost]
@@ -17,6 +16,7 @@ type = "artifact"
 
 # Equipped creature has hexproof and haste.
 [[abilities]]
+oracle = "Equipped creature has hexproof and haste."
 timing = "static"
 
 # Equipped creature has hexproof and haste.
@@ -29,6 +29,7 @@ keywords = ["hexproof", "haste"]
 
 # Equip {1}
 [[abilities]]
+oracle = "Equip {1}"
 timing = "activated"
 
 [abilities.activation_cost]

@@ -2,7 +2,6 @@
 # {1}{W}: Target creature gains first strike until end of turn.
 name = "Boros Guildmage"
 otags = ["activated-ability", "combat-trick", "cycle-block-rav-guildmage", "gives-first-strike", "gives-haste", "mana-sink", "repeatable-crime"]
-sets = ["cma", "cmd", "hop", "rav", "rvr"]
 id = "266c2f49-82eb-48e9-a7ea-e0da787fa40e"
 default_print = "4355130c-bfaa-4799-9d70-dbfd32e39f7e"
 oracle = "{1}{R}: Target creature gains haste until end of turn.\n{1}{W}: Target creature gains first strike until end of turn."
@@ -18,6 +17,7 @@ toughness = 2
 
 # {1}{R}: Target creature gains haste until end of turn.
 [[abilities]]
+oracle = "{1}{R}: Target creature gains haste until end of turn."
 timing = "activated"
 activation_cost = { generic = 1, red = 1 }
 
@@ -32,6 +32,7 @@ keywords = ["haste"]
 
 # {1}{W}: Target creature gains first strike until end of turn.
 [[abilities]]
+oracle = "{1}{W}: Target creature gains first strike until end of turn."
 timing = "activated"
 activation_cost = { generic = 1, white = 1 }
 

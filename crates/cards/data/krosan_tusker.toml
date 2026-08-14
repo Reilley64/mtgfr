@@ -2,7 +2,6 @@
 # When you cycle this card, you may search your library for a basic land card, reveal that card, put it into your
 # hand, then shuffle. (Do this before you draw.)
 name = "Krosan Tusker"
-sets = ["a25", "arc", "c13", "cmd", "cmm", "ddd", "ddl", "ddu", "f03", "gvl", "ha3", "j25", "mh1", "ons", "plst", "prm", "td0", "vma"]
 otags = ["activate-from-hand", "cheaper-than-mv", "cycle-ons-c-cycle-effect", "hand-positive", "pure-draw", "triggered-ability", "tutor-land-basic", "tutor-to-hand", "type-errata"]
 subtypes = ["Boar", "Beast"]
 id = "82406175-63b3-4972-be8b-db0e70c908cb"
@@ -22,6 +21,7 @@ toughness = 5
 # When you cycle this card, you may search your library for a basic land card, reveal that card, put it into your
 # hand, then shuffle. (Do this before you draw.)
 [[abilities]]
+oracle = "When you cycle this card, you may search your library for a basic land card, reveal that card, put it into your hand, then shuffle. (Do this before you draw.)"
 timing = "cycled"
 optional = true
 

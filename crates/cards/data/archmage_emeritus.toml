@@ -2,7 +2,6 @@
 # Archmage Emeritus (SOC): {2}{U}{U} 2/2 Human Wizard.
 # "Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card."
 name = "Archmage Emeritus"
-sets = ["fic", "otc", "plst", "prm", "pstx", "soc", "spg", "stx", "tdc"]
 id = "8305d576-21d8-4ce7-8eda-a7cd9793aca5"
 default_print = "dd547601-d650-4a02-a3a4-890bcef03a7c"
 otags = ["draw-engine", "hand-positive", "magecraft", "repeatable-pure-draw"]
@@ -20,6 +19,7 @@ toughness = 2
 
 # Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card.
 [[abilities]]
+oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card."
 timing = "magecraft"
 
 # draw a card

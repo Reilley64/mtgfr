@@ -26,6 +26,7 @@ import {
   UpdateDeck422,
   type YieldRequest,
 } from "./wire/types";
+import { parseStreamFrameJson, type StreamFrameParseError } from "./wire/wireJson";
 
 const API_ORIGIN = "/api/rpc";
 
@@ -36,6 +37,8 @@ function withCredentials(fetchImpl: typeof globalThis.fetch): typeof globalThis.
   return ((input: RequestInfo | URL, init?: RequestInit) =>
     fetchImpl(input, { ...init, credentials: "include" })) as typeof globalThis.fetch;
 }
+
+export type StreamTransportError = HttpClientError.HttpClientError | StreamFrameParseError;
 
 /** Build a client over a specific `fetch`. The fetch layer has no finalizers, so the `HttpClient`
  * resolves synchronously. Tests use this with a stub `fetch`; the app uses the default `client`. */
@@ -166,8 +169,8 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
     setStackDwell: (table: string, payload: StackDwellRequest) =>
       json(Ack, HttpClientRequest.post(`/game/${table}/stack-dwell`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
 
-    /** SSE delta stream. Full StreamFrame Schema is deferred; invalid JSON fails the stream. */
-    streamSse: (table: string): Stream.Stream<StreamFrame, HttpClientError.HttpClientError> =>
+    /** SSE delta stream. Invalid JSON and domain-invalid frames fail through the typed channel. */
+    streamSse: (table: string): Stream.Stream<StreamFrame, StreamTransportError> =>
       HttpClient.filterStatusOk(base)
         .execute(HttpClientRequest.get(`/game/${table}/stream`))
         .pipe(
@@ -176,7 +179,7 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
           Stream.decodeText(),
           Stream.splitLines,
           Stream.filter((line) => line.startsWith("data: ")),
-          Stream.map((line) => JSON.parse(line.slice(6)) as StreamFrame),
+          Stream.mapEffect((line) => parseStreamFrameJson(line.slice(6))),
         ),
   };
 }

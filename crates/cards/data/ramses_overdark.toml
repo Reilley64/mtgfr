@@ -1,7 +1,6 @@
 # {T}: Destroy target enchanted creature.
 name = "Ramses Overdark"
 otags = ["activated-ability", "deprecated-legend-type", "hate-aura", "removal-creature", "removal-destroy", "repeatable-crime", "repeatable-removal", "spot-removal", "unique-mana-cost"]
-sets = ["leg", "me3"]
 id = "6c9a9071-8159-4607-9465-de796f1dc2cc"
 default_print = "61bb42b2-327b-47d3-9fe3-76c029d91ee9"
 oracle = "{T}: Destroy target enchanted creature."
@@ -20,6 +19,7 @@ toughness = 3
 
 # {T}: Destroy target enchanted creature.
 [[abilities]]
+oracle = "{T}: Destroy target enchanted creature."
 timing = "activated"
 taps_self = true
 

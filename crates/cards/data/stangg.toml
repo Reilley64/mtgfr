@@ -2,7 +2,6 @@
 # token. Exile that token when Stangg leaves the battlefield. Sacrifice Stangg when that token
 # leaves the battlefield.
 name = "Stangg"
-sets = ["a25", "bchr", "chr", "leg", "me3", "plst"]
 id = "739eac91-3029-4ce7-9885-0af3ddea472e"
 default_print = "a23f846e-b5e6-48c2-afea-c9be7fc8b7c3"
 oracle = "When Stangg enters, create Stangg Twin, a legendary 3/4 red and green Human Warrior creature token. Exile that token when Stangg leaves the battlefield. Sacrifice Stangg when that token leaves the battlefield."
@@ -36,6 +35,7 @@ link_as_twin = true
 
 # Exile that token when Stangg leaves the battlefield.
 [[abilities]]
+oracle = "Exile that token when Stangg leaves the battlefield."
 timing = "this_leaves_battlefield"
 
 # Exile that token

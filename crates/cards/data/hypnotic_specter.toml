@@ -2,7 +2,6 @@
 # Whenever this creature deals damage to an opponent, that player discards a card at random.
 name = "Hypnotic Specter"
 otags = ["combat-neutral-damage-trigger", "discard", "evasion", "random-discard", "specter-ability"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "9ed", "ath", "ced", "cei", "fbb", "ha1", "lea", "leb", "m10", "p06", "plst", "prm", "ptc", "sum"]
 id = "759af941-f6a3-4726-91f2-9b1e4e55ea71"
 default_print = "e12847f4-4ace-4116-bc96-f3e5336eb35f"
 oracle = "Flying\nWhenever this creature deals damage to an opponent, that player discards a card at random."
@@ -20,6 +19,7 @@ toughness = 2
 
 # Whenever this creature deals damage to an opponent, that player discards a card at random.
 [[abilities]]
+oracle = "Whenever this creature deals damage to an opponent, that player discards a card at random."
 timing = "deals_damage_to_opponent"
 
 # that player discards a card at random.

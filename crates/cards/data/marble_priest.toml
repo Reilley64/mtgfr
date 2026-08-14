@@ -2,7 +2,6 @@
 # Prevent all combat damage that would be dealt to this creature by Walls.
 name = "Marble Priest"
 otags = ["class-type-only", "damage-prevention", "damage-prevention-self", "hate-set-mechanic", "hate-typal-wall", "lure-limited", "type-addition-from-none"]
-sets = ["leg"]
 id = "96bcabee-e84e-409f-8439-80f5308d73e9"
 default_print = "459b71d7-34c1-43b9-93ff-364f95aa4789"
 oracle = "All Walls able to block this creature do so.\nPrevent all combat damage that would be dealt to this creature by Walls."
@@ -19,6 +18,7 @@ also = ["artifact"]
 
 # All Walls able to block this creature do so.
 [[abilities]]
+oracle = "All Walls able to block this creature do so."
 timing = "static"
 
 # All Walls able to block this creature do so.
@@ -29,6 +29,7 @@ filter = { types = "creature", subtypes = ["Wall"] }
 
 # Prevent all combat damage that would be dealt to this creature by Walls.
 [[abilities]]
+oracle = "Prevent all combat damage that would be dealt to this creature by Walls."
 timing = "static"
 
 # Prevent all combat damage that would be dealt to this creature by Walls.

@@ -2,7 +2,6 @@
 # {G}: This creature gets +1/+1 until end of turn.
 name = "Killer Bees"
 otags = ["activated-ability", "bottomless-mana-sink", "evasion", "real-life-animal-name", "shade-pump", "type-errata-specific-insect"]
-sets = ["4bb", "4ed", "5ed", "leg", "me3", "ren"]
 id = "5da1f1af-d2e5-4e14-914b-d93f15626636"
 default_print = "096c7da0-a341-4044-9033-95e7bf2d605a"
 oracle = "Flying\n{G}: This creature gets +1/+1 until end of turn."
@@ -20,6 +19,7 @@ toughness = 1
 
 # {G}: This creature gets +1/+1 until end of turn.
 [[abilities]]
+oracle = "{G}: This creature gets +1/+1 until end of turn."
 timing = "activated"
 activation_cost = { green = 1 }
 

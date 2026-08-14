@@ -4,7 +4,6 @@
 # "Spells you cast that target a creature cost {2} less to cast." — the targets-a-creature
 # reducer (Killian, Ink Duelist, Silverquill's warlock).
 name = "Killian, Ink Duelist"
-sets = ["soc", "stx"]
 id = "e233cb5b-7237-4271-8157-9179cc897b6c"
 default_print = "9f51c115-dc9b-40a4-849d-3fc0c26e5a39"
 otags = ["cost-reducer", "cycle-stx-student", "evasion", "repeatable-lifegain", "synergy-target"]
@@ -24,6 +23,7 @@ toughness = 2
 
 # Spells you cast that target a creature cost {2} less to cast.
 [[abilities]]
+oracle = "Spells you cast that target a creature cost {2} less to cast."
 timing = "static"
 
 # Spells you cast that target a creature cost {2} less to cast.

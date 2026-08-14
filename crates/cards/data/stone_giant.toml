@@ -2,7 +2,6 @@
 # until end of turn. Destroy that creature at the beginning of the next end step.
 name = "Stone Giant"
 otags = ["activated-ability", "delayed-trigger", "gives-flying", "jump", "power-matters-self", "scales-with-power"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "ddi", "fbb", "lea", "leb", "m10", "me1", "plst", "sum"]
 id = "0b8e3f9b-a4da-49a3-8545-ce7a265e5856"
 default_print = "64dad66b-403b-4af6-b6eb-c123567e2b86"
 oracle = "{T}: Target creature you control with toughness less than this creature's power gains flying until end of turn. Destroy that creature at the beginning of the next end step."
@@ -20,6 +19,7 @@ toughness = 4
 # {T}: Target creature you control with toughness less than this creature's power gains flying
 # until end of turn. Destroy that creature at the beginning of the next end step.
 [[abilities]]
+oracle = "{T}: Target creature you control with toughness less than this creature's power gains flying until end of turn. Destroy that creature at the beginning of the next end step."
 timing = "activated"
 taps_self = true
 

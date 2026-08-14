@@ -1,7 +1,6 @@
 # One or more target creatures become black until end of turn.
 name = "Touch of Darkness"
 otags = ["color-change", "cycle-leg-color-wash-instant", "multiple-targets", "single-target-instant-sorcery"]
-sets = ["leg"]
 id = "73648693-c67f-454b-83e2-1d1787437a2a"
 default_print = "eda7177f-1354-4008-aaaa-2c8b823ed5e9"
 oracle = "One or more target creatures become black until end of turn."
@@ -14,6 +13,7 @@ type = "instant"
 
 # One or more target creatures become black until end of turn.
 [[abilities]]
+oracle = "One or more target creatures become black until end of turn."
 timing = "spell"
 
 # One or more target creatures become black until end of turn.

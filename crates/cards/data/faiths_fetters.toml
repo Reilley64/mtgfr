@@ -3,7 +3,6 @@
 # Enchanted permanent can't attack or block, and its activated abilities can't be activated unless
 # they're mana abilities.
 name = "Faith's Fetters"
-sets = ["c15", "cm2", "cmr", "ddc", "dvd", "ema", "j22", "j25", "m21", "plst", "rav", "rvr", "td0", "uma"]
 otags = ["alliteration", "cycle-rav-etb-aura", "lifegain", "pacifism", "prevent-activation", "prevent-attack", "prevent-blocker", "removal-planeswalker", "triggered-ability"]
 subtypes = ["Aura"]
 id = "2b2d76f5-4c9b-49dc-b202-68095e2d9b29"
@@ -20,6 +19,7 @@ type = "aura"
 
 # When this Aura enters, you gain 4 life.
 [[abilities]]
+oracle = "When this Aura enters, you gain 4 life."
 timing = "etb"
 
 # you gain 4 life.
@@ -31,6 +31,7 @@ amount = 4
 # Enchanted permanent can't attack or block, and its activated abilities can't be activated
 # unless they're mana abilities.
 [[abilities]]
+oracle = "Enchanted permanent can't attack or block, and its activated abilities can't be activated unless they're mana abilities."
 timing = "static"
 
 # Enchanted permanent can't attack or block, and its activated abilities can't be activated

@@ -1,6 +1,5 @@
 # Return target creature to its owner's hand.
 name = "Unsummon"
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "anb", "ced", "cei", "con", "dpa", "e02", "fbb", "fdn", "hou", "itp", "lea", "leb", "m10", "m11", "m12", "m13", "m20", "ps11", "rqs", "sum", "wc03"]
 id = "837182db-1bf3-4a2c-bd01-1af9d9873561"
 default_print = "2815d8e6-3668-4b9d-abe6-eca6a500707d"
 otags = ["removal-creature", "single-target-instant-sorcery", "spot-removal", "removal-bounce"]
@@ -14,6 +13,7 @@ type = "instant"
 
 # Return target creature to its owner's hand.
 [[abilities]]
+oracle = "Return target creature to its owner's hand."
 timing = "spell"
 
 # Return target creature to its owner's hand.

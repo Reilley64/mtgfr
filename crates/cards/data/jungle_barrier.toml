@@ -1,7 +1,6 @@
 # Defender (This creature can't attack.)
 # When this creature enters, draw a card.
 name = "Jungle Barrier"
-sets = ["apc", "e02", "ima", "plst", "td0"]
 otags = ["cantrip", "cycle-apc-u-two-color", "cycle-ima-draft-signpost", "drawback", "hand-neutral", "triggered-ability", "type-errata", "virtual-french-vanilla"]
 subtypes = ["Plant", "Wall"]
 id = "dcf65293-14a0-46a5-a0b0-ca2b7fda8bef"
@@ -21,6 +20,7 @@ toughness = 6
 
 # When this creature enters, draw a card.
 [[abilities]]
+oracle = "When this creature enters, draw a card."
 timing = "etb"
 
 # draw a card.

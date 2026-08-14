@@ -1,6 +1,5 @@
 # ({T}: Add {G}.)
 name = "Snow-Covered Forest"
-sets = ["csp", "ice", "khm", "mh1", "mh2", "sld"]
 id = "5f0d3be8-e63e-4ade-ae58-6b0c14f2ce6d"
 default_print = "ca17acea-f079-4e53-8176-a2f5c5c408a1"
 otags = ["activated-ability", "basic", "snow-land"]

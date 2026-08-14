@@ -1,6 +1,5 @@
 # {1}, {T}: Add {B}{G}.
 name = "Golgari Signet"
-sets = ["aa1", "blc", "c15", "c16", "clu", "cm2", "cma", "cmd", "ddj", "dsc", "gk1", "mm3", "onc", "prm", "rav", "rvr", "sld", "td0"]
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
 oracle = "{1}, {T}: Add {B}{G}."
 id = "1cf51f50-24e4-48d0-95b3-1dad3ffa4bf5"
@@ -14,6 +13,7 @@ type = "artifact"
 
 # {1}, {T}: Add {B}{G}.
 [[abilities]]
+oracle = "{1}, {T}: Add {B}{G}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

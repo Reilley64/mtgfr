@@ -8,7 +8,6 @@
 #    Nontoken creatures you control enter with an additional +1/+1 counter on them for each
 #    creature that died under your control this turn."
 name = "Gorma, the Gullet"
-sets = ["soc"]
 id = "ae5f30cc-a22e-4fbb-9510-e9429de3623c"
 default_print = "86f97dd8-8647-4938-aee0-690bb715f88b"
 otags = ["alliteration", "cycle-soc-alt-commander", "death-trigger", "gains-pp-counters", "gives-pp-counters", "morbid", "repeatable-lifegain", "repeatable-pp-counters", "unique-type-line", "unnoted-tracked-information"]
@@ -29,6 +28,7 @@ toughness = 1
 
 # Whenever another creature you control dies, put a +1/+1 counter on Gorma.
 [[abilities]]
+oracle = "Whenever another creature you control dies, put a +1/+1 counter on Gorma."
 timing = "creature_you_control_dies"
 
 # put a +1/+1 counter on Gorma
@@ -41,6 +41,7 @@ target = "this"
 # Nontoken creatures you control enter with an additional +1/+1 counter on them for each creature
 # that died under your control this turn.
 [[abilities]]
+oracle = "Nontoken creatures you control enter with an additional +1/+1 counter on them for each creature that died under your control this turn."
 timing = "static"
 
 # Nontoken creatures you control enter with an additional +1/+1 counter on them for each

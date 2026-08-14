@@ -1,7 +1,6 @@
 # Creature spells you cast cost {2} less to cast.
 name = "Planar Gate"
 otags = ["cost-reducer-creature"]
-sets = ["leg", "me4"]
 id = "632f1034-d2ad-432a-a79a-4bd1307be24a"
 default_print = "c880c236-a9d9-4e0d-bc4b-8910c75639cd"
 oracle = "Creature spells you cast cost {2} less to cast."
@@ -14,6 +13,7 @@ type = "artifact"
 
 # Creature spells you cast cost {2} less to cast.
 [[abilities]]
+oracle = "Creature spells you cast cost {2} less to cast."
 timing = "static"
 
 # Creature spells you cast cost {2} less to cast.

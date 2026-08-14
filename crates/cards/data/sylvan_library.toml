@@ -2,7 +2,6 @@
 # cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on
 # top of your library.
 name = "Sylvan Library"
-sets = ["4bb", "4ed", "5ed", "cc1", "cm1", "dmr", "ema", "leg", "me1", "olgc", "prm", "ptc", "pz1", "ren", "sld", "spg", "vma"]
 id = "92eed395-62ca-4293-882b-8565c40daab5"
 default_print = "6ada256f-2e55-4c1f-b4d3-d7b10b498956"
 oracle = "At the beginning of your draw step, you may draw two additional cards. If you do, choose two cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on top of your library."
@@ -18,6 +17,7 @@ type = "enchantment"
 # cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on
 # top of your library.
 [[abilities]]
+oracle = "At the beginning of your draw step, you may draw two additional cards. If you do, choose two cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on top of your library."
 timing = "draw_step"
 optional = true
 

@@ -563,7 +563,7 @@ impl Game {
                     self.exile_or_command(id, self.next_object_id()),
                     Event::LifeChanged {
                         player: controller,
-                        amount: self.life_gain_after_replacements(controller, amount),
+                        amount: self.life_gain_after_replacements(controller, i64::from(amount)),
                         source: Some(source),
                     },
                 ]

@@ -12,7 +12,6 @@ otags = [
   "spot-removal",
   "synergy-blocker-self",
 ]
-sets = ["leg", "me3"]
 id = "5542afeb-285f-4889-9d09-46ce20d0d189"
 default_print = "baae02e4-7db9-4a7b-a4ee-ecb22fcb77bd"
 oracle = "{B}: If this creature's power is 1 or more, it gets -1/-0 until end of turn and put a -0/-1 counter on target creature blocking or blocked by this creature. Activate only during the declare blockers step."
@@ -31,6 +30,7 @@ toughness = 4
 # counter on target creature blocking or blocked by this creature. Activate only during the
 # declare blockers step.
 [[abilities]]
+oracle = "{B}: If this creature's power is 1 or more, it gets -1/-0 until end of turn and put a -0/-1 counter on target creature blocking or blocked by this creature. Activate only during the declare blockers step."
 timing = "activated"
 activation_cost = { black = 1 }
 only_during_declare_blockers = true

@@ -1,7 +1,6 @@
 # Tap all creatures blocking target attacking creature. Prevent all combat damage that would be
 # dealt this turn by that creature and each creature blocking it.
 name = "Feint"
-sets = ["leg"]
 id = "1bb8fe05-abb3-40a8-9e80-5d99ed0e4284"
 default_print = "95b265bc-a94d-403b-8232-8fdfa0f8d9d5"
 oracle = "Tap all creatures blocking target attacking creature. Prevent all combat damage that would be dealt this turn by that creature and each creature blocking it."
@@ -15,6 +14,7 @@ type = "instant"
 # Tap all creatures blocking target attacking creature. Prevent all combat damage that would be
 # dealt this turn by that creature and each creature blocking it.
 [[abilities]]
+oracle = "Tap all creatures blocking target attacking creature. Prevent all combat damage that would be dealt this turn by that creature and each creature blocking it."
 timing = "spell"
 
 # Tap all creatures blocking target attacking creature.

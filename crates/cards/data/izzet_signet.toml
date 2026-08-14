@@ -1,6 +1,5 @@
 # {1}, {T}: Add {U}{R}.
 name = "Izzet Signet"
-sets = ["aa1", "blc", "c15", "c18", "c20", "c21", "clb", "clu", "cmd", "cmm", "ddj", "gk1", "gpt", "lcc", "mm3", "moc", "ncc", "otc", "plst", "prm", "rvr", "sld", "tdc"]
 id = "2fda4fe7-8b0c-489c-a000-6d358e614e34"
 default_print = "2c747a97-9070-4c1e-b7b7-52637fbb30e1"
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
@@ -14,6 +13,7 @@ type = "artifact"
 
 # {1}, {T}: Add {U}{R}.
 [[abilities]]
+oracle = "{1}, {T}: Add {U}{R}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

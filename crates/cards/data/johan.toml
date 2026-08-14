@@ -2,7 +2,6 @@
 # combat. If you do, attacking doesn't cause creatures you control to tap this combat if Johan is
 # untapped.
 name = "Johan"
-sets = ["bchr", "chr", "leg"]
 id = "ad33ada7-4f89-4cab-88db-1f4d024baa36"
 default_print = "2f2f3b3e-63f3-4cab-aa95-030990157ed5"
 oracle = "At the beginning of combat on your turn, you may have Johan gain \"Johan can't attack\" until end of combat. If you do, attacking doesn't cause creatures you control to tap this combat if Johan is untapped."
@@ -25,6 +24,7 @@ toughness = 4
 # combat. If you do, attacking doesn't cause creatures you control to tap this combat if Johan is
 # untapped.
 [[abilities]]
+oracle = "At the beginning of combat on your turn, you may have Johan gain \"Johan can't attack\" until end of combat. If you do, attacking doesn't cause creatures you control to tap this combat if Johan is untapped."
 timing = "begin_combat"
 optional = true
 

@@ -2,7 +2,6 @@
 # All Mountains are Plains.
 name = "Conversion"
 otags = ["blood-moon-effect", "hate-mountain", "land-conversion", "mass-land-denial", "single-english-word-name", "symmetrical", "triggered-ability", "universal-type-change", "upkeep-cost"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "a24e05fb-dffb-4400-b4ca-22fdde45e7a7"
 default_print = "45bf4297-ccf4-4fa0-b7ce-5aaebca50813"
 oracle = "At the beginning of your upkeep, sacrifice this enchantment unless you pay {W}{W}.\nAll Mountains are Plains."
@@ -16,6 +15,7 @@ type = "enchantment"
 
 # At the beginning of your upkeep, sacrifice this enchantment unless you pay {W}{W}.
 [[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice this enchantment unless you pay {W}{W}."
 timing = "upkeep"
 
 # sacrifice this enchantment unless you pay {W}{W}.
@@ -27,6 +27,7 @@ otherwise = [{ type = "sacrifice", mode = "source" }]
 
 # All Mountains are Plains.
 [[abilities]]
+oracle = "All Mountains are Plains."
 timing = "static"
 
 # All Mountains are Plains.

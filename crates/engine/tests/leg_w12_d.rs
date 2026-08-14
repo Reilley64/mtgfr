@@ -96,8 +96,8 @@ fn activate(
 /// The spell on top of the stack — casting mints a fresh stack object, so a hand card's id is not
 /// the id a counterspell targets.
 fn top_spell(game: &Game) -> ObjectId {
-    match game.stack().last().expect("a spell is on the stack") {
-        StackEntry::Spell(id) => *id,
+    match &game.stack().last().expect("a spell is on the stack").kind {
+        StackEntryKind::Spell(id) => *id,
         other => panic!("expected a spell on top of the stack, got {other:?}"),
     }
 }

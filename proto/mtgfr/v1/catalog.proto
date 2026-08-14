@@ -87,6 +87,10 @@ message CatalogCard {
   optional CatalogBackFace back = 15;
   // Every Scryfall set code with a printing of this oracle (lowercase).
   repeated string sets = 17;
+  // Flavor text was here. It is per printing, not per card — the game stream carries the deck's
+  // printing's words (`CardTextView`), and the catalog carries none.
+  reserved 18;
+  reserved "flavor";
 }
 
 // One seat to seed, in seat-index order.

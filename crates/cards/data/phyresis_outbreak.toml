@@ -5,7 +5,6 @@ otags = ["counters-matter", "poison-opponents", "removal-toughness", "sweeper-on
 id = "47148b5d-3850-4614-822e-6ef2755996f8"
 default_print = "812498c8-974c-460c-b782-506f5f735346"
 oracle = "Each opponent gets a poison counter. Then each creature your opponents control gets -1/-1 until end of turn for each poison counter its controller has."
-sets = ["onc"]
 
 [cost]
 generic = 2
@@ -17,6 +16,7 @@ type = "sorcery"
 # Each opponent gets a poison counter. Then each creature your opponents control gets -1/-1 until end of turn for each
 # poison counter its controller has.
 [[abilities]]
+oracle = "Each opponent gets a poison counter. Then each creature your opponents control gets -1/-1 until end of turn for each poison counter its controller has."
 timing = "spell"
 
 # Each opponent gets a poison counter.

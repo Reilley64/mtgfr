@@ -3,7 +3,6 @@
 # upkeep step.
 name = "Tolaria"
 otags = ["activated-ability", "cycle-leg-legendary-land", "hate-banding", "removes-banding", "repeatable-crime", "utility-land"]
-sets = ["leg"]
 id = "9879a4f3-3b9c-45cf-af03-7f2ae4c689b4"
 default_print = "d43c01b7-443d-4061-a934-6863d230c9b8"
 oracle = "{T}: Add {U}.\n{T}: Target creature loses banding and all \"bands with other\" abilities until end of turn. Activate only during any upkeep step."
@@ -16,6 +15,7 @@ produces = "blue"
 # {T}: Target creature loses banding and all "bands with other" abilities until end of turn.
 # Activate only during any upkeep step.
 [[abilities]]
+oracle = "{T}: Target creature loses banding and all \"bands with other\" abilities until end of turn. Activate only during any upkeep step."
 timing = "activated"
 taps_self = true
 

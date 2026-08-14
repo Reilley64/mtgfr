@@ -41,7 +41,25 @@ describe("deckArtUrls", () => {
           { id: "oracle-b", count: 9, print: "print-b" },
         ],
       }),
-    ).toEqual([imageUrlByPrint("print-cmd"), imageUrlByPrint("print-a"), imageUrlByPrint("print-b")]);
+    ).toEqual([
+      imageUrlByPrint("print-cmd", "art"),
+      imageUrlByPrint("print-a", "art"),
+      imageUrlByPrint("print-b", "art"),
+    ]);
+  });
+
+  it("warms the art crop, not the printed image the default size would fetch", () => {
+    // The lobby warm used to fetch `display` while every rendered face asks for `art`, so the board
+    // still went to the network for its first paint.
+    const [url] = deckArtUrls({
+      id: 4,
+      name: "Atraxa",
+      commander: "oracle-cmd",
+      commander_print: "print-cmd",
+      cards: [],
+    });
+    expect(url).toContain("/art/");
+    expect(url).not.toBe(imageUrlByPrint("print-cmd"));
   });
 });
 

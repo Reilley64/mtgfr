@@ -1,6 +1,5 @@
 # Target player draws X cards.
 name = "Stroke of Genius"
-sets = ["c14", "c15", "dmr", "jgp", "moc", "plst", "prm", "soc", "usg", "vma"]
 id = "0cc6d683-366f-4ae4-be60-20ad9621fdaf"
 default_print = "beeb5419-828e-4a84-b4f3-87bc6f4cc594"
 otags = ["burst-draw", "force-draw", "hand-positive", "pure-draw", "single-target-instant-sorcery", "usg-storyline-in-cards"]
@@ -16,6 +15,7 @@ type = "instant"
 
 # Target player draws X cards.
 [[abilities]]
+oracle = "Target player draws X cards."
 timing = "spell"
 
 # Target player draws X cards.

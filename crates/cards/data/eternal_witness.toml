@@ -1,6 +1,5 @@
 # When this creature enters, you may return target card from your graveyard to your hand.
 name = "Eternal Witness"
-sets = ["2x2", "5dn", "aa2", "c15", "cm2", "cma", "cmd", "cmm", "cmr", "ddj", "f08", "m3c", "mic", "mma", "p30a", "plst", "prm", "puma", "pz1", "scd", "sld", "td0", "tsr", "uma", "wc04"]
 otags = ["hand-neutral", "regrowth-any", "triggered-ability", "virtual-vanilla"]
 oracle = "When this creature enters, you may return target card from your graveyard to your hand."
 subtypes = ["Human", "Shaman"]
@@ -18,6 +17,7 @@ toughness = 1
 
 # When this creature enters, you may return target card from your graveyard to your hand.
 [[abilities]]
+oracle = "When this creature enters, you may return target card from your graveyard to your hand."
 timing = "etb"
 optional = true
 

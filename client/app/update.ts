@@ -433,6 +433,7 @@ export const update = (
         return [{ ...model, session: { ...model.session, meGravatarHash: hash } }, []];
       },
       CardArtTick: () => [model, []],
+      CardFaceTick: () => [model, []],
       DeckCardFlipTick: () => [model, []],
       GotBoardMessage: ({ message }) => foldBoard(model, message),
       GotAuthMessage: ({ message }) => foldAuth(model, message),

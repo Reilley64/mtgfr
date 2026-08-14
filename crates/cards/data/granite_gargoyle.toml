@@ -2,7 +2,6 @@
 # {R}: This creature gets +0/+1 until end of turn.
 name = "Granite Gargoyle"
 otags = ["activated-ability", "alliteration", "armoring", "evasion"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me1", "sum"]
 id = "ef5248d4-4cd1-447c-bdcc-78a09a67d923"
 default_print = "01116585-a8c7-4619-b0a6-fcfe78fdaf3c"
 oracle = "Flying\n{R}: This creature gets +0/+1 until end of turn."
@@ -20,6 +19,7 @@ toughness = 2
 
 # {R}: This creature gets +0/+1 until end of turn.
 [[abilities]]
+oracle = "{R}: This creature gets +0/+1 until end of turn."
 timing = "activated"
 
 [abilities.activation_cost]

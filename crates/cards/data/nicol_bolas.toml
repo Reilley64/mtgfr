@@ -3,7 +3,6 @@
 # Whenever Nicol Bolas deals damage to an opponent, that player discards their hand.
 name = "Nicol Bolas"
 otags = ["combat-neutral-damage-trigger", "cycle-leg-elder-dragon", "deprecated-legend-type", "discard", "drawback", "evasion", "specter-ability", "unique-mana-cost", "upkeep-cost"]
-sets = ["a25", "bchr", "chr", "drb", "leg", "me3", "plst", "pmda", "sld", "tsb"]
 id = "e26bf6a9-b31c-4bc0-b55b-c01f2f69be6b"
 default_print = "8e92ba96-372c-418d-b271-45e1bf5c7af5"
 oracle = "Flying\nAt the beginning of your upkeep, sacrifice Nicol Bolas unless you pay {U}{B}{R}.\nWhenever Nicol Bolas deals damage to an opponent, that player discards their hand."
@@ -24,6 +23,7 @@ toughness = 7
 
 # At the beginning of your upkeep, sacrifice Nicol Bolas unless you pay {U}{B}{R}.
 [[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice Nicol Bolas unless you pay {U}{B}{R}."
 timing = "upkeep"
 
 # sacrifice Nicol Bolas unless you pay {U}{B}{R}
@@ -35,6 +35,7 @@ otherwise = [{ type = "sacrifice", mode = "source" }]
 
 # Whenever Nicol Bolas deals damage to an opponent, that player discards their hand.
 [[abilities]]
+oracle = "Whenever Nicol Bolas deals damage to an opponent, that player discards their hand."
 timing = "deals_damage_to_opponent"
 
 # that player discards their hand.

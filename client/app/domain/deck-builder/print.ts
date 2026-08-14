@@ -17,9 +17,12 @@ export function reconcileEntries(
   return out;
 }
 
-/** Every art URL the board will paint for this deck, at the size the board asks for. */
+/** Every art URL the board will paint for this deck, at the size the board asks for: rendered faces
+ *  draw the `art` crop into the frame's art window (see card-render/cache.ts), so that is what the
+ *  lobby warms. ponytail: the printed `display` image is only the pre-render fallback — it loads on
+ *  demand; warm it too if boards start flashing the placeholder. */
 export function deckArtUrls(deck: DeckDetail): string[] {
-  return [deck.commander_print, ...deck.cards.map((card) => card.print)].map((print) => imageUrlByPrint(print));
+  return [deck.commander_print, ...deck.cards.map((card) => card.print)].map((print) => imageUrlByPrint(print, "art"));
 }
 
 /** When a deck row's print changes, commander art should stay in sync if it is the same Card id. */

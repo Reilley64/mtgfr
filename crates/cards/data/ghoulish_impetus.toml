@@ -3,7 +3,6 @@
 # other than you if able.)
 # When enchanted creature dies, return this card to the battlefield at the beginning of the next end step.
 name = "Ghoulish Impetus"
-sets = ["cmm", "sld", "soc"]
 id = "276eccd6-4a76-46e8-b604-94472e618115"
 default_print = "f6fab24d-0174-4248-8481-52194e05d6f9"
 otags = ["cheat-death-self", "death-trigger", "delayed-trigger", "force-attacker", "gives-deathtouch"]
@@ -19,6 +18,7 @@ type = "aura"
 
 # Enchanted creature gets +1/+1, has deathtouch, and is goaded.
 [[abilities]]
+oracle = "Enchanted creature gets +1/+1, has deathtouch, and is goaded."
 timing = "static"
 
 # Enchanted creature gets +1/+1, has deathtouch, and is goaded
@@ -33,6 +33,7 @@ goad = true
 # When enchanted creature dies, return this card to the battlefield at the beginning of the next
 # end step.
 [[abilities]]
+oracle = "When enchanted creature dies, return this card to the battlefield at the beginning of the next end step."
 timing = "enchanted_creature_dies"
 
 # return this card to the battlefield at the beginning of the next end step

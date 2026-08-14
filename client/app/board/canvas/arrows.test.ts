@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import { TARGET_COLOR } from "../action/targeting";
 import type { RenderCard } from "../geometry/layout";
-import { aimArrowShapes, arrowShapes, combatDragArrowShapes, stackTargetArrowShapes } from "./arrows";
+import { stackExpandedLayout, stackFaceScreenOrigin, stackFanLayout } from "../geometry/stackLayout";
+import {
+  aimArrowShapes,
+  arrowShapes,
+  combatDragArrowShapes,
+  stackTargetArrowEndpoints,
+  stackTargetArrowShapes,
+} from "./arrows";
 
 function card(id: number, over: Partial<RenderCard> = {}): RenderCard {
   return {
@@ -29,6 +37,7 @@ function card(id: number, over: Partial<RenderCard> = {}): RenderCard {
     hasHaste: false,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: 0,
@@ -59,6 +68,7 @@ describe("stackTargetArrowShapes", () => {
       stack: [
         {
           controller: 0,
+          entry_id: 1n,
           kind: "spell",
           label: testMessageRef("Electrolyze"),
           source: 1,
@@ -83,6 +93,7 @@ describe("stackTargetArrowShapes", () => {
       stack: [
         {
           controller: 0,
+          entry_id: 1n,
           kind: "spell",
           label: testMessageRef("Lightning Bolt"),
           source: 1,
@@ -90,12 +101,13 @@ describe("stackTargetArrowShapes", () => {
         },
         {
           controller: 0,
+          entry_id: 2n,
           kind: "spell",
           label: testMessageRef("Shock"),
           source: 2,
           target: { kind: "player", player: 1 },
         },
-        { controller: 0, kind: "spell", label: testMessageRef("Divination"), source: 3, target: null },
+        { entry_id: 3n, controller: 0, kind: "spell", label: testMessageRef("Divination"), source: 3, target: null },
       ],
       cards: [card(22)],
       avatars: { 0: { x: 200, y: 800 }, 1: { x: 720, y: 80 } },
@@ -109,7 +121,7 @@ describe("stackTargetArrowShapes", () => {
   it("skips stack entries without a resolvable target", () => {
     const shapes = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Divination"), source: 3 }],
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Divination"), source: 3 }],
       cards: [],
       avatars: {},
       camera: { panX: 0, panY: 0, zoom: 1 },
@@ -121,7 +133,14 @@ describe("stackTargetArrowShapes", () => {
     const pile = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },
       stack: [
-        { controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 1, target: { kind: "object", id: 22 } },
+        {
+          entry_id: 1n,
+          controller: 0,
+          kind: "spell",
+          label: testMessageRef("Bolt"),
+          source: 1,
+          target: { kind: "object", id: 22 },
+        },
       ],
       cards: [card(22)],
       avatars: {},
@@ -131,7 +150,14 @@ describe("stackTargetArrowShapes", () => {
     const expanded = stackTargetArrowShapes({
       viewport: { width: 1440, height: 900 },
       stack: [
-        { controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 1, target: { kind: "object", id: 22 } },
+        {
+          entry_id: 1n,
+          controller: 0,
+          kind: "spell",
+          label: testMessageRef("Bolt"),
+          source: 1,
+          target: { kind: "object", id: 22 },
+        },
       ],
       cards: [card(22)],
       avatars: {},
@@ -140,6 +166,82 @@ describe("stackTargetArrowShapes", () => {
     });
     expect(pile).not.toEqual(expanded);
     expect(expanded.length).toBe(pile.length);
+  });
+  it.each([
+    { width: 1280, height: 720 },
+    { width: 2560, height: 1440 },
+  ] as const)("starts expanded target arrows at the mounted face center at $width×$height", (viewport) => {
+    const count = 7;
+    const stack = Array.from({ length: count }, (_, row) => ({
+      entry_id: BigInt(row + 1),
+      controller: 0,
+      kind: "spell" as const,
+      label: testMessageRef(`Spell ${row}`),
+      source: row + 1,
+      target: { kind: "player" as const, player: 1 },
+    }));
+    const layout = stackExpandedLayout({ presentation: "expanded", viewport, count });
+    const endpoints = stackTargetArrowEndpoints({
+      viewport,
+      stack,
+      cards: [],
+      avatars: { 1: { x: 100, y: 80 } },
+      camera: { panX: 0, panY: 0, zoom: 1 },
+      presentation: "expanded",
+    });
+    expect(endpoints.map(({ from }) => from)).toEqual(
+      stack.map((_, row) => ({
+        x: layout.left + row * layout.peek + layout.cardW / 2,
+        y: layout.top + layout.headerH + layout.gap + layout.cardH / 2,
+      })),
+    );
+  });
+
+  it("uses visible compact face origins and proxies hidden rows to the overflow edge", () => {
+    const stack = Array.from({ length: 7 }, (_, row) => ({
+      entry_id: BigInt(row + 1),
+      controller: 0,
+      kind: "spell" as const,
+      label: testMessageRef(`Spell ${row}`),
+      source: row + 1,
+      target: { kind: "player" as const, player: 1 },
+    }));
+    const common = {
+      viewport: { width: 1440, height: 900 },
+      stack,
+      cards: [] as RenderCard[],
+      avatars: { 1: { x: 720, y: 80 } },
+      camera: { panX: 0, panY: 0, zoom: 1 },
+    };
+
+    const compact = stackTargetArrowEndpoints({ ...common, presentation: "pile" });
+    const layout = stackFanLayout(common.viewport, stack.length);
+    const overflowProxy = { x: layout.left, y: layout.top + layout.cardH / 2 };
+    expect(compact.slice(0, layout.hiddenCount).map(({ from }) => from)).toEqual(
+      Array.from({ length: layout.hiddenCount }, () => overflowProxy),
+    );
+    expect(compact.slice(layout.visibleFrom).map(({ from }) => from)).toEqual(
+      Array.from({ length: layout.visibleCount }, (_, index) =>
+        stackFaceScreenOrigin({
+          presentation: "pile",
+          viewport: common.viewport,
+          count: stack.length,
+          row: layout.visibleFrom + index,
+        }),
+      ),
+    );
+
+    const expanded = stackTargetArrowEndpoints({ ...common, presentation: "expanded" });
+    expect(expanded.map(({ from }) => from)).toEqual(
+      stack.map((_, row) =>
+        stackFaceScreenOrigin({
+          presentation: "expanded",
+          viewport: common.viewport,
+          count: stack.length,
+          row,
+        }),
+      ),
+    );
   });
 });
 

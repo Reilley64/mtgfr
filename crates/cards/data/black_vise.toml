@@ -3,7 +3,6 @@
 # where X is the number of cards in their hand minus 4.
 name = "Black Vise"
 otags = ["burn-player", "faux-targeting", "hate-full-hand", "misnomer", "triggered-ability"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "mb2", "me3", "mps", "ptc", "sum", "v10"]
 id = "de7839fb-7040-48ab-a6d4-d1952972943d"
 default_print = "5159a2cd-036c-482e-9b5a-b595391deef3"
 oracle = "As this artifact enters, choose an opponent.\nAt the beginning of the chosen player's upkeep, this artifact deals X damage to that player, where X is the number of cards in their hand minus 4."
@@ -16,6 +15,7 @@ type = "artifact"
 
 # As this artifact enters, choose an opponent.
 [[abilities]]
+oracle = "As this artifact enters, choose an opponent."
 timing = "as_enters"
 
 # As this artifact enters, choose an opponent.
@@ -26,6 +26,7 @@ mode = "choose_opponent"
 # At the beginning of the chosen player's upkeep, this artifact deals X damage to that player,
 # where X is the number of cards in their hand minus 4.
 [[abilities]]
+oracle = "At the beginning of the chosen player's upkeep, this artifact deals X damage to that player, where X is the number of cards in their hand minus 4."
 timing = "each_upkeep"
 condition = { type = "chosen_players_upkeep" }
 

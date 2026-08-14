@@ -37,6 +37,12 @@ disagree, the code wins. Engine gaps for a deck live in that deck's
   Scryfall Oracle text (bare quote, no `Oracle:` prefix), above `name`. Vanilla cards (basics,
   French-vanilla creatures) still get the line, even if it's just keywords or empty. Comment
   lines wrap at 120 characters.
+- **Each ability quotes its own sentence.** Every `[[abilities]]` block is preceded by a comment
+  quoting the oracle sentence(s) it implements, and repeats that sentence as the block's first
+  key, `oracle = "…"`, sliced verbatim from the card's own `oracle` — that is what the stack
+  draws while the ability waits to resolve. A `cards::pool` test holds every one to being a
+  whitespace-normalised substring of its card's oracle; an ability whose sentence cannot be
+  quoted verbatim omits the key and falls back to the effect's generated label.
 - **Faithful by default.** Model what the card actually does; don't reach for an approximation
   out of convenience.
 - **When you must trim/approximate:** set the machine-readable `approximates` field (what the

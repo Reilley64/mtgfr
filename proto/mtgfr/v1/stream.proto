@@ -94,14 +94,23 @@ message ObjectView {
   optional uint32 attached_to = 26;
   // Live sourced modifiers for Alt-inspect (grouped by source card def name).
   repeated ModifierSourceView modifiers = 27;
+  // Whether this object is a token (CR 111) — the board draws tokens with an arched top and no
+  // title bar.
+  bool is_token = 28;
+  // Whether the printed card is legendary; the card-frame renderer draws the legend crown.
+  bool legendary = 29;
+  // This object's colors (CR 105.2) as WUBRG indices (`engine::Color::index`) — the card frame
+  // the renderer draws it in. Empty is colorless. Not color identity: devoid, hybrid pips, a
+  // token's stated color, and color-setting effects all land here.
+  repeated uint32 colors = 30;
 }
 
 // One entry on the stack, for the stack panel. Bottom-first in `VisibleState.stack`.
 message StackObjectView {
   // "spell" or "ability".
   string kind = 1;
-  // The spell's stack-object id, or the ability's source permanent.
-  uint32 source = 2;
+  // The spell's stack-object id or ability source; absent for source-less entries.
+  optional uint32 source = 2;
   uint32 controller = 3;
   reserved 4;
   // The chosen target, if any.
@@ -118,6 +127,24 @@ message StackObjectView {
   string card_id = 9;
   // Source card's display name for art alt text / inspect (empty when anonymized).
   string name = 10;
+  // Stable stack-entry identity, independent of any source object.
+  uint64 entry_id = 11;
+  // Explicit public printed rules text for source-less authored entries.
+  repeated string printed_sentences = 12;
+  // The one printed sentence this ability prints, for the text box of its stack face.
+  string ability_oracle = 13;
+  // Last-known renderer characteristics for the source.
+  StackSourceFaceView source_face = 14;
+  // Printed words for the spell face actually being cast.
+  CardTextView active_face_text = 15;
+}
+
+message StackSourceFaceView {
+  WireKind kind = 1;
+  // Source colors as WUBRG indices, used to select the rendered frame.
+  repeated uint32 colors = 2;
+  bool is_token = 3;
+  bool legendary = 4;
 }
 
 // One labelled item offered by a pending choice (a legal target, or a blocker to assign damage
@@ -2077,11 +2104,36 @@ message DeltaEnvelope {
   // auto-passed priority with nothing to do) — for the client's "automatic" styling, so a
   // forced play is never mistaken for the player's own move.
   repeated MessageRef auto_actions = 5;
+  // Printed words for cards this frame made visible that are not in the viewer's own deck — an
+  // opponent's spell arriving on the stack, a card exiled from another library that you may cast.
+  // The client merges these into the book the snapshot opened with; it never replaces it.
+  repeated CardTextView card_text = 6;
+}
+
+// The printed words of one card: what a rendered face draws and the game state never carries.
+// Reaches a viewer two ways — the whole of their own deck with the opening snapshot, and, for any
+// other seat's card, only once the board projection has already shown them its `card_id`.
+message CardTextView {
+  // Scryfall oracle id — `ObjectView.card_id`.
+  string card_id = 1;
+  // The printed type line ("Legendary Creature — Phyrexian Angel Horror").
+  string type_line = 2;
+  // Printed (oracle) rules text. Empty for a vanilla.
+  string oracle = 3;
+  // The flavor text of the printing THIS deck plays — flavor is per printing, not per card.
+  // Empty when that printing prints none.
+  string flavor = 4;
+  // Scryfall Printing UUID whose per-print flavor this record carries.
+  string print = 5;
 }
 
 message SnapshotFrame {
   uint64 seq = 1;
   VisibleState state = 2;
+  // Printed words for every card in the viewer's own deck, plus any other seat's card the
+  // snapshot already shows them (a permanent on the battlefield, a spell on the stack). A
+  // spectator gets only the latter. Private by construction: never another seat's decklist.
+  repeated CardTextView card_text = 3;
 }
 
 message Heartbeat {}

@@ -1,7 +1,6 @@
 # Exile target creature. Its controller may search their library for a basic land card, put that card onto the
 # battlefield tapped, then shuffle.
 name = "Path to Exile"
-sets = ["2x2", "2xm", "acr", "arc", "blc", "cma", "cmd", "cmm", "con", "dci", "ddi", "dmc", "e02", "ecc", "f15", "fic", "gn3", "jmp", "lcc", "ltc", "mar", "mb2", "md1", "mkc", "mm3", "mma", "moc", "msc", "ncc", "omb", "onc", "otc", "otp", "pf20", "pip", "plst", "prm", "pza", "scd", "sld", "soc", "ss2", "tsr", "who"]
 id = "d683d985-9888-4d21-8b5f-69e69ce4a03b"
 default_print = "95ca89ea-1200-4bb4-ae4b-af35d3ccd35b"
 otags = ["donate-rampant-growth", "drawback", "land-ramp", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal", "swap-removal", "tutor-land-basic", "tutor-land-to-battlefield"]
@@ -16,6 +15,7 @@ type = "instant"
 # Exile target creature. Its controller may search their library for a basic land card, put that
 # card onto the battlefield tapped, then shuffle.
 [[abilities]]
+oracle = "Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle."
 timing = "spell"
 
 # Exile target creature.

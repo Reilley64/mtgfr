@@ -1,9 +1,9 @@
-import { CARD_W } from "../geometry/layout";
-import { STACK_CARD_W } from "../geometry/stackLayout";
+import type { FaceData } from "../../domain/card-render/frame";
+import { HAND_FACE_W } from "../geometry/handMetrics";
+import { FLIGHT_CARD_W } from "../geometry/layout";
 
-export const HAND_FACE_W = 208;
 /** Re-export resting stack face width so flight scale stays coupled to the HTML stack. */
-export { STACK_CARD_W };
+export { HAND_FACE_W };
 
 const TAU_MS = 75;
 const EPSILON_PX = 0.5;
@@ -19,6 +19,8 @@ export interface CardFlight {
   id: number;
   print: string;
   name: string;
+  /** The rendered face to fly, when the spawner knows it; absent flies the printed image. */
+  face?: FaceData;
   x: number;
   y: number;
   scale: number;
@@ -39,6 +41,8 @@ export type FlightSpawn = {
   id: number;
   print: string;
   name: string;
+  /** The rendered face worn by the originating hand or stack card. */
+  face?: FaceData;
   x: number;
   y: number;
   scale: number;
@@ -60,6 +64,7 @@ export function spawnFlight(spawn: FlightSpawn): CardFlight {
     id: spawn.id,
     print: spawn.print,
     name: spawn.name,
+    face: spawn.face,
     x: spawn.x,
     y: spawn.y,
     scale: spawn.scale,
@@ -83,11 +88,12 @@ export function flightOwnsId(flight: CardFlight): boolean {
 
 /** `faceW` is the live hand-face width in CSS px — the bar scales with the window. */
 export function handFlightScale(zoom: number, faceW: number = HAND_FACE_W): number {
-  return faceW / (CARD_W * Math.max(zoom, 0.01));
+  return faceW / (FLIGHT_CARD_W * Math.max(zoom, 0.01));
 }
 
-export function stackFlightScale(zoom: number): number {
-  return STACK_CARD_W / (CARD_W * Math.max(zoom, 0.01));
+/** `faceW` is the live stack-face width in CSS px — it shares responsive hand metrics. */
+export function stackFlightScale(zoom: number, faceW: number): number {
+  return faceW / (FLIGHT_CARD_W * Math.max(zoom, 0.01));
 }
 
 export function stepFlights(

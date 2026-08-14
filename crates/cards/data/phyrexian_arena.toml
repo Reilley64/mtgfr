@@ -1,6 +1,5 @@
 # At the beginning of your upkeep, you draw a card and you lose 1 life.
 name = "Phyrexian Arena"
-sets = ["8ed", "9ed", "apc", "c15", "cc2", "cn2", "dde", "fdn", "ha1", "hop", "mkc", "one", "pfdn", "plst", "pone", "sld", "td0", "wc01"]
 otags = ["cycle-apc-phyrexian-vertical", "deal-with-the-devil", "draw-engine", "life-for-cards", "repeatable-pure-draw", "triggered-ability"]
 oracle = "At the beginning of your upkeep, you draw a card and you lose 1 life."
 id = "ee579a32-a048-4335-b966-231ba731cdea"
@@ -15,6 +14,7 @@ type = "enchantment"
 
 # At the beginning of your upkeep, you draw a card and you lose 1 life.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you draw a card and you lose 1 life."
 timing = "upkeep"
 
 # you draw a card

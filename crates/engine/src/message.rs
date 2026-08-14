@@ -501,7 +501,7 @@ pub fn reject_message(reject: Reject) -> MessageRef {
         Reject::IllegalDeclaration => MessageKey::REJECT_ILLEGAL_DECLARATION,
         Reject::IllegalTarget => MessageKey::REJECT_ILLEGAL_TARGET,
         Reject::IllegalMode => MessageKey::REJECT_ILLEGAL_MODE,
-        Reject::WrongTiming => MessageKey::REJECT_WRONG_TIMING,
+        Reject::WrongTiming | Reject::StackEntryIdExhausted => MessageKey::REJECT_WRONG_TIMING,
         Reject::Mulliganing => MessageKey::REJECT_MULLIGANING,
         Reject::ChoicePending => MessageKey::REJECT_CHOICE_PENDING,
         Reject::IllegalChoice => MessageKey::REJECT_ILLEGAL_CHOICE,

@@ -1,7 +1,6 @@
 # {1}: This creature gets +1/+1 until end of turn.
 name = "Carrion Ants"
 otags = ["activated-ability", "bottomless-mana-sink", "shade-pump", "type-errata-specific-insect"]
-sets = ["4bb", "4ed", "5ed", "leg", "me3", "ren"]
 id = "87bc6be7-4734-4a11-806e-e9e4f5616fe0"
 default_print = "6d1b1f70-2f64-4ced-a183-53c6b564b193"
 oracle = "{1}: This creature gets +1/+1 until end of turn."
@@ -18,6 +17,7 @@ toughness = 1
 
 # {1}: This creature gets +1/+1 until end of turn.
 [[abilities]]
+oracle = "{1}: This creature gets +1/+1 until end of turn."
 timing = "activated"
 
 [abilities.activation_cost]

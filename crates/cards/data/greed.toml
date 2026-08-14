@@ -1,7 +1,6 @@
 # {B}, Pay 2 life: Draw a card.
 name = "Greed"
 otags = ["activated-ability", "draw-engine", "mana-sink", "repeatable-pure-draw", "single-english-word-name", "greed-ability"]
-sets = ["4bb", "4ed", "6ed", "7ed", "c13", "c21", "leg", "mh2", "ren", "sld"]
 id = "1ff62220-be95-4901-b8d8-812b9a1a1b0a"
 default_print = "851f8d1f-163c-4c4f-beee-431b64ec8a99"
 oracle = "{B}, Pay 2 life: Draw a card."
@@ -15,6 +14,7 @@ type = "enchantment"
 
 # {B}, Pay 2 life: Draw a card.
 [[abilities]]
+oracle = "{B}, Pay 2 life: Draw a card."
 timing = "activated"
 activation_cost = { black = 1 }
 pay_life = 2

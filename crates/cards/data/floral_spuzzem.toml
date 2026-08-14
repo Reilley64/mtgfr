@@ -2,7 +2,6 @@
 # player controls. If you do, this creature assigns no combat damage this turn.
 name = "Floral Spuzzem"
 otags = ["attack-trigger", "removal-destroy"]
-sets = ["leg"]
 id = "994de451-14f9-466f-a56e-da052b4666e5"
 default_print = "d141b9e3-7129-41e5-8b44-d3867e1c7e1d"
 oracle = "Whenever this creature attacks and isn't blocked, you may destroy target artifact defending player controls. If you do, this creature assigns no combat damage this turn."
@@ -20,6 +19,7 @@ toughness = 2
 # Whenever this creature attacks and isn't blocked, you may destroy target artifact defending
 # player controls. If you do, this creature assigns no combat damage this turn.
 [[abilities]]
+oracle = "Whenever this creature attacks and isn't blocked, you may destroy target artifact defending player controls. If you do, this creature assigns no combat damage this turn."
 timing = "attacks_and_isnt_blocked"
 optional = true
 

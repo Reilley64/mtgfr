@@ -1,7 +1,6 @@
 # Destroy all black creatures.
 name = "Cleanse"
 otags = ["hate-black", "removal-creature", "removal-destroy", "single-english-word-name", "sweeper"]
-sets = ["leg", "me3"]
 id = "a610c77c-fe31-4465-a1c1-392db4ce4ed1"
 default_print = "af581e5a-abdb-4d76-8bda-32555aafc8ac"
 oracle = "Destroy all black creatures."
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # Destroy all black creatures.
 [[abilities]]
+oracle = "Destroy all black creatures."
 timing = "spell"
 
 # Destroy all black creatures.

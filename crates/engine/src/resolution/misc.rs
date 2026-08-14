@@ -102,7 +102,7 @@ impl Game {
             MiscEffect::CounterTargetActivatedAbility { .. } => {
                 let source_id = expect_object_target(target, "an activated ability to counter");
                 let on_stack = self.stack.iter().any(|item| {
-                    matches!(item, StackItem::Ability { source, activated: true, .. } if *source == source_id)
+                    matches!(&item.payload, StackPayload::Ability { source, activated: true, .. } if *source == source_id)
                 });
                 if !on_stack {
                     return Vec::new();
@@ -118,7 +118,7 @@ impl Game {
                     return Vec::new();
                 };
                 let on_stack = self.stack.iter().any(|item| {
-                    matches!(item, StackItem::Ability { source, activated: true, .. } if *source == source_id)
+                    matches!(&item.payload, StackPayload::Ability { source, activated: true, .. } if *source == source_id)
                 });
                 if !on_stack {
                     return Vec::new();

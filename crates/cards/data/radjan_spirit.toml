@@ -1,7 +1,6 @@
 # {T}: Target creature loses flying until end of turn.
 name = "Radjan Spirit"
 otags = ["activated-ability", "removes-flying", "repeatable-crime"]
-sets = ["4bb", "4ed", "5ed", "6ed", "leg", "me4", "ren"]
 id = "c9ffce6c-a113-4c9d-9148-5ace68f68793"
 default_print = "03701cfd-4343-4ba0-a0b9-32db69acde6c"
 oracle = "{T}: Target creature loses flying until end of turn."
@@ -18,6 +17,7 @@ toughness = 2
 
 # {T}: Target creature loses flying until end of turn.
 [[abilities]]
+oracle = "{T}: Target creature loses flying until end of turn."
 timing = "activated"
 taps_self = true
 

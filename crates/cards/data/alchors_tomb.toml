@@ -2,7 +2,6 @@
 # indefinitely.)
 name = "Alchor's Tomb"
 otags = ["activated-ability", "color-change", "namesake-spell", "untracked-indefinite-effect", "virtual-legendary"]
-sets = ["leg", "me4"]
 id = "61473d8e-45f1-4753-918d-04918a466031"
 default_print = "e10ad2c6-b401-4a4e-bdce-705e2b87f492"
 oracle = "{2}, {T}: Target permanent you control becomes the color of your choice. (This effect lasts indefinitely.)"
@@ -16,6 +15,7 @@ type = "artifact"
 # {2}, {T}: Target permanent you control becomes the color of your choice. (This effect lasts
 # indefinitely.)
 [[abilities]]
+oracle = "{2}, {T}: Target permanent you control becomes the color of your choice. (This effect lasts indefinitely.)"
 timing = "activated"
 taps_self = true
 

@@ -12,6 +12,7 @@ import { testMessageRef } from "~/i18n/testMessageRef";
 import { testHtml } from "~/test-html";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
+import { BLANK_FACE } from "../domain/card-render/frame";
 import type { GameFoldState, LogLine } from "../game/fold";
 import { SetStackDwell, SubmitIntent } from "../game/intents";
 import { emptyCostPicks, type PlayModePick } from "./action/execution";
@@ -20,9 +21,16 @@ import type { RenderCard } from "./geometry/layout";
 import { avatarPos, layout, STEP, ZONE } from "./geometry/layout";
 import { ACTIVATION_MENU_WIDTH_PX, activationMenuEstimatedHeight, activationMenuPlacement } from "./geometry/radial";
 import { boardOverlays } from "./html/overlays";
-import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./html/scene-helpers";
+import {
+  resolveBoardCardArtMounts,
+  resolveBoardCardFaceMounts,
+  resolveBoardOverlayMounts,
+  resolveLiveBoardMounts,
+} from "./html/scene-helpers";
 import { CopyBoardLog } from "./log-commands";
 import {
+  BoardPointerDown,
+  BoardPointerMove,
   BoardPointerUp,
   CancelActionClicked,
   CombatBandToggled,
@@ -30,6 +38,7 @@ import {
   DiscardCostConfirmed,
   GyExileChosen,
   HandActionActivated,
+  HandDragStarted,
   KeyboardEnterPressed,
   KeyboardSpacePressed,
   LogCopyRequested,
@@ -115,7 +124,7 @@ function fold(state: VisibleState | null): GameFoldState {
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
@@ -180,6 +189,8 @@ test("hand tile activates when clicked (below hand-bar threshold)", () => {
     has_haste: false,
     id: 42,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
     marked_damage: 0,
@@ -218,6 +229,8 @@ test("hand-drop planner ignores release below the hand-bar threshold", () => {
     has_haste: false,
     id: 42,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
     marked_damage: 0,
@@ -724,12 +737,13 @@ test("stack owns Resolve card, hides primary pass", () => {
   const model = viewModel(
     fold(
       state({
-        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Lightning Bolt"), source: 99 }],
+        stack: [{ entry_id: 1n, controller: 1, kind: "spell", label: testMessageRef("Lightning Bolt"), source: 99 }],
       }),
     ),
   );
   overlayScene(
     model,
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("board-primary")).toBeAbsent(),
     Scene.expect(Scene.testId("board-pass")).toExist(),
   );
@@ -743,6 +757,8 @@ function creature(id: number, controller: number, overrides: Partial<ObjectView>
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
     marked_damage: 0,
@@ -784,6 +800,7 @@ function renderStub(id: number): RenderCard {
     hasHaste: true,
     keywords: [],
     goaded: false,
+    face: BLANK_FACE,
     isCommander: false,
     prepared: false,
     pile: 0,
@@ -791,6 +808,128 @@ function renderStub(id: number): RenderCard {
     clusterMembers: [],
   };
 }
+
+function attachmentHoverFixture(): {
+  aura: ObjectView;
+  gameFold: GameFoldState;
+  board: BoardModel;
+  hoverPoint: { x: number; y: number };
+  raisedOnlyPoint: { x: number; y: number };
+} {
+  const host = creature(101, 0);
+  const aura = creature(102, 0, {
+    name: "Rancor",
+    kind: { kind: "enchantment" },
+    attached_to: host.id,
+  });
+  const gameFold = fold(state({ objects: [host, aura] }));
+  const board = syncBoardWithGame(initialBoardModel(), gameFold);
+  const liveState = gameFold.state;
+  if (liveState == null) throw new Error("missing live game state");
+  const attachment = layout(liveState, 0).find((card) => card.id === aura.id);
+  if (attachment == null) throw new Error("missing attachment");
+
+  return {
+    aura,
+    gameFold,
+    board,
+    hoverPoint: worldToScreen(board.camera, attachment.x + attachment.w / 2, attachment.y + attachment.h * 0.1),
+    raisedOnlyPoint: worldToScreen(board.camera, attachment.x + attachment.w / 2, attachment.y - attachment.h * 0.1),
+  };
+}
+
+test("pointer move tracks an attached permanent", () => {
+  const { aura, gameFold, board, hoverPoint } = attachmentHoverFixture();
+
+  const [hovered] = updateBoard(board, BoardPointerMove(hoverPoint), gameFold, "T1");
+
+  expect(hovered.hoveredAttachmentId).toBe(aura.id);
+});
+
+test("pointer move retains attachment hover in its raised-only rectangle", () => {
+  const { aura, gameFold, board, hoverPoint, raisedOnlyPoint } = attachmentHoverFixture();
+  const [hovered] = updateBoard(board, BoardPointerMove(hoverPoint), gameFold, "T1");
+
+  const [stillHovered] = updateBoard(hovered, BoardPointerMove(raisedOnlyPoint), gameFold, "T1");
+
+  expect(stillHovered.hoveredAttachmentId).toBe(aura.id);
+});
+
+test("pointer movement away clears attachment hover", () => {
+  const { gameFold, board, hoverPoint } = attachmentHoverFixture();
+  const [hovered] = updateBoard(board, BoardPointerMove(hoverPoint), gameFold, "T1");
+
+  const [left] = updateBoard(hovered, BoardPointerMove({ x: 0, y: 0 }), gameFold, "T1");
+
+  expect(left.hoveredAttachmentId).toBeNull();
+});
+
+test("pointer down clears attachment hover", () => {
+  const { gameFold, board, hoverPoint } = attachmentHoverFixture();
+  const [hovered] = updateBoard(board, BoardPointerMove(hoverPoint), gameFold, "T1");
+
+  const [pressed] = updateBoard(hovered, BoardPointerDown(hoverPoint), gameFold, "T1");
+
+  expect(pressed.hoveredAttachmentId).toBeNull();
+});
+
+test("hand drag start clears attachment hover", () => {
+  const { gameFold, board } = attachmentHoverFixture();
+  const action: ActionView = {
+    id: 9,
+    kind: "cast",
+    label: testMessageRef("Cast Rancor"),
+    needs_target: false,
+    object: 102,
+    section: "hand",
+  };
+  const hovered = { ...board, hoveredAttachmentId: 102 };
+
+  const [dragging] = updateBoard(
+    hovered,
+    HandDragStarted({
+      action,
+      name: "Rancor",
+      print: "",
+      manaCost: { colored: [0, 0, 0, 0, 0], generic: 1 },
+      x: 100,
+      y: 100,
+    }),
+    gameFold,
+    "T1",
+  );
+
+  expect(dragging.hoveredAttachmentId).toBeNull();
+});
+
+test("game sync clears attachment hover after its object leaves the battlefield", () => {
+  const { aura, gameFold, board } = attachmentHoverFixture();
+  const hovered = { ...board, hoveredAttachmentId: aura.id };
+  const withoutAura = fold(state({ objects: [creature(101, 0)] }));
+
+  const synced = syncBoardWithGame(hovered, { ...withoutAura, seq: gameFold.seq + 1 });
+
+  expect(synced.hoveredAttachmentId).toBeNull();
+});
+
+test("game sync clears attachment hover after its object detaches", () => {
+  const { aura, gameFold, board } = attachmentHoverFixture();
+  const hovered = { ...board, hoveredAttachmentId: aura.id };
+  const detachedAura = creature(aura.id, 0, { name: "Rancor", kind: { kind: "enchantment" } });
+  const detached = fold(state({ objects: [creature(101, 0), detachedAura] }));
+
+  const synced = syncBoardWithGame(hovered, { ...detached, seq: gameFold.seq + 1 });
+
+  expect(synced.hoveredAttachmentId).toBeNull();
+});
+
+test("game sync clears attachment hover when no live state is available", () => {
+  const board = { ...initialBoardModel(), hoveredAttachmentId: 102 };
+
+  const synced = syncBoardWithGame(board, fold(null));
+
+  expect(synced.hoveredAttachmentId).toBeNull();
+});
 
 function intentFromCommand(cmd: unknown): unknown {
   return (cmd as { args: { intent: unknown } }).args.intent;
@@ -1066,7 +1205,7 @@ test("Space confirms multi on-board choose_target when draft is ready", () => {
     state({
       objects: [a, b],
       pending_choice: pending,
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -1104,7 +1243,7 @@ test("Space confirms on-board assign_combat_damage when draft is ready", () => {
     state({
       objects: [attacker, bear, elf],
       pending_choice: pending,
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {
@@ -1144,8 +1283,8 @@ test("TargetChosen accumulates multi on-board stack targets until Confirm", () =
     state({
       objects: [spellA, spellB],
       stack: [
-        { controller: 0, kind: "spell", label: testMessageRef("Spell A"), source: 40 },
-        { controller: 0, kind: "spell", label: testMessageRef("Spell B"), source: 41 },
+        { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Spell A"), source: 40 },
+        { entry_id: 2n, controller: 0, kind: "spell", label: testMessageRef("Spell B"), source: 41 },
       ],
       pending_choice: pending,
     }),
@@ -2421,7 +2560,7 @@ test("Space confirms local discard cost when one card selected", () => {
       objects: [caster],
       actions: [castAction],
       can_act: true,
-      stack: [{ controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
+      stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Hold"), source: 9 }],
     }),
   );
   const board: BoardModel = {

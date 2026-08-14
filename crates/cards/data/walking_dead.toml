@@ -1,7 +1,6 @@
 # {B}: Regenerate this creature.
 name = "Walking Dead"
 otags = ["activated-ability", "regenerates-self", "type-errata-name-self"]
-sets = ["leg"]
 id = "5791456c-7b3c-4e93-a6d1-94ab01858816"
 default_print = "d7533a72-77d1-40cd-b3a1-7597d566c428"
 oracle = "{B}: Regenerate this creature."
@@ -18,6 +17,7 @@ toughness = 1
 
 # {B}: Regenerate this creature.
 [[abilities]]
+oracle = "{B}: Regenerate this creature."
 timing = "activated"
 
 [abilities.activation_cost]

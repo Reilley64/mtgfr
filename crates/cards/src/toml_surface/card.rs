@@ -218,6 +218,11 @@ pub struct AbilityToml {
     /// wrapper).
     #[serde(default)]
     pub(crate) effects: Vec<Effect>,
+    /// This one ability's printed sentence, quoted verbatim from the card's `oracle` — what
+    /// the stack shows while the ability waits to resolve, since an ability on the stack is
+    /// not its whole source card. Unset falls back to the effect's generated label.
+    #[serde(default)]
+    pub(crate) oracle: Option<String>,
 }
 
 /// One entry of `CardDef::conditional_keywords` as spelled in TOML — an
@@ -413,10 +418,6 @@ pub struct CardToml {
     /// never parses this; behavior comes from abilities, keywords, and other DSL fields.
     #[serde(default)]
     pub oracle: Option<String>,
-    /// Every Scryfall set code with a printing of this oracle, used by coverage and
-    /// catalog search. Pure metadata; gameplay never reads it.
-    #[serde(default)]
-    pub sets: Vec<String>,
     /// Printed non-land subtypes, such as creature, artifact, and enchantment subtypes.
     /// Land types live under `[kind].subtypes`.
     #[serde(default)]
@@ -606,7 +607,8 @@ impl From<CardToml> for CardDef {
             cast_only_after_combat: card.cast_only_after_combat,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
-            sets: arc_strs(card.sets),
+            // Derived from `data/prints/` at pool load, never authored on the card.
+            sets: crate::types::empty_slice(),
             subtypes: arc_strs(card.subtypes),
             otags: arc_strs(card.otags),
             cycling: card.cycling,

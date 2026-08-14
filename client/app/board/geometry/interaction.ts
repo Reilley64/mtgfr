@@ -7,7 +7,7 @@
 
 import type { ActionView, ObjectView, VisibleState, WireAttack, WireBlock, WireIntent, WireTarget } from "~/wire/types";
 import type { Camera } from "./camera";
-import { boardBounds, type RenderCard, STEP, ZONE } from "./layout";
+import { type BoardBounds, boardBounds, type RenderCard, STEP, ZONE } from "./layout";
 
 // ── Camera fitting ─────────────────────────────────────────────────────────────────
 // Frame the whole table in the space between the turn banner and the hand bar, centered.
@@ -16,8 +16,13 @@ import { boardBounds, type RenderCard, STEP, ZONE } from "./layout";
 // rows) so the topmost seat's life-orb avatar never renders underneath it. Static estimate, not a
 // measured DOM rect (fitCamera is pure/DOM-free) — bump it if the HUD gains rows.
 export const TOP_MARGIN = 92;
-export function fitCamera(size: { x: number; y: number }, count: number, handBarH: number): Camera {
-  const b = boardBounds(count);
+export function fitCamera(
+  size: { x: number; y: number },
+  count: number,
+  handBarH: number,
+  bounds: BoardBounds = boardBounds(count),
+): Camera {
+  const b = bounds;
   const bw = b.maxX - b.minX;
   const bh = b.maxY - b.minY;
   const availW = Math.max(200, size.x - 32);

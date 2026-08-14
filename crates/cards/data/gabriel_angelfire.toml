@@ -1,7 +1,6 @@
 # At the beginning of your upkeep, choose flying, first strike, trample, or rampage 3. Gabriel
 # Angelfire gains that ability until your next upkeep.
 name = "Gabriel Angelfire"
-sets = ["bchr", "chr", "leg", "me3"]
 id = "e8521fdf-0896-4747-8c66-ea3bb69eb876"
 default_print = "2e349074-1402-44cf-be19-33a661cff3b6"
 oracle = "At the beginning of your upkeep, choose flying, first strike, trample, or rampage 3. Gabriel Angelfire gains that ability until your next upkeep. (Whenever a creature with rampage 3 becomes blocked, it gets +3/+3 until end of turn for each creature blocking it beyond the first.)"
@@ -22,6 +21,7 @@ toughness = 4
 # At the beginning of your upkeep, choose flying, first strike, trample, or rampage 3. Gabriel
 # Angelfire gains that ability until your next upkeep.
 [[abilities]]
+oracle = "At the beginning of your upkeep, choose flying, first strike, trample, or rampage 3. Gabriel Angelfire gains that ability until your next upkeep."
 timing = "upkeep"
 
 # choose flying, first strike, trample, or rampage 3. Gabriel Angelfire gains that ability until

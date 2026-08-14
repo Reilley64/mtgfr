@@ -3,7 +3,6 @@
 # land of an opponent's choice.
 name = "Demonic Hordes"
 otags = ["activated-ability", "drawback", "removal-destroy", "removal-land", "repeatable-crime", "repeatable-removal", "spot-removal", "triggered-ability", "upkeep-cost"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "2847c8a0-f6aa-4e4a-a7b8-fc116436a264"
 default_print = "812a0a10-0765-499f-8581-c4d7e0e81299"
 oracle = "{T}: Destroy target land.\nAt the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a land of an opponent's choice."
@@ -21,6 +20,7 @@ toughness = 5
 
 # {T}: Destroy target land.
 [[abilities]]
+oracle = "{T}: Destroy target land."
 timing = "activated"
 taps_self = true
 
@@ -33,6 +33,7 @@ target = { permanent = { types = "land" } }
 # At the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a
 # land of an opponent's choice.
 [[abilities]]
+oracle = "At the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a land of an opponent's choice."
 timing = "upkeep"
 
 # unless you pay {B}{B}{B}, tap this creature and sacrifice a land of an opponent's choice

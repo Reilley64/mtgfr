@@ -1,7 +1,6 @@
 # {T}: Target creature with power 2 or less can't be blocked this turn.
 name = "Dwarven Warriors"
 otags = ["activated-ability", "repeatable-crime", "tunneling", "type-errata"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "hoc", "lea", "leb", "sum"]
 id = "cfc553cd-3b4c-47a9-bffb-e5790befb32c"
 default_print = "113d518a-2ce9-4747-9e6f-c6a464a78a49"
 oracle = "{T}: Target creature with power 2 or less can't be blocked this turn."
@@ -18,6 +17,7 @@ toughness = 1
 
 # {T}: Target creature with power 2 or less can't be blocked this turn.
 [[abilities]]
+oracle = "{T}: Target creature with power 2 or less can't be blocked this turn."
 timing = "activated"
 taps_self = true
 

@@ -5,6 +5,7 @@ import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { CardArtTick } from "../domain/ui/card-art";
+import type { CardFaceTick } from "../domain/ui/card-face";
 import type { GameFoldState } from "../game/fold";
 import {
   pendingDamageAssignOverlay,
@@ -19,12 +20,12 @@ import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap
 import { sceneShapes } from "./canvas/scene";
 import { engagedIds } from "./engagement";
 import { worldToScreen } from "./geometry/camera";
-import { layout, STEP } from "./geometry/layout";
+import { handMetrics } from "./geometry/handMetrics";
+import { layoutBoard, STEP } from "./geometry/layout";
 import { stackPresentation } from "./geometry/stackLayout";
 import { autoTapPreviewIds, paymentPreviewAction } from "./html/actions";
 import { MountBoardAudio, MountHintAutoHide } from "./html/audio-mount";
 import { MountBoardCameraGesture } from "./html/camera-gesture-mount";
-import { handMetrics } from "./html/hand";
 import { MountBoardKeyboard } from "./html/keyboard-mount";
 import { manaTrayView } from "./html/mana-tray";
 import { boardOverlays } from "./html/overlays";
@@ -33,7 +34,7 @@ import { dragGhostFromHandDrag } from "./motion/screen-motion";
 import type { BoardModel } from "./submodel";
 
 /** Board TEA messages plus shell ticks emitted by shared mounts (e.g. `cardArt`). */
-export type ViewMessage = Message | typeof CardArtTick.Type;
+export type ViewMessage = Message | typeof CardArtTick.Type | typeof CardFaceTick.Type;
 
 export type BoardViewModel = {
   board: BoardModel;
@@ -102,7 +103,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model, h) 
   // Paint and hit-test must agree on which permanents are engaged, or a card paints where it
   // cannot be clicked — one set shared between `layout()` here and the `sceneShapes` call below.
   const engaged = engagedIds(state, model.board);
-  const cards = layout(state, state.viewer, engaged);
+  const boardLayout = layoutBoard(state, state.viewer, engaged);
+  const cards = boardLayout.cards;
   const stagedOverlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
   const pendingOverlay = pendingTargetingOverlay(
     state.pending_choice,
@@ -196,6 +198,8 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model, h) 
     dpr: model.board.dpr,
     camera: model.board.camera,
     cards,
+    hoveredAttachmentId: model.board.hoveredAttachmentId,
+    avatarPositions: boardLayout.avatarPositions,
     viewer: state.viewer,
     players: state.players,
     priority: state.priority,
@@ -331,6 +335,7 @@ export const view = Submodel.defineView<BoardViewModel, ViewMessage>((model, h) 
                 width: model.board.viewport.width,
                 height: model.board.viewport.height,
                 camera: model.board.camera,
+                boardLayout,
                 engaged,
                 selectedId: model.board.selectedId,
                 stagedAttackers: model.board.combatAttackers,

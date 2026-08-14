@@ -9,11 +9,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::catalog::{wire_cost, wire_kind};
+use crate::catalog::{card_text, wire_cost, wire_kind};
 use crate::dto::{
-    ActionView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
-    ModifierSourceView, ObjectView, PlayerView, StackObjectView, VisibleState, WireKind,
-    WireManaPool,
+    ActionView, CardTextView, CombatView, CommanderDamageView, MessageRef, ModalView, ModeView,
+    ModifierSourceView, ObjectView, PlayerView, StackObjectView, StackSourceFaceView, VisibleState,
+    WireKind, WireManaPool,
 };
 use crate::event::DeltaEnvelope;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
@@ -48,11 +48,15 @@ fn format_modifier_contribution(contribution: engine::ModifierContribution) -> S
 /// Distinct from every real seat (ids run 0..4); the client renders this view read-only.
 pub const SPECTATOR_VIEWER: u8 = u8::MAX;
 
+/// Exact live object identity to Printing UUID. This is transient presentation input: it is
+/// applied only after visibility projection and is never serialized into the engine `Game`.
+pub type ObjectPrintOverrides = std::collections::HashMap<engine::ObjectId, String>;
+
 /// Table-owned facts that finish a [`VisibleState`]. Pure data — no `Seat` / tokio coupling.
 ///
-/// Yield, stack-hold remaining, display names, and avatar hashes live on the server's `Table`,
-/// not the `Game` (turn-priority-and-stack spec). Callers map table state into this DTO and pass
-/// it to [`complete_visible`].
+/// Yield, stack-hold remaining, display names, avatar hashes, and exact-object art live on the
+/// server's `Table`, not the `Game` (turn-priority-and-stack spec). Callers map table state into
+/// this DTO and pass it to [`complete_visible`].
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ViewExtras {
     pub yields: [bool; 4],
@@ -63,6 +67,9 @@ pub struct ViewExtras {
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference). Empty maps mean
     /// every object uses its CardDef `default_print`.
     pub prints: [std::collections::HashMap<String, String>; 4],
+    /// Exact-object Printing UUIDs, taking precedence over seat/card deck preferences. The map is
+    /// consulted only for objects already admitted by the viewer's visibility projection.
+    pub object_print_overrides: ObjectPrintOverrides,
 }
 
 /// Inputs for one viewer-facing delta frame: redact events + complete board in one call
@@ -95,6 +102,10 @@ pub fn compose_delta(input: DeltaCompose<'_>) -> StreamFrame {
         events: visible,
         state,
         auto_actions: input.auto_actions,
+        // Left empty here and filled by the transport: joining printed words needs the card
+        // registry (`cards::get` / `cards::print_flavor`), which `schema` deliberately does not
+        // depend on outside tests. See `server::stream::frame_for`.
+        card_text: Vec::new(),
     })
 }
 
@@ -125,6 +136,12 @@ pub fn complete_visible(
     // Overlay deck-chosen Printings onto objects (by owner seat + Card id).
     for obj in &mut state.objects {
         if obj.card_id.is_empty() {
+            continue;
+        }
+        if let Some(print) = extras.object_print_overrides.get(&obj.id)
+            && !print.is_empty()
+        {
+            obj.print = print.clone();
             continue;
         }
         let seat = obj.owner as usize;
@@ -166,7 +183,16 @@ pub fn complete_visible(
         if entry.card_id.is_empty() {
             continue;
         }
-        let seat = game.owner_of(entry.source).0 as usize;
+        let Some(source) = entry.source else {
+            continue;
+        };
+        if let Some(print) = extras.object_print_overrides.get(&source)
+            && !print.is_empty()
+        {
+            entry.print = print.clone();
+            continue;
+        }
+        let seat = game.owner_of(source).0 as usize;
         if seat >= extras.prints.len() {
             continue;
         }
@@ -174,6 +200,9 @@ pub fn complete_visible(
             && !print.is_empty()
         {
             entry.print = print.clone();
+        }
+        if let Some(text) = &mut entry.active_face_text {
+            text.print.clone_from(&entry.print);
         }
     }
     state
@@ -195,6 +224,46 @@ fn stack_source_art(game: &engine::Game, source: engine::ObjectId) -> (String, S
         card_id_src.id.to_string(),
         def.name.to_string(),
     )
+}
+
+/// Last-known renderer characteristics for a stack source. Unlike `objects`, this follows Moved
+/// and Removed arena entries so an activation keeps the same authoritative frame after its source
+/// is sacrificed as a cost.
+fn stack_source_face(game: &engine::Game, source: engine::ObjectId) -> StackSourceFaceView {
+    let def = game.def_of(source);
+    StackSourceFaceView {
+        kind: wire_kind(&def),
+        colors: game
+            .colors_of(source)
+            .iter()
+            .enumerate()
+            .filter(|(_, is_color)| **is_color)
+            .map(|(index, _)| index as u8)
+            .collect(),
+        is_token: game.is_token(source) || engine::token_def(def.id).is_some(),
+        legendary: def.legendary,
+    }
+}
+
+/// The printed sentence an ability on the stack prints, found by matching the effect the stack
+/// entry carries back to the source card's ability list — [`engine::Game::stack`] is where an
+/// internal stack item becomes a [`engine::StackEntry`], and the effect is all the ability
+/// identity that survives that. Empty means "show the effect's generated label instead".
+///
+/// ponytail: an ability granted by another permanent is on no card's list, and a card printing
+/// two abilities with the identical effect is ambiguous — both fall back to the label. Thread an
+/// ability index through the stack item if a real card needs better.
+fn stack_ability_oracle(
+    game: &engine::Game,
+    source: engine::ObjectId,
+    effect: &engine::Effect,
+) -> String {
+    let def = game.def_of(source);
+    let mut printed = def.abilities.iter().filter(|a| a.effect == *effect);
+    let (Some(only), None) = (printed.next(), printed.next()) else {
+        return String::new();
+    };
+    only.oracle.unwrap_or_default().to_string()
 }
 
 /// Wire form of one of `game`'s stored [`engine::LegalAction`]s. `MeaningfulAction::PlayLand`/
@@ -919,7 +988,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             // CR 708.2: a face-down permanent (a manifest) is anonymized — its real name, card
             // kind, and mana cost are hidden from every viewer (the engine already reports its
             // 2/2 P/T, creature type, and empty keywords). The client renders it as a card back.
-            let manifest_face_down = game.is_face_down(id);
+            let rules_face_down = game.is_face_down(id) || game.is_spell_face_down(id);
             // CR 701.9: a face-down exile-pile card (Abstract Performance's first pile) is
             // anonymized for every viewer but its owner while it awaits the opponent's pick —
             // same anonymization shape as a manifest, but per-viewer rather than hidden from
@@ -928,7 +997,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             // dedicated "hidden pile card" shape — harmless, since the client only ever branches
             // on `face_down` (a card back) and never reads `kind`/`mana_cost` while it's set.
             let hidden_pile_card = game.is_card_face_down(id) && viewer != Some(game.owner_of(id));
-            let face_down = manifest_face_down || hidden_pile_card;
+            let face_down = rules_face_down || hidden_pile_card;
             ObjectView {
                 id,
                 zone: game.zone_of(id) as u8,
@@ -982,6 +1051,20 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 plus_counters: game.plus_counters(id),
                 marked_damage: game.marked_damage(id),
                 is_commander: game.is_commander(id),
+                is_token: game.is_token(id),
+                legendary: !face_down && def.legendary,
+                // A face-down permanent is a colorless 2/2 (CR 708.2), and telling the client
+                // otherwise would leak the card's color through its frame.
+                colors: if face_down {
+                    Vec::new()
+                } else {
+                    game.colors_of(id)
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, is_color)| **is_color)
+                        .map(|(index, _)| index as u8)
+                        .collect()
+                },
                 goaded: game.is_goaded(id),
                 taps_for_mana: game.taps_for_mana(id),
                 prepared: game.prepared(id),
@@ -1008,27 +1091,49 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
     let stack = game
         .stack()
         .into_iter()
-        .map(|entry| match entry {
-            engine::StackEntry::Spell(id) => {
+        .map(|entry| match entry.kind {
+            engine::StackEntryKind::Spell(id) => {
                 let targets: Vec<WireTarget> = game
                     .spell_targets(id)
                     .into_iter()
                     .map(WireTarget::of)
                     .collect();
-                let (print, card_id, name) = stack_source_art(game, id);
+                let face_down = game.is_spell_face_down(id);
+                let (print, card_id, name) = if face_down {
+                    (String::new(), String::new(), String::new())
+                } else {
+                    stack_source_art(game, id)
+                };
+                let active_face_text = if face_down {
+                    None
+                } else {
+                    let mut text = card_text(&game.def_of(id), &print, None);
+                    text.card_id.clone_from(&card_id);
+                    Some(text)
+                };
                 StackObjectView {
+                    entry_id: entry.entry_id.0,
                     kind: "spell".to_string(),
-                    source: id,
+                    source: Some(id),
                     controller: game.controller_of(id).0,
-                    label: named_message("card.name", game.def_of(id).name),
+                    label: if face_down {
+                        message("action.cast_face_down")
+                    } else {
+                        named_message("card.name", game.def_of(id).name)
+                    },
                     target: game.spell_target(id).map(WireTarget::of),
                     targets,
                     print,
                     card_id,
                     name,
+                    // A spell on the stack is the whole card, so its face shows the card's text.
+                    ability_oracle: String::new(),
+                    source_face: (!face_down).then(|| stack_source_face(game, id)),
+                    active_face_text,
+                    printed_sentences: Vec::new(),
                 }
             }
-            engine::StackEntry::Ability {
+            engine::StackEntryKind::Ability {
                 controller,
                 source,
                 effect,
@@ -1036,9 +1141,11 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
             } => {
                 let targets: Vec<WireTarget> = target.map(WireTarget::of).into_iter().collect();
                 let (print, card_id, name) = stack_source_art(game, source);
+                let ability_oracle = stack_ability_oracle(game, source, &effect);
                 StackObjectView {
+                    entry_id: entry.entry_id.0,
                     kind: "ability".to_string(),
-                    source,
+                    source: Some(source),
                     controller: controller.0,
                     label: to_wire_message(effect.message()),
                     target: targets.first().copied(),
@@ -1046,8 +1153,32 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     print,
                     card_id,
                     name,
+                    printed_sentences: if ability_oracle.is_empty() {
+                        Vec::new()
+                    } else {
+                        vec![ability_oracle.clone()]
+                    },
+                    ability_oracle,
+                    source_face: Some(stack_source_face(game, source)),
+                    active_face_text: None,
                 }
             }
+            engine::StackEntryKind::DebugNoOp { controller, public } => StackObjectView {
+                entry_id: entry.entry_id.0,
+                kind: "ability".to_string(),
+                source: None,
+                controller: controller.0,
+                label: MessageRef::key(public.label),
+                target: None,
+                targets: Vec::new(),
+                print: public.printing_id,
+                card_id: public.card_id.unwrap_or_default(),
+                name: public.name,
+                ability_oracle: String::new(),
+                source_face: None,
+                active_face_text: None,
+                printed_sentences: public.printed_sentences,
+            },
         })
         .collect();
 
@@ -1108,6 +1239,9 @@ pub enum StreamFrame {
     Snapshot {
         seq: u64,
         state: VisibleState,
+        /// Printed words for every card in the viewer's own deck — the only cards whose faces the
+        /// bar draws. Empty for a spectator. Private by construction: never another seat's list.
+        card_text: Vec<CardTextView>,
     },
     Delta(DeltaEnvelope),
     /// A periodic liveness ping (server emits one every few seconds) so the client can tell an
@@ -1199,6 +1333,7 @@ mod tests {
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
             gravatar_hashes: Default::default(),
             prints: Default::default(),
+            object_print_overrides: Default::default(),
         };
 
         let StreamFrame::Delta(env) = compose_delta(DeltaCompose {
@@ -1266,6 +1401,7 @@ mod tests {
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
             gravatar_hashes: Default::default(),
             prints: Default::default(),
+            object_print_overrides: Default::default(),
         };
 
         let seated = complete_visible(&game, Some(PlayerId(1)), &extras);
@@ -2270,6 +2406,44 @@ mod tests {
                 .any(|t| matches!(t, WireTarget::Object { id } if *id == game.current_id(corpse))),
             "legal targets include the reanimated bear"
         );
+
+        let target = action
+            .targets
+            .iter()
+            .find_map(|target| match target {
+                WireTarget::Object { id } => Some(*id),
+                _ => None,
+            })
+            .expect("prepared spell has a creature target");
+        game.submit(engine::Intent::CastPrepared {
+            player: PlayerId(0),
+            source: kirol,
+            target: Some(engine::Target::Object(target)),
+            x: 0,
+        })
+        .expect("cast Pack a Punch");
+
+        let cast = snapshot(&game, PlayerId(0));
+        let entry = cast
+            .stack
+            .iter()
+            .find(|entry| entry.kind == "spell")
+            .expect("prepared back-face spell is on the stack");
+        assert_eq!(
+            game.front_def_of(entry.source.expect("prepared spell has a source"))
+                .name,
+            "Kirol, History Buff"
+        );
+        assert_eq!(entry.card_id, "df1c0d06-2109-4297-9271-8a003fc892bc");
+        assert_eq!(entry.print, "676ba521-66e4-42cf-a315-70d03cb7334e");
+        let serialized = serde_json::to_value(entry).expect("stack entry serializes");
+        assert_eq!(serialized["name"], "Pack a Punch");
+        assert_eq!(serialized["active_face_text"]["type_line"], "Sorcery");
+        assert_eq!(
+            serialized["active_face_text"]["oracle"],
+            "Mill a card. Put two +1/+1 counters on target creature. It gains trample until end of turn."
+        );
+        assert_eq!(serialized["active_face_text"]["print"], serialized["print"]);
     }
 
     #[test]
@@ -2329,6 +2503,7 @@ mod tests {
         // every use site instead of living once in the binary.
         static ABILITIES: [Ability; 2] = [
             Ability {
+                oracle: None,
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
                 effect: Effect::Life(LifeEffect::Gain {
                     who: PlayerSet::You,
@@ -2341,6 +2516,7 @@ mod tests {
                 cost: Cost::FREE,
             },
             Ability {
+                oracle: None,
                 timing: Timing::Triggered(Trigger::CreatureYouControlDies),
                 effect: Effect::Draw(DrawEffect::Cards {
                     who: PlayerSet::You,
@@ -2477,6 +2653,43 @@ mod tests {
             }
             other => panic!("expected an OrderTriggers choice, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn an_ability_on_the_stack_carries_the_sentence_that_prints_it() {
+        // An ability waiting to resolve is one printed sentence, not its whole source card, so the
+        // stack face draws that sentence — matched back to the card by the effect the entry carries.
+        let mut game = Game::new();
+        let arena = game.spawn_on_battlefield(PlayerId(0), def("Phyrexian Arena"));
+        game.stack_library(PlayerId(0), &[def("Grizzly Bears"), def("Grizzly Bears")]);
+        game.stack_library(PlayerId(1), &[def("Grizzly Bears"), def("Grizzly Bears")]);
+        while game.stack().is_empty() {
+            game.submit(engine::Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let stack = snapshot(&game, PlayerId(0)).stack;
+        assert_eq!(stack.len(), 1, "the arena's upkeep trigger, alone");
+        assert_eq!(stack[0].source, Some(arena));
+        assert_eq!(
+            stack[0].ability_oracle,
+            "At the beginning of your upkeep, you draw a card and you lose 1 life."
+        );
+    }
+
+    #[test]
+    fn an_ability_whose_card_records_no_sentence_leaves_the_label_to_draw_it() {
+        // A granted ability is on no card's printed list, and a card that records no sentence for
+        // the ability that matched projects nothing — either way the client falls back to `label`.
+        let mut game = Game::new();
+        let arena = game.spawn_on_battlefield(PlayerId(0), def("Phyrexian Arena"));
+        let granted = Effect::Life(engine::LifeEffect::Gain {
+            who: engine::PlayerSet::You,
+            amount: engine::Amount::Fixed(1),
+        });
+        assert_eq!(super::stack_ability_oracle(&game, arena, &granted), "");
     }
 
     #[test]
@@ -3433,6 +3646,157 @@ mod tests {
         assert_eq!(beast_view.card_id, "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920");
     }
 
+    /// The Arena-style card-frame renderer needs to know whether an object is a minted token
+    /// (drawn with an arched top and no title bar) and whether the printed card is legendary
+    /// (drawn with the legend crown) — neither fact was on `ObjectView` before this test.
+    #[test]
+    fn object_view_reports_token_and_legendary() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let bear = game.spawn_on_battlefield(p0, def("Grizzly Bears"));
+        let token = game.spawn_token_on_battlefield(p0, engine::treasure_token());
+
+        let view = snapshot(&game, p0);
+        let bear_view = view
+            .objects
+            .iter()
+            .find(|o| o.id == bear)
+            .expect("bear projected");
+        let token_view = view
+            .objects
+            .iter()
+            .find(|o| o.id == token)
+            .expect("token projected");
+
+        assert!(!bear_view.is_token, "a printed card is not a token");
+        assert!(token_view.is_token, "a minted token reports as one");
+        assert!(!bear_view.legendary, "Grizzly Bears is not legendary");
+    }
+
+    /// The card frame the client draws comes from the object's *colors* (CR 105.2), which the
+    /// cost's colored pip counts do not answer: a hybrid pip is both its colors (CR 105.2b) while
+    /// counting as neither, a token's color is stated on the token rather than paid for, and
+    /// devoid (CR 702.114a) makes a card with colored pips colorless. All three drew the wrong
+    /// frame before `colors` was on the projection.
+    #[test]
+    fn object_view_reports_colors_for_the_card_frame() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let liege = game.spawn_on_battlefield(p0, def("Balefire Liege"));
+        let abomination = game.spawn_on_battlefield(p0, def("Smothering Abomination"));
+        let beast = game.spawn_token_on_battlefield(
+            p0,
+            cards::get_token("6bb61f34-5d57-4eaa-a02c-f5d08c1ee920").expect("Beast token in pool"),
+        );
+
+        let snap = snapshot(&game, p0);
+        let colors = |id: ObjectId| {
+            snap.objects
+                .iter()
+                .find(|o| o.id == id)
+                .expect("projected")
+                .colors
+                .clone()
+        };
+
+        // {2}{R/W}{R/W}{R/W}: not one monocolored pip, and yet white and red.
+        assert_eq!(colors(liege), vec![0, 3], "Balefire Liege is white and red");
+        // {2}{B}{B} with devoid.
+        assert_eq!(
+            colors(abomination),
+            Vec::<u8>::new(),
+            "a devoid card is colorless"
+        );
+        // No mana cost at all; `colors = ["green"]` on the token.
+        assert_eq!(colors(beast), vec![4], "the Beast token is green");
+    }
+
+    #[test]
+    fn a_face_down_permanent_reveals_neither_legendary_nor_colors() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        let target = game.spawn_on_battlefield(p1, def("Grizzly Bears"));
+        let top = game.stack_library(p1, &[def("Ao, the Dawn Sky")])[0];
+        let shift = game.spawn_in_hand(p0, def("Reality Shift"));
+        game.fund_mana(p0);
+
+        game.submit(engine::Intent::Cast {
+            player: p0,
+            object: shift,
+            target: Some(engine::Target::Object(target)),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        })
+        .unwrap();
+        while !game.stack().is_empty() {
+            game.submit(engine::Intent::PassPriority {
+                player: game.priority_holder(),
+            })
+            .unwrap();
+        }
+
+        let manifested = game.current_id(top);
+        let snap = snapshot(&game, p0);
+        let view = snap
+            .objects
+            .iter()
+            .find(|object| object.id == manifested)
+            .expect("manifested permanent projected");
+        assert!(view.face_down, "the viewer sees a card back");
+        assert!(
+            !view.legendary,
+            "the legend crown would reveal the hidden card"
+        );
+        assert!(
+            view.colors.is_empty(),
+            "a colored frame would reveal the hidden card"
+        );
+    }
+
+    #[test]
+    fn a_face_down_spell_reveals_neither_identity_nor_active_face_words() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.fund_mana(p0);
+        let akroma = game.spawn_in_hand(p0, def("Akroma, Angel of Fury"));
+
+        game.submit(engine::Intent::CastFaceDown {
+            player: p0,
+            card: akroma,
+        })
+        .expect("cast Akroma face down");
+
+        let snap = snapshot(&game, p0);
+        let entry = snap.stack.first().expect("face-down spell is on the stack");
+        assert_eq!(entry.label.key, "action.cast_face_down");
+        assert!(entry.card_id.is_empty());
+        assert!(entry.print.is_empty());
+        assert!(entry.name.is_empty());
+        assert!(entry.source_face.is_none());
+        assert!(entry.active_face_text.is_none());
+
+        let object = snap
+            .objects
+            .iter()
+            .find(|object| Some(object.id) == entry.source)
+            .expect("face-down stack object is projected as a card back");
+        assert!(object.face_down);
+        assert!(object.card_id.is_empty());
+        assert!(object.name.is_empty());
+        assert!(object.print.is_empty());
+    }
+
     /// Master Warcraft (CR 508.1a) hands the attack declaration to its caster, so the client must
     /// learn *whose* creatures to stage from the action itself — the caster's own battlefield is
     /// the wrong answer, and so is the caster's own goad requirements.
@@ -3650,11 +4014,16 @@ mod tests {
         let entry = snap
             .stack
             .iter()
-            .find(|e| e.kind == "ability" && e.source == wilds)
+            .find(|e| e.kind == "ability" && e.source == Some(wilds))
             .expect("ability on stack keyed by the activation source id");
         assert_eq!(entry.print, expected_print);
         assert_eq!(entry.name, "Evolving Wilds");
         assert_eq!(entry.card_id, expected_card_id);
+        let serialized = serde_json::to_value(entry).expect("stack entry serializes");
+        assert_eq!(serialized["source_face"]["kind"]["kind"], "land");
+        assert_eq!(serialized["source_face"]["colors"], serde_json::json!([]));
+        assert_eq!(serialized["source_face"]["is_token"], false);
+        assert_eq!(serialized["source_face"]["legendary"], false);
 
         // Deck-chosen Printings overlay onto stack entries the same way as ChoiceItem picks.
         let preferred = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
@@ -3671,7 +4040,7 @@ mod tests {
         let seated = with_seat
             .stack
             .iter()
-            .find(|e| e.kind == "ability" && e.source == wilds)
+            .find(|e| e.kind == "ability" && e.source == Some(wilds))
             .expect("ability still on stack");
         assert_eq!(seated.print, preferred);
     }
@@ -3714,7 +4083,7 @@ mod tests {
         let entry = snap
             .stack
             .iter()
-            .find(|e| e.kind == "ability" && e.source == food)
+            .find(|e| e.kind == "ability" && e.source == Some(food))
             .expect("Food ability on stack keyed by the sacrificed token id");
         assert_eq!(entry.print, expected_print);
         assert_eq!(entry.name, "Food");
@@ -3752,5 +4121,185 @@ mod tests {
             !nezumi_action.mana_only,
             "a non-mana activated ability is a real play"
         );
+    }
+
+    #[test]
+    fn stack_projection_exact_object_prints_win_without_leaking_hidden_objects() {
+        let mut game = Game::with_players(2, 7);
+        let p0 = PlayerId(0);
+        let first = game.spawn_on_battlefield(p0, def("Llanowar Elves"));
+        let second = game.spawn_on_battlefield(p0, def("Llanowar Elves"));
+        let empty_exact = game.spawn_on_battlefield(p0, def("Llanowar Elves"));
+        let hidden = game.spawn_in_hand(p0, def("Llanowar Elves"));
+        let card_id = game.def_of(first).id.to_string();
+        let first_print = "11111111-1111-1111-1111-111111111111";
+        let second_print = "22222222-2222-2222-2222-222222222222";
+        let hidden_print = "private-hidden-print";
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(card_id, "seat-preference".to_string());
+        let extras = ViewExtras {
+            prints,
+            object_print_overrides: std::collections::HashMap::from([
+                (first, first_print.to_string()),
+                (second, second_print.to_string()),
+                (empty_exact, String::new()),
+                (hidden, hidden_print.to_string()),
+            ]),
+            ..ViewExtras::default()
+        };
+
+        for viewer in [Some(p0), Some(PlayerId(1)), None] {
+            let state = complete_visible(&game, viewer, &extras);
+            assert_eq!(
+                state
+                    .objects
+                    .iter()
+                    .find(|object| object.id == first)
+                    .unwrap()
+                    .print,
+                first_print,
+            );
+            assert_eq!(
+                state
+                    .objects
+                    .iter()
+                    .find(|object| object.id == second)
+                    .unwrap()
+                    .print,
+                second_print,
+            );
+            assert_eq!(
+                state
+                    .objects
+                    .iter()
+                    .find(|object| object.id == empty_exact)
+                    .unwrap()
+                    .print,
+                "seat-preference",
+                "an empty exact override falls through to the seat Card preference",
+            );
+            if viewer == Some(p0) {
+                assert_eq!(
+                    state
+                        .objects
+                        .iter()
+                        .find(|object| object.id == hidden)
+                        .unwrap()
+                        .print,
+                    hidden_print,
+                );
+            } else {
+                assert!(state.objects.iter().all(|object| object.id != hidden));
+                assert!(
+                    state
+                        .objects
+                        .iter()
+                        .all(|object| object.print != hidden_print)
+                );
+            }
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn stack_projection_preserves_bottom_order_identity_exact_art_and_public_ghost_metadata() {
+        let mut game = Game::with_players(2, 7);
+        let p0 = PlayerId(0);
+        let spell_card = game.spawn_in_hand(p0, def("Dark Ritual"));
+        let ability_source = game.spawn_on_battlefield(p0, def("Llanowar Elves"));
+        let spell_object = game.live_object_ids().into_iter().max().unwrap() + 1;
+        let ghost_card_id = game.def_of(ability_source).id.to_string();
+        let public = engine::PublicStackGhost {
+            name: "Public fixture".to_string(),
+            label: "No-op ability".to_string(),
+            printing_id: "ghost-explicit-print".to_string(),
+            card_id: Some(ghost_card_id.clone()),
+            printed_sentences: vec!["Explicit public rules text.".to_string()],
+        };
+        let specs = [
+            engine::debug::DebugStackEntrySpec::KnownSpell {
+                entry_id: engine::StackEntryId(10),
+                from_object_id: spell_card,
+                spell_object_id: spell_object,
+                controller: p0,
+                targets: vec![],
+                targets_second: vec![],
+                x: 0,
+            },
+            engine::debug::DebugStackEntrySpec::AuthoredAbility {
+                entry_id: engine::StackEntryId(11),
+                controller: p0,
+                source_object_id: ability_source,
+                ability_index: 0,
+                target: None,
+                targets_second: vec![],
+                x: 0,
+            },
+            engine::debug::DebugStackEntrySpec::AuthoredAbility {
+                entry_id: engine::StackEntryId(12),
+                controller: p0,
+                source_object_id: ability_source,
+                ability_index: 0,
+                target: None,
+                targets_second: vec![],
+                x: 0,
+            },
+            engine::debug::DebugStackEntrySpec::PublicGhost {
+                entry_id: engine::StackEntryId(13),
+                controller: PlayerId(1),
+                public: public.clone(),
+            },
+        ];
+        engine::debug::replace_stack(&mut game, &specs).expect("supported public stack fixture");
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[1].insert(ghost_card_id.clone(), "ghost-seat-preference".to_string());
+        let extras = ViewExtras {
+            prints,
+            object_print_overrides: std::collections::HashMap::from([
+                (spell_object, "spell-exact-print".to_string()),
+                (ability_source, "ability-source-exact-print".to_string()),
+            ]),
+            ..ViewExtras::default()
+        };
+
+        let views = [
+            complete_visible(&game, Some(p0), &extras).stack,
+            complete_visible(&game, Some(PlayerId(1)), &extras).stack,
+            complete_visible(&game, None, &extras).stack,
+        ];
+        assert_eq!(views[0], views[1]);
+        assert_eq!(views[0], views[2]);
+        let projected = &views[0];
+        assert_eq!(
+            projected
+                .iter()
+                .map(|entry| entry.entry_id)
+                .collect::<Vec<_>>(),
+            vec![10, 11, 12, 13],
+        );
+        assert_eq!(
+            projected
+                .iter()
+                .map(|entry| entry.source)
+                .collect::<Vec<_>>(),
+            vec![
+                Some(spell_object),
+                Some(ability_source),
+                Some(ability_source),
+                None
+            ],
+        );
+        assert_eq!(projected[0].print, "spell-exact-print");
+        assert_eq!(projected[1].print, "ability-source-exact-print");
+        assert_eq!(projected[2].print, "ability-source-exact-print");
+        assert_eq!(projected[3].kind, "ability");
+        assert_eq!(projected[3].controller, 1);
+        assert_eq!(projected[3].label.key, public.label);
+        assert_eq!(projected[3].target, None);
+        assert!(projected.iter().all(|entry| entry.targets.is_empty()));
+        assert_eq!(projected[3].print, public.printing_id);
+        assert_eq!(projected[3].card_id, ghost_card_id);
+        assert_eq!(projected[3].name, public.name);
+        assert_eq!(projected[3].printed_sentences, public.printed_sentences);
     }
 }

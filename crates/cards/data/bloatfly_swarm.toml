@@ -4,7 +4,6 @@
 # +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way.
 name = "Bloatfly Swarm"
 otags = ["ablative-armor", "damage-prevention-self", "evasion", "gains-pp-counters", "group-slug", "mill-each", "pp-counters-matter"]
-sets = ["pip"]
 subtypes = ["Insect", "Mutant"]
 id = "fc50e254-71bc-46b3-93e6-c6eb820a3473"
 default_print = "2d90b839-0808-435d-bcf3-aa7af414c44b"
@@ -22,6 +21,7 @@ toughness = 0
 
 # This creature enters with five +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with five +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with five +1/+1 counters on it.
@@ -33,6 +33,7 @@ count = 5
 # If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many
 # +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way.
 [[abilities]]
+oracle = "If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many +1/+1 counters from it, then give each player a rad counter for each +1/+1 counter removed this way."
 timing = "static"
 
 # If damage would be dealt to this creature while it has a +1/+1 counter on it, prevent that damage, remove that many

@@ -3,7 +3,6 @@
 # Evincar's Justice deals 2 damage to each creature and each player.
 name = "Evincar's Justice"
 otags = ["burn-creature", "burn-player-each", "mana-sink", "more-expensive-than-mv", "repeatable-removal", "sweeper", "symmetrical"]
-sets = ["cma", "cmd", "plst", "tmp", "tpr", "wc99"]
 id = "c0d3dfc0-1ff2-4ac3-98eb-32eaa5b84c05"
 default_print = "2e0fffc6-4395-441e-95a9-c9cf33af7907"
 oracle = "Buyback {3} (You may pay an additional {3} as you cast this spell. If you do, put this card into your hand as it resolves.)\nEvincar's Justice deals 2 damage to each creature and each player."
@@ -20,6 +19,7 @@ type = "sorcery"
 
 # Evincar's Justice deals 2 damage to each creature and each player.
 [[abilities]]
+oracle = "Evincar's Justice deals 2 damage to each creature and each player."
 timing = "spell"
 
 # 2 damage to each creature

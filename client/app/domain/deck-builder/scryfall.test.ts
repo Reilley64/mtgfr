@@ -124,7 +124,7 @@ describe("searchPrintPage 429 retry", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const pending = Effect.runPromise(searchPrintPage(printSearchUrl("e4912bc3-bee9-4a2f-a13e-3a99018f8a65")));
-    const expectation = expect(pending).rejects.toThrow(/Scryfall print search failed \(429\)/);
+    const expectation = expect(pending).rejects.toThrow(/Scryfall refused \(429\)/);
     await vi.advanceTimersByTimeAsync(1_000);
     await vi.advanceTimersByTimeAsync(1_000);
     await expectation;

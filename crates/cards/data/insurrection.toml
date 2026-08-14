@@ -1,7 +1,6 @@
 # Untap all creatures and gain control of them until end of turn. They gain haste until end of turn.
 name = "Insurrection"
 otags = ["gives-haste", "single-english-word-name", "theft-mass", "threaten", "untapper-creature"]
-sets = ["cmd", "cmm", "hop", "ons", "tle"]
 id = "7f7c204f-be1a-47e4-91c6-ba6f906d9012"
 default_print = "df8a0a8c-1953-46e6-9da5-b4c20909ce1c"
 oracle = "Untap all creatures and gain control of them until end of turn. They gain haste until end of turn."
@@ -15,6 +14,7 @@ type = "sorcery"
 
 # Untap all creatures and gain control of them until end of turn. They gain haste until end of turn.
 [[abilities]]
+oracle = "Untap all creatures and gain control of them until end of turn. They gain haste until end of turn."
 timing = "spell"
 
 # Untap all creatures and gain control of them until end of turn. They gain haste until end of turn.

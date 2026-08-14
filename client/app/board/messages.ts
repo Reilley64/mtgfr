@@ -22,6 +22,7 @@ const CardFlight = S.Struct({
   id: S.Number,
   print: S.String,
   name: S.String,
+  face: S.optional(S.Any),
   x: S.Number,
   y: S.Number,
   scale: S.Number,
@@ -71,6 +72,8 @@ export const HandDragStarted = m("HandDragStarted", {
   action: ActionView,
   name: S.String,
   print: S.String,
+  /** The tile's rendered `FaceData`, so the ghost flies the same face the tile wears. */
+  face: S.optional(S.Any),
   manaCost: S.Any,
   kind: S.optional(S.String),
   zone: S.optional(HandBarZone),

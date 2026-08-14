@@ -2,7 +2,6 @@
 # landwalk of the chosen type until the end of that turn. (It can't be blocked as long as
 # defending player controls a land of that type.)
 name = "Giant Slug"
-sets = ["bchr", "chr", "leg"]
 id = "1ce7f356-1f9b-44dc-9b05-f7b1ecc5d755"
 default_print = "d78999ab-2ccc-41ec-b808-18e40702d1c3"
 oracle = "{5}: At the beginning of your next upkeep, choose a basic land type. This creature gains landwalk of the chosen type until the end of that turn. (It can't be blocked as long as defending player controls a land of that type.)"
@@ -20,6 +19,7 @@ toughness = 1
 # {5}: At the beginning of your next upkeep, choose a basic land type. This creature gains
 # landwalk of the chosen type until the end of that turn.
 [[abilities]]
+oracle = "{5}: At the beginning of your next upkeep, choose a basic land type. This creature gains landwalk of the chosen type until the end of that turn."
 timing = "activated"
 activation_cost = { generic = 5 }
 

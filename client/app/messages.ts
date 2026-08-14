@@ -5,6 +5,7 @@ import { Url } from "foldkit/url";
 import { Message as BoardMessage } from "./board/messages";
 import { DeckCardFlipTick } from "./deck-card-nav";
 import { CardArtTick } from "./domain/ui/card-art";
+import { CardFaceTick } from "./domain/ui/card-face";
 import { Message as GameMessage } from "./game/messages";
 import { Message as AccountChromeMessage } from "./shell/account-chrome/messages";
 import { Message as AuthMessage } from "./shell/auth/messages";
@@ -34,7 +35,7 @@ export const GotLeaderboardMessage = m("GotLeaderboardMessage", { message: Leade
 export const GotLobbyMessage = m("GotLobbyMessage", { message: LobbyMessage });
 export const GotBoardMessage = m("GotBoardMessage", { message: BoardMessage });
 export const GotGameMessage = m("GotGameMessage", { message: GameMessage });
-export { CardArtTick, DeckCardFlipTick };
+export { CardArtTick, CardFaceTick, DeckCardFlipTick };
 
 export const Message = S.Union([
   Booted,
@@ -54,6 +55,7 @@ export const Message = S.Union([
   GotBoardMessage,
   GotGameMessage,
   CardArtTick,
+  CardFaceTick,
   DeckCardFlipTick,
   AccountChromeMessage,
 ]);

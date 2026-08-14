@@ -1,7 +1,6 @@
 # Whenever one or more cards leave your graveyard, put a +1/+1 counter on this creature, then you may have this creature
 # become a copy of an artifact or creature card from among those cards until end of turn.
 name = "Spirit of Resilience"
-sets = ["soc"]
 id = "ddc85b23-113a-46e9-ab09-fae9312c72fa"
 default_print = "60584e5b-4138-405b-bd02-612cf175184e"
 otags = ["copy-artifact", "copy-creature", "gains-pp-counters", "leaves-graveyard-trigger", "repeatable-pp-counters"]
@@ -21,6 +20,7 @@ toughness = 2
 # you may have this creature become a copy of an artifact or creature card from among those
 # cards until end of turn.
 [[abilities]]
+oracle = "Whenever one or more cards leave your graveyard, put a +1/+1 counter on this creature, then you may have this creature become a copy of an artifact or creature card from among those cards until end of turn."
 timing = "cards_leave_your_graveyard"
 
 # put a +1/+1 counter on this creature, then you may have this creature become a copy of an

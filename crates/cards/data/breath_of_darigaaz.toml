@@ -2,7 +2,6 @@
 # Breath of Darigaaz deals 1 damage to each creature without flying and each player. If this
 # spell was kicked, it deals 4 damage to each creature without flying and each player instead.
 name = "Breath of Darigaaz"
-sets = ["arc", "c15", "cm2", "cmd", "ddg", "inv", "plst"]
 id = "1954994f-17bf-4ea5-af72-60f9bfcb6569"
 default_print = "cbb60f03-7bcf-46a3-9310-c2067d9c5396"
 otags = ["burn-creature", "burn-player", "sweeper"]
@@ -21,6 +20,7 @@ type = "sorcery"
 # Breath of Darigaaz deals 1 damage to each creature without flying and each player. If this
 # spell was kicked, it deals 4 damage to each creature without flying and each player instead.
 [[abilities]]
+oracle = "Breath of Darigaaz deals 1 damage to each creature without flying and each player. If this spell was kicked, it deals 4 damage to each creature without flying and each player instead."
 timing = "spell"
 
 # deals 1 damage to each creature without flying ... If this spell was kicked, it deals 4 damage

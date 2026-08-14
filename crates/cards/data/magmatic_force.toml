@@ -1,7 +1,6 @@
 # At the beginning of each upkeep, this creature deals 3 damage to any target.
 name = "Magmatic Force"
 otags = ["burn-any", "cycle-force-elemental", "per-player", "repeatable-crime", "repeatable-removal", "spot-removal", "triggered-ability"]
-sets = ["aa4", "bbd", "cmd", "plst", "scd"]
 id = "ea73153b-1ecb-4593-a9ec-ce4f54e69824"
 default_print = "e98eb29b-af03-4a96-b84c-a0bd51f80f03"
 oracle = "At the beginning of each upkeep, this creature deals 3 damage to any target."
@@ -18,6 +17,7 @@ toughness = 7
 
 # At the beginning of each upkeep, this creature deals 3 damage to any target.
 [[abilities]]
+oracle = "At the beginning of each upkeep, this creature deals 3 damage to any target."
 timing = "each_upkeep"
 
 # this creature deals 3 damage to any target.

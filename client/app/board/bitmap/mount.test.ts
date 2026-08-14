@@ -1,10 +1,16 @@
+/**
+ * @vitest-environment happy-dom
+ */
+
+import { Effect, Stream } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { colors } from "~/design-tokens.generated";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, PlayerView } from "~/wire/types";
+import { BLANK_FACE } from "../../domain/card-render/frame";
 import { gravatarUrl } from "../../domain/gravatar";
-import type { RenderCard } from "../geometry/layout";
-import { ZONE } from "../geometry/layout";
+import type { ImageCache } from "../../domain/image-cache";
+import { AVATAR_LIFE_LABEL_BELOW, avatarPos, type RenderCard, ZONE } from "../geometry/layout";
 import { spawnExitFx } from "../motion/exit-fx";
 import { spawnFlight } from "../motion/flights";
 import {
@@ -12,8 +18,11 @@ import {
   type BitmapFrame,
   bitmapFrameNeedsRaf,
   type FlightClockState,
+  MountBitmapLayer,
+  MountFlightLayer,
   paintBitmapLayer,
   paintFlightLayer,
+  publishBitmapFrame,
   tickFlightClock,
 } from "./mount";
 
@@ -80,6 +89,7 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
     counters: 0,
     faceDown: false,
     goaded: false,
+    face: BLANK_FACE,
     h: 134,
     hasHaste: false,
     id: 1,
@@ -104,7 +114,10 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
   };
 }
 
-function mockCtx(calls: string[]): CanvasRenderingContext2D {
+function mockCtx(
+  calls: string[],
+  imageDraws?: Array<{ label: string; x: number; y: number }>,
+): CanvasRenderingContext2D {
   const state = { fillStyle: "", strokeStyle: "" };
   const ctx = {
     arc: vi.fn(() => calls.push("avatar")),
@@ -112,7 +125,11 @@ function mockCtx(calls: string[]): CanvasRenderingContext2D {
     clearRect: vi.fn(() => calls.push("clear")),
     clip: vi.fn(),
     closePath: vi.fn(),
-    drawImage: vi.fn((image: { label?: string }) => calls.push(`image:${image.label ?? "unknown"}`)),
+    drawImage: vi.fn((image: { label?: string }, x: number, y: number) => {
+      const label = image.label ?? "unknown";
+      calls.push(`image:${label}`);
+      imageDraws?.push({ label, x, y });
+    }),
     fill: vi.fn(() => calls.push(`fill:${state.fillStyle}`)),
     fillRect: vi.fn(),
     fillText: vi.fn((text: string, _x: number, y: number) => {
@@ -153,6 +170,15 @@ function mockCtx(calls: string[]): CanvasRenderingContext2D {
   return ctx;
 }
 
+function canvasWithContext(ctx: CanvasRenderingContext2D): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  Object.defineProperty(canvas, "getContext", {
+    configurable: true,
+    value: vi.fn(() => ctx),
+  });
+  return canvas;
+}
+
 function battlefieldAction(objectId: number, overrides: Partial<ActionView> = {}): ActionView {
   return {
     id: objectId + 100,
@@ -172,6 +198,7 @@ function frame(overrides: Partial<BitmapFrame> = {}): BitmapFrame {
     dpr: 1,
     camera: { panX: 0, panY: 0, zoom: 1 },
     cards: [card()],
+    hoveredAttachmentId: null,
     viewer: 0,
     players: [player()],
     priority: 0,
@@ -200,12 +227,49 @@ function flightClockState(overrides: Partial<FlightClockState> = {}): FlightCloc
     liveFlights: [],
     liveExitFx: [],
     liveDragGhost: null,
+    liveAttachmentHover: new Map(),
     lastRestingSnapshot: null,
     ...overrides,
   };
 }
 
 describe("paintBitmapLayer", () => {
+  it("moves a hovered attachment in place without changing card paint order", () => {
+    const calls: string[] = [];
+    const imageDraws: Array<{ label: string; x: number; y: number }> = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = canvasWithContext(mockCtx(calls, imageDraws));
+    class TestImage {
+      label = "";
+    }
+    vi.stubGlobal("HTMLImageElement", TestImage);
+    const attachmentImage = new HTMLImageElement();
+    const hostImage = new HTMLImageElement();
+    Reflect.set(attachmentImage, "label", "attachment");
+    Reflect.set(hostImage, "label", "host");
+    const cache = {
+      get: vi.fn((url: string) => (url.includes("attachment-print") ? attachmentImage : hostImage)),
+    } satisfies Pick<ImageCache, "get">;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        cards: [
+          card({ id: 7, attachedTo: 8, print: "attachment-print", y: 100 }),
+          card({ id: 8, print: "host-print", y: 100 }),
+        ],
+        hoveredAttachmentId: 7,
+        attachmentHoverProgress: new Map([[7, 0.25]]),
+      }),
+      cache,
+    );
+
+    expect(imageDraws).toEqual([
+      { label: "attachment", x: 10, y: 95.8125 },
+      { label: "host", x: 10, y: 100 },
+    ]);
+  });
+
   it("paints battlefield permanent chrome on the resting layer without under-card labels", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });
@@ -231,6 +295,7 @@ describe("paintBitmapLayer", () => {
           card({ id: 3, counters: 1, name: "Counter Bear", x: 250 }),
           card({ id: 4, markedDamage: 3, name: "Damaged Bear", x: 370 }),
         ],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player()],
         priority: 0,
@@ -290,6 +355,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player(), player({ player: 1, username: "Bob" })],
         priority: 0,
@@ -378,6 +444,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player(), player({ player: 1, username: "Bob" })],
         priority: 0,
@@ -393,6 +460,7 @@ describe("paintBitmapLayer", () => {
         stack: [
           {
             controller: 0,
+            entry_id: 1n,
             kind: "spell",
             label: testMessageRef("Lightning Bolt"),
             source: 9,
@@ -439,6 +507,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [
           player({
@@ -507,6 +576,34 @@ describe("paintBitmapLayer", () => {
     expect(calls).toContain("text:Cmd 9@-128");
   });
 
+  it("paints a resting permanent from the rendered face cache, not its printed image", () => {
+    const calls: string[] = [];
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const printed = { label: "printed" } as unknown as HTMLImageElement;
+    const face = { label: "face" } as unknown as CanvasImageSource;
+    const request = vi.fn();
+    const bear = { ...BLANK_FACE, name: "Grizzly Bears", print: "resting-print" };
+
+    paintBitmapLayer(
+      canvas,
+      frame({ cards: [card({ face: bear })] }),
+      { get: vi.fn(() => printed) },
+      {
+        get: () => face,
+        request,
+      },
+    );
+
+    expect(request).toHaveBeenCalledWith(bear, "permanent");
+    expect(calls).toContain("image:face");
+    expect(calls).not.toContain("image:printed");
+  });
+
   it("paints Gravatar face images with life below the circle", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });
@@ -530,6 +627,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player({ gravatar_hash: hash })],
         priority: 0,
@@ -554,7 +652,30 @@ describe("paintBitmapLayer", () => {
 
     expect(cache.get).toHaveBeenCalledWith(gravatarUrl(hash));
     expect(calls).toContain("image:gravatar");
-    expect(calls).toContain("text:40@956");
+    expect(calls).toContain(`text:40@${avatarPos(0, 0, 1).y + AVATAR_LIFE_LABEL_BELOW}`);
+  });
+
+  it("paints avatars at content-aware world positions supplied by the frame", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const ctx = mockCtx(calls);
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => ctx),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      frame({
+        cards: [],
+        avatarPositions: { 0: { x: 700, y: 500 } },
+      }),
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(ctx.arc).toHaveBeenCalledWith(700, 500, 40, 0, Math.PI * 2);
   });
 
   // Poison is a lose condition (CR 704.5c) and rad drives a mill clock — both belong on the orb.
@@ -604,6 +725,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player(), player({ player: 1, username: "Bob" })],
         priority: 0,
@@ -650,6 +772,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player()],
         priority: 0,
@@ -697,6 +820,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card({ id: 5, kind: "land", pt: "" })],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player()],
         priority: 0,
@@ -741,6 +865,7 @@ describe("paintBitmapLayer", () => {
         card({ id: 7, pt: "", name: "Timberwatch Elf" }),
         card({ id: 8, kind: "land", name: "Forest", pt: "", tapsForMana: true, x: 130 }),
       ],
+      hoveredAttachmentId: null,
       viewer: 0,
       players: [player()],
       priority: 0,
@@ -785,6 +910,7 @@ describe("paintBitmapLayer", () => {
       dpr: 1,
       camera: { panX: 0, panY: 0, zoom: 1 },
       cards: [card({ id: 7, pt: "", name: "Zimone, Quandrix Prodigy", summoningSick: true })],
+      hoveredAttachmentId: null,
       viewer: 0,
       players: [player()],
       priority: 0,
@@ -831,6 +957,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card({ id: 22 }), card({ id: 99, x: 200, y: 200, name: "Forest", kind: "land", pt: "" })],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player()],
         priority: 0,
@@ -877,6 +1004,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card({ id: 22 }), card({ id: 99, x: 200, y: 200, name: "Elf" })],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player()],
         priority: 0,
@@ -924,6 +1052,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player(), player({ player: 1, username: "Bob" })],
         priority: 0,
@@ -969,6 +1098,7 @@ describe("paintBitmapLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player()],
         priority: 0,
@@ -1029,6 +1159,7 @@ describe("paintFlightLayer", () => {
         dpr: 1,
         camera: { panX: 0, panY: 0, zoom: 1 },
         cards: [card()],
+        hoveredAttachmentId: null,
         viewer: 0,
         players: [player()],
         priority: 0,
@@ -1113,7 +1244,7 @@ describe("paintFlightLayer", () => {
 
 describe("bitmapFrameNeedsRaf", () => {
   it("idles while no bitmap animation is active", () => {
-    expect(bitmapFrameNeedsRaf({ flights: [], exitFx: [] })).toBe(false);
+    expect(bitmapFrameNeedsRaf({ flights: [], exitFx: [], hoveredAttachmentId: null })).toBe(false);
   });
 
   it("requests frames while flights are active", () => {
@@ -1134,6 +1265,7 @@ describe("bitmapFrameNeedsRaf", () => {
           }),
         ],
         exitFx: [],
+        hoveredAttachmentId: null,
       }),
     ).toBe(true);
   });
@@ -1153,12 +1285,277 @@ describe("bitmapFrameNeedsRaf", () => {
             scale: 1,
           }),
         ],
+        hoveredAttachmentId: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("requests frames while attachment hover motion is unfinished", () => {
+    expect(
+      bitmapFrameNeedsRaf({
+        flights: [],
+        exitFx: [],
+        hoveredAttachmentId: 7,
+        attachmentHoverProgress: new Map([[7, 0.5]]),
       }),
     ).toBe(true);
   });
 });
 
+describe("mounted attachment hover clock", () => {
+  it("uses only the flight RAF to repaint resting enter, leave, and reduced-motion frames", () =>
+    Effect.runPromise(
+      Effect.gen(function* () {
+        const restingCalls: string[] = [];
+        const flightCalls: string[] = [];
+        const restingCanvas = canvasWithContext(mockCtx(restingCalls));
+        const flightCanvas = canvasWithContext(mockCtx(flightCalls));
+        const scheduled = new Map<number, FrameRequestCallback>();
+        let nextRafId = 1;
+        let reducedMotion = false;
+        const requestRaf = vi.fn((callback: FrameRequestCallback): number => {
+          const id = nextRafId;
+          nextRafId += 1;
+          scheduled.set(id, callback);
+          return id;
+        });
+
+        vi.stubGlobal("requestAnimationFrame", requestRaf);
+        vi.stubGlobal(
+          "cancelAnimationFrame",
+          vi.fn((id: number) => scheduled.delete(id)),
+        );
+        vi.stubGlobal(
+          "matchMedia",
+          vi.fn(() => ({ matches: reducedMotion })),
+        );
+
+        const runOnlyRaf = (now: number): void => {
+          const entries = [...scheduled.entries()];
+          expect(entries).toHaveLength(1);
+          const entry = entries[0];
+          if (entry == null) throw new Error("expected one scheduled bitmap frame");
+          scheduled.delete(entry[0]);
+          entry[1](now);
+        };
+        const restingPaints = (): number => restingCalls.filter((call) => call === "clear").length;
+
+        yield* Effect.forkChild(Stream.runDrain(MountBitmapLayer().f(restingCanvas)), { startImmediately: true });
+        yield* Effect.forkChild(Stream.runDrain(MountFlightLayer().f(flightCanvas)), { startImmediately: true });
+        yield* Effect.yieldNow;
+
+        expect(requestRaf).not.toHaveBeenCalled();
+
+        publishBitmapFrame(frame({ cards: [], hoveredAttachmentId: 7 }));
+        expect(restingPaints()).toBe(1);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(0);
+        expect(restingPaints()).toBe(2);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(104);
+        expect(restingPaints()).toBe(3);
+        expect(scheduled.size).toBe(0);
+
+        publishBitmapFrame(frame({ cards: [], hoveredAttachmentId: null }));
+        expect(restingPaints()).toBe(4);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(200);
+        expect(restingPaints()).toBe(5);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(304);
+        expect(restingPaints()).toBe(6);
+        expect(scheduled.size).toBe(0);
+
+        reducedMotion = true;
+        publishBitmapFrame(frame({ cards: [], hoveredAttachmentId: 7 }));
+        expect(restingPaints()).toBe(7);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(400);
+        expect(restingPaints()).toBe(8);
+        expect(scheduled.size).toBe(0);
+
+        publishBitmapFrame(frame({ cards: [], hoveredAttachmentId: null }));
+        expect(restingPaints()).toBe(9);
+        expect(scheduled.size).toBe(1);
+
+        runOnlyRaf(416);
+        expect(restingPaints()).toBe(10);
+        expect(scheduled.size).toBe(0);
+      }),
+    ));
+});
+
 describe("flight clock helpers", () => {
+  it("publishes and reverses attachment hover progress on the resting layer clock", () => {
+    const entered = applyPublishedFrame(flightClockState(), frame({ hoveredAttachmentId: 7 }));
+
+    expect(entered.paintResting).toBe(true);
+    expect(entered.frame.attachmentHoverProgress).toEqual(new Map([[7, 0]]));
+    expect(bitmapFrameNeedsRaf(entered.frame)).toBe(true);
+
+    const entering = tickFlightClock(entered.state, entered.frame, 60, 60, false);
+
+    expect(entering.paintResting).toBe(true);
+    expect(entering.frame.attachmentHoverProgress).toEqual(new Map([[7, 0.5]]));
+    expect(bitmapFrameNeedsRaf(entering.frame)).toBe(true);
+
+    const settled = tickFlightClock(entering.state, entering.frame, 120, 60, false);
+
+    expect(settled.paintResting).toBe(true);
+    expect(settled.frame.attachmentHoverProgress).toEqual(new Map([[7, 1]]));
+    expect(bitmapFrameNeedsRaf(settled.frame)).toBe(false);
+
+    const left = applyPublishedFrame(settled.state, frame({ hoveredAttachmentId: null }));
+
+    expect(left.paintResting).toBe(true);
+    expect(left.frame.attachmentHoverProgress).toEqual(new Map([[7, 1]]));
+    expect(bitmapFrameNeedsRaf(left.frame)).toBe(true);
+
+    const leaving = tickFlightClock(left.state, left.frame, 180, 60, false);
+
+    expect(leaving.paintResting).toBe(true);
+    expect(leaving.frame.attachmentHoverProgress).toEqual(new Map([[7, 0.5]]));
+    expect(bitmapFrameNeedsRaf(leaving.frame)).toBe(true);
+  });
+
+  it("synchronizes a settled held battlefield flight when its destination appears", () => {
+    const held = {
+      ...spawnFlight({
+        id: 90,
+        print: "forest-print",
+        name: "Forest",
+        x: 100,
+        y: 100,
+        scale: 1,
+        targetX: 100,
+        targetY: 100,
+        targetScale: 1,
+        kind: "battlefield",
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+    const published = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({ cards: [card({ id: 90, tapped: true })], flights: [held], hideCardIds: new Set([90]) }),
+    );
+
+    expect(bitmapFrameNeedsRaf(published.frame)).toBe(false);
+    expect(published.sync).toEqual({ flights: [held], exitFx: [], now: expect.any(Number) });
+
+    const unmatched = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({ cards: [], flights: [held], hideCardIds: new Set([90]) }),
+    );
+    expect(unmatched.sync).toBeNull();
+
+    const staleIncoming = { ...held, phase: "flying" as const };
+    const raced = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({ cards: [card({ id: 90, tapped: true })], flights: [staleIncoming], hideCardIds: new Set([90]) }),
+    );
+    expect(raced.sync).toEqual({ flights: [held], exitFx: [], now: expect.any(Number) });
+
+    const authoritativeRelease = { ...held, hold: false, phase: "flying" as const, targetX: 300 };
+    const released = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({ cards: [card({ id: 90, tapped: true })], flights: [authoritativeRelease], hideCardIds: new Set([90]) }),
+    );
+    expect(released.frame.flights).toEqual([authoritativeRelease]);
+    expect(released.sync).toBeNull();
+    expect(bitmapFrameNeedsRaf(released.frame)).toBe(true);
+
+    const authoritativeHeldRetarget = {
+      ...held,
+      phase: "flying" as const,
+      targetX: 300,
+      targetY: 250,
+      targetScale: 0.75,
+    };
+    const retargeted = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({
+        cards: [card({ id: 90, tapped: true })],
+        flights: [authoritativeHeldRetarget],
+        hideCardIds: new Set([90]),
+      }),
+    );
+    expect(retargeted.frame.flights).toEqual([authoritativeHeldRetarget]);
+    expect(retargeted.sync).toBeNull();
+    expect(bitmapFrameNeedsRaf(retargeted.frame)).toBe(true);
+
+    const removed = applyPublishedFrame(
+      published.state,
+      frame({ cards: [card({ id: 90, tapped: true })], flights: [], hideCardIds: new Set() }),
+    );
+    expect(removed.sync).toBeNull();
+  });
+
+  it("synchronizes a settled held stack flight when its destination appears", () => {
+    const held = {
+      ...spawnFlight({
+        id: 91,
+        print: "bolt-print",
+        name: "Lightning Bolt",
+        x: 100,
+        y: 100,
+        scale: 1,
+        targetX: 100,
+        targetY: 100,
+        targetScale: 1,
+        kind: "stack",
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+
+    const published = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({
+        cards: [],
+        flights: [held],
+        stack: [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 91 }],
+      }),
+    );
+
+    expect(published.sync).toEqual({ flights: [held], exitFx: [], now: expect.any(Number) });
+  });
+
+  it("does not hand off a held spell flight to an ability-only entry with the same source", () => {
+    const held = {
+      ...spawnFlight({
+        id: 91,
+        print: "bolt-print",
+        name: "Lightning Bolt",
+        x: 100,
+        y: 100,
+        scale: 1,
+        targetX: 100,
+        targetY: 100,
+        targetScale: 1,
+        kind: "stack",
+        hold: true,
+      }),
+      phase: "settled" as const,
+    };
+    const published = applyPublishedFrame(
+      flightClockState({ liveFlights: [held] }),
+      frame({
+        cards: [],
+        flights: [held],
+        stack: [{ entry_id: 1n, controller: 0, kind: "ability", label: testMessageRef("Bolt trigger"), source: 91 }],
+      }),
+    );
+
+    expect(published.sync).toBeNull();
+    expect(published.frame.flights).toEqual([held]);
+  });
+
   it("drag-ghost pose change paints the flight layer without resting paint", () => {
     const ghost = {
       print: "bolt",

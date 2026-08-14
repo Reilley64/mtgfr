@@ -2,15 +2,15 @@ import { Canvas } from "foldkit";
 import { colors } from "~/design-tokens.generated";
 import type { VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
-import { CARD_CORNER_RADIUS } from "../bitmap/paint-cards";
+import { CARD_CORNER_RADIUS, TAP_TILT } from "../bitmap/paint-cards";
 import { CARD_RESTING_OUTLINE, COMMANDER_GOLD, PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { fitCamera } from "../geometry/interaction";
-import { CARD_H, CARD_W, layout, type RenderCard, seatBand, seatColor } from "../geometry/layout";
+import { type BoardLayout, CARD_H, CARD_W, layoutBoard, type RenderCard, seatColor } from "../geometry/layout";
 import type { StackPresentation } from "../geometry/stackLayout";
 import { BOARD_VIEWPORT } from "../submodel";
 import { aimArrowShapes, arrowShapes, combatDragArrowShapes, stackTargetArrowShapes } from "./arrows";
-import { avatarScreenPositions, avatarShapes } from "./avatars";
+import { avatarShapes, projectAvatarScreenPositions } from "./avatars";
 import { feltShapes } from "./felt";
 
 type Shape = Canvas.Shape;
@@ -66,23 +66,26 @@ export type SceneShapesOptions = {
   stackPresentation?: StackPresentation;
   /** Committed permanents that must not collapse into a cluster (see `board/engagement.ts`). */
   engaged?: ReadonlySet<number>;
+  boardLayout?: BoardLayout;
 };
 
-function seatShapes(state: VisibleState, camera: Camera): Shape[] {
-  const count = Math.max(1, state.players.length);
-  return state.players.map((player) => {
-    const band = seatBand(player.player, state.viewer, count);
+function seatShapes(state: VisibleState, camera: Camera, bands: BoardLayout["seatBands"]): Shape[] {
+  return state.players.flatMap((player) => {
+    const band = bands.get(player.player);
+    if (band == null) return [];
     const topLeft = worldToScreen(camera, band.x, band.y);
     const active = player.player === state.active_player;
-    return Canvas.Rect({
-      x: topLeft.x,
-      y: topLeft.y,
-      width: band.w * camera.zoom,
-      height: band.h * camera.zoom,
-      fill: seatColor(player.player, active ? 0.12 : 0.06),
-      stroke: seatColor(player.player, active ? 0.65 : 0.28),
-      lineWidth: active ? 2.5 : 1.5,
-    });
+    return [
+      Canvas.Rect({
+        x: topLeft.x,
+        y: topLeft.y,
+        width: band.w * camera.zoom,
+        height: band.h * camera.zoom,
+        fill: seatColor(player.player, active ? 0.12 : 0.06),
+        stroke: seatColor(player.player, active ? 0.65 : 0.28),
+        lineWidth: active ? 2.5 : 1.5,
+      }),
+    ];
   });
 }
 
@@ -113,7 +116,7 @@ function kindFill(card: RenderCard): string {
 function cardRotation(card: RenderCard, viewer: number): number {
   const tapFrac = card.tapFrac ?? (card.tapped ? 1 : 0);
   const angle = card.controller !== viewer ? Math.PI : 0;
-  return angle + tapFrac * (Math.PI / 2);
+  return angle + tapFrac * TAP_TILT;
 }
 
 function cardShapes(
@@ -218,9 +221,10 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
   const width = options.width ?? BOARD_VIEWPORT.width;
   const height = options.height ?? BOARD_VIEWPORT.height;
   const count = Math.max(1, state.players.length);
-  const camera = options.camera ?? fitCamera({ x: width, y: height }, count, 0);
-  const cards = layout(state, state.viewer, options.engaged);
-  const avatars = avatarScreenPositions(state.players, state.viewer, count, camera);
+  const boardLayout = options.boardLayout ?? layoutBoard(state, state.viewer, options.engaged);
+  const camera = options.camera ?? fitCamera({ x: width, y: height }, count, 0, boardLayout.bounds);
+  const cards = boardLayout.cards;
+  const avatars = projectAvatarScreenPositions(state.players, boardLayout.avatarPositions, camera);
   const targeting = options.stagedTargeting ?? null;
   const targetObjects = targeting?.targetObjects ?? new Set<number>();
   const playableObjects = playableBattlefieldObjectIds(
@@ -234,7 +238,7 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
 
   return [
     ...feltShapes(width, height),
-    ...seatShapes(state, camera),
+    ...seatShapes(state, camera, boardLayout.seatBands),
     ...cardShapes(cards, camera, options.selectedId ?? null, state.viewer, targetObjects, playableObjects),
     ...avatarShapes(
       state.players,

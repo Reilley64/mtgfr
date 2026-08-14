@@ -1,7 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Kobolds of Kher Keep"
 otags = ["alliteration", "has-identical-token", "manaless-value"]
-sets = ["leg", "mb2", "me3"]
 id = "badf0669-9f65-44e3-bf91-6c57ac2fecff"
 default_print = "a6797542-0781-43d6-aa8e-b55e5c1e08c0"
 subtypes = ["Kobold"]

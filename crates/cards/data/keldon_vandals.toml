@@ -2,7 +2,6 @@
 # upkeep, sacrifice it unless you pay its echo cost.)
 # When this creature enters, destroy target artifact.
 name = "Keldon Vandals"
-sets = ["td0", "uds"]
 otags = ["creature-type-townsfolk", "drawback", "intervening-if-clause", "removal-artifact", "removal-destroy", "spot-removal", "type-errata", "virtual-french-vanilla"]
 oracle = "Echo {2}{R} (At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay its echo cost.)\nWhen this creature enters, destroy target artifact."
 subtypes = ["Human", "Rogue"]
@@ -25,6 +24,7 @@ toughness = 1
 
 # When this creature enters, destroy target artifact.
 [[abilities]]
+oracle = "When this creature enters, destroy target artifact."
 timing = "etb"
 
 # destroy target artifact.

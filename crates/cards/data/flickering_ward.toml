@@ -3,7 +3,6 @@
 # Enchanted creature has protection from the chosen color. This effect doesn't remove this Aura.
 # {W}: Return this Aura to its owner's hand.
 name = "Flickering Ward"
-sets = ["mb2", "soc", "tmp"]
 id = "3e2ae59a-40a1-46ca-8f24-3231ebd4e4eb"
 default_print = "23fcd6a8-be83-4304-ae32-d3dfc855f596"
 otags = ["activated-ability", "bounceable-aura", "gives-protection", "hate-color-choose", "protects-creature", "repeatable-crime"]
@@ -18,6 +17,7 @@ type = "aura"
 
 # As this Aura enters, choose a color.
 [[abilities]]
+oracle = "As this Aura enters, choose a color."
 timing = "as_enters"
 
 # As this Aura enters, choose a color.
@@ -27,6 +27,7 @@ mode = "choose_color"
 
 # Enchanted creature has protection from the chosen color.
 [[abilities]]
+oracle = "Enchanted creature has protection from the chosen color."
 timing = "static"
 
 # Enchanted creature has protection from the chosen color.
@@ -37,6 +38,7 @@ protection_from_chosen_color = true
 
 # {W}: Return this Aura to its owner's hand.
 [[abilities]]
+oracle = "{W}: Return this Aura to its owner's hand."
 timing = "activated"
 
 [abilities.activation_cost]

@@ -3,7 +3,6 @@
 # for its morph cost.)
 name = "Zoetic Cavern"
 otags = ["activated-ability", "cycle-fut-noncreature-morph", "land-ramp", "mini-refund", "more-expensive-than-mv", "utility-land"]
-sets = ["a25", "c14", "c15", "cma", "cmd", "dci", "fut", "mkc", "plst", "prm"]
 id = "3763de30-28e1-4689-a71c-07d2fea3a466"
 default_print = "e65eeae0-37bb-4465-a7bf-76aa0a4ccd61"
 oracle = "{T}: Add {C}.\nMorph {2} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)"

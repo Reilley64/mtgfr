@@ -6,6 +6,20 @@
 
 use crate::*;
 
+impl Event {
+    fn inserts_stack_entry(&self) -> bool {
+        matches!(
+            self,
+            Event::SpellCast { .. }
+                | Event::AdventureSpellCast { .. }
+                | Event::SplitHalfSpellCast { .. }
+                | Event::SpellCopied { .. }
+                | Event::PreparedSpellCast { .. }
+                | Event::TriggeredAbilityOnStack { .. }
+        )
+    }
+}
+
 impl Game {
     /// Record `amount` damage dealt by `source` to `recipient` in the turn-scoped ledger
     /// ([`Game::damage_dealt_this_turn`]) and in this resolution's "dealt this way" tally
@@ -346,7 +360,7 @@ impl Game {
                 }
                 return;
             }
-            self.apply_all(&sba);
+            self.apply_all_recorded(&mut sba);
             events.extend(sba);
         }
         // Reaching here means SBAs never converged — a real engine bug producing wrong state, not
@@ -501,11 +515,112 @@ impl Game {
         events
     }
 
-    /// Apply a batch of events in order. Events are the *only* mutator of state.
-    pub(crate) fn apply_all(&mut self, events: &[Event]) {
-        for event in events {
-            self.apply(event);
+    /// Normalize one bounded counter event to the state delta that can actually be accepted.
+    /// A zero-delta placement is absent from the authoritative batch; a partial placement carries
+    /// only the accepted count, so replay, triggers, and projection all observe the same fact.
+    pub(crate) fn normalize_event(&self, event: Event) -> Option<Event> {
+        match event {
+            Event::CountersPlaced {
+                object,
+                count,
+                source_name,
+            } => {
+                let current = i64::from(self.plus_counters(object));
+                let accepted = (current + i64::from(count)).clamp(0, i64::from(i32::MAX)) - current;
+                (accepted != 0).then_some(Event::CountersPlaced {
+                    object,
+                    count: accepted as i32,
+                    source_name,
+                })
+            }
+            Event::KindCountersPlaced {
+                object,
+                kind,
+                count,
+            } => {
+                let current = i64::from(self.counters_of_kind(object, kind));
+                let accepted = (current + i64::from(count)).clamp(0, i64::from(u8::MAX)) - current;
+                (accepted != 0).then_some(Event::KindCountersPlaced {
+                    object,
+                    kind,
+                    count: accepted as i32,
+                })
+            }
+            Event::PlayerCountersPlaced {
+                player,
+                kind,
+                count,
+            } => {
+                let current = i64::from(self.player_counters(player, kind));
+                let accepted = (current + i64::from(count)).clamp(0, i64::from(u8::MAX)) - current;
+                (accepted != 0).then_some(Event::PlayerCountersPlaced {
+                    player,
+                    kind,
+                    count: accepted as i32,
+                })
+            }
+            event => Some(event),
         }
+    }
+
+    /// Normalize and apply a batch of events in order. The vector is the authoritative batch
+    /// returned to callers, so normalization happens before any event is exposed.
+    pub(crate) fn apply_all(
+        &mut self,
+        events: &mut Vec<Event>,
+    ) -> Result<(), StackEntryIdExhausted> {
+        let insertions = events
+            .iter()
+            .filter(|event| event.inserts_stack_entry())
+            .count() as u64;
+        let available = self
+            .next_stack_entry_id
+            .map_or(0, |next| u64::MAX - next.get() + 1);
+        if insertions <= available {
+            return self.apply_all_unchecked(events);
+        }
+
+        // Normalization can depend on preceding events, so pre-counting is deliberately only a
+        // fast-path guard. Near exhaustion, replay the whole batch on a candidate and commit only
+        // after every normalized insertion succeeds.
+        let mut candidate = self.clone();
+        candidate.stack_entry_id_error = None;
+        let mut candidate_events = events.clone();
+        let result = candidate.apply_all_unchecked(&mut candidate_events);
+        if result.is_ok() {
+            *self = candidate;
+            *events = candidate_events;
+        }
+        result
+    }
+
+    /// Apply an internal batch and latch any allocator error for the outer submit transaction.
+    pub(crate) fn apply_all_recorded(&mut self, events: &mut Vec<Event>) {
+        if self.apply_all(events).is_err() {
+            self.stack_entry_id_error = Some(StackEntryIdExhausted);
+        }
+    }
+
+    /// Apply one internal event and latch any allocator error for the outer submit transaction.
+    pub(crate) fn apply_recorded(&mut self, event: &Event) {
+        if self.apply(event).is_err() {
+            self.stack_entry_id_error = Some(StackEntryIdExhausted);
+        }
+    }
+
+    fn apply_all_unchecked(
+        &mut self,
+        events: &mut Vec<Event>,
+    ) -> Result<(), StackEntryIdExhausted> {
+        let requested = std::mem::take(events);
+        for event in requested {
+            let Some(event) = self.normalize_event(event) else {
+                continue;
+            };
+            self.apply(&event)?;
+            events.push(event);
+        }
+        Ok(())
     }
 
     /// Bump `player`'s per-draw-step draw tally when the draw they just took happened inside
@@ -523,7 +638,7 @@ impl Game {
     /// Remove a spell object from the stack (it resolved or left the stack).
     pub(crate) fn remove_spell_from_stack(&mut self, object: ObjectId) {
         self.stack
-            .retain(|item| !matches!(item, StackItem::Spell(o) if *o == object));
+            .retain(|item| !matches!(&item.payload, StackPayload::Spell(o) if *o == object));
     }
 
     /// Drop inspect-ledger batches for `object` (it left the battlefield). Aggregates on a still-live
@@ -566,17 +681,45 @@ impl Game {
     /// Until-EOT boosts need no such cache: [`Game::runtime_continuous_effects`] reads their
     /// batches straight out of the registry, one CR 613 layer entry each.
     pub(crate) fn resync_counter_aggregate(&mut self, object: ObjectId) {
-        let counters: i32 = self
+        let counters = self
             .modifier_provenance
             .counter_batches
             .iter()
             .filter(|&&(o, _, _)| o == object)
-            .map(|&(_, c, _)| c)
-            .sum();
+            .fold(0_i64, |total, &(_, count, _)| total + i64::from(count))
+            .clamp(0, i64::from(i32::MAX)) as i32;
         let Object::Permanent(p) = &mut self.objects[object as usize] else {
             return;
         };
         p.plus_counters = counters;
+    }
+
+    /// Set the bounded +1/+1-counter aggregate while retaining as much sourced provenance as
+    /// possible. Decreases consume the newest batches first, like ordinary removal; increases
+    /// append one synthetic debug batch. The ledger remains canonical and never sums above the
+    /// representable aggregate, so later placements/removals cannot reveal hidden overflow.
+    #[cfg(debug_assertions)]
+    pub(crate) fn set_plus_counter_aggregate(&mut self, object: ObjectId, value: i32) {
+        let current = i64::from(self.plus_counters(object));
+        let target = i64::from(value).clamp(0, i64::from(i32::MAX));
+        let batches = &mut self.modifier_provenance.counter_batches;
+        if target > current {
+            batches.push((object, (target - current) as i32, "debug edit"));
+        } else {
+            let mut remaining = current - target;
+            while remaining > 0 {
+                let Some(idx) = batches.iter().rposition(|&(host, _, _)| host == object) else {
+                    break;
+                };
+                let take = i64::from(batches[idx].1).min(remaining);
+                batches[idx].1 -= take as i32;
+                remaining -= take;
+                if batches[idx].1 == 0 {
+                    batches.remove(idx);
+                }
+            }
+        }
+        self.resync_counter_aggregate(object);
     }
 
     /// Apply one event's effect on game *facts* (objects, the stack, mana). A zone change
@@ -586,7 +729,13 @@ impl Game {
     /// `CombatState::attackers_declared` and `blocked_by` (set directly by the declaration
     /// intents, cleared by [`Event::CombatCleared`]): they're bookkeeping over the
     /// already-event-sourced attacks/blocks, not facts of their own.
-    pub(crate) fn apply(&mut self, event: &Event) {
+    pub(crate) fn apply(&mut self, event: &Event) -> Result<(), StackEntryIdExhausted> {
+        // Reserve identity before touching any board fact. A failed direct replay of an insertion
+        // event is therefore atomic even without the outer submit transaction.
+        let stack_entry_id = event
+            .inserts_stack_entry()
+            .then(|| self.allocate_stack_entry_id())
+            .transpose()?;
         self.invalidate_characteristics_cache(event);
         match event.clone() {
             Event::SpellCast {
@@ -685,7 +834,11 @@ impl Game {
                     self.players[controller.0 as usize].graveyard_play_used_this_turn = true;
                 }
                 assert_eq!(id, spell);
-                self.stack.push(StackItem::Spell(spell));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(spell),
+                    StackPayload::Spell(spell),
+                );
                 // A card cast from exile "on an adventure" (CR 715.3d) consumes its permission —
                 // it's no longer in exile at this id.
                 self.play_permissions
@@ -791,7 +944,11 @@ impl Game {
                     }),
                 );
                 assert_eq!(id, spell);
-                self.stack.push(StackItem::Spell(spell));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(spell),
+                    StackPayload::Spell(spell),
+                );
                 // Remember the creature front face to restore to exile when this spell resolves.
                 self.play_permissions.adventure_fronts.push((spell, front));
                 // Casting the adventure is casting a spell — the same bookkeeping `SpellCast` does.
@@ -881,7 +1038,11 @@ impl Game {
                     }),
                 );
                 assert_eq!(id, spell);
-                self.stack.push(StackItem::Spell(spell));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(spell),
+                    StackPayload::Spell(spell),
+                );
                 self.play_permissions
                     .split_halves_on_stack
                     .push((spell, fused));
@@ -989,7 +1150,11 @@ impl Game {
                     }),
                 );
                 assert_eq!(id, copy);
-                self.stack.push(StackItem::Spell(copy));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(copy),
+                    StackPayload::Spell(copy),
+                );
             }
             Event::SpellCeasedToExist { spell } => {
                 self.remove_spell_from_stack(spell);
@@ -1131,7 +1296,13 @@ impl Game {
                     }),
                 );
                 assert_eq!(id, spell);
-                self.stack.push(StackItem::Spell(spell));
+                let front = self.permanent(source).def;
+                self.play_permissions.prepared_spell_fronts.push((spell, front));
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(spell),
+                    StackPayload::Spell(spell),
+                );
                 // Casting a copy is still casting a spell (feeds `spells_cast_this_turn`).
                 // ponytail: the broader cast-spell *triggers* (magecraft, CR 700's "whenever you
                 // cast") aren't fired for the prepared copy — those hang off `Event::SpellCast`,
@@ -1152,20 +1323,24 @@ impl Game {
                 spent_mana,
                 activated,
             } => {
-                self.stack.push(StackItem::Ability {
-                    controller,
-                    source,
-                    effect,
-                    activated,
-                    target,
-                    targets_second,
-                    x,
-                    spent_mana,
-                });
+                self.push_stack_item_with_id(
+                    stack_entry_id.expect("stack insertion event reserved an identity"),
+                    StackRenderSource::Object(source),
+                    StackPayload::Ability {
+                        controller,
+                        source,
+                        effect,
+                        activated,
+                        target,
+                        targets_second,
+                        x,
+                        spent_mana,
+                    },
+                );
             }
             Event::AbilityResolved { .. } => {
                 // The resolving ability is always the top of the stack.
-                debug_assert!(matches!(self.stack.last(), Some(StackItem::Ability { .. })));
+                debug_assert!(matches!(self.stack.last().map(|item| &item.payload), Some(StackPayload::Ability { .. })));
                 self.stack.pop();
             }
             // CR 701.5c/112.7a: a countered activated ability ceases to exist — remove the
@@ -1173,7 +1348,7 @@ impl Game {
             // see `TargetSpec::ActivatedAbilityOnStack`'s identity ponytail). No card moves.
             Event::AbilityCountered { source } => {
                 if let Some(i) = self.stack.iter().rposition(
-                    |item| matches!(item, StackItem::Ability { source: s, .. } if *s == source),
+                    |item| matches!(&item.payload, StackPayload::Ability { source: s, .. } if *s == source),
                 ) {
                     self.stack.remove(i);
                 }
@@ -1401,19 +1576,26 @@ impl Game {
                 count,
                 source_name,
             } => {
+                let batches = &mut self.modifier_provenance.counter_batches;
                 if count > 0 {
-                    self.modifier_provenance
-                        .counter_batches
-                        .push((object, count, source_name));
+                    let current = batches
+                        .iter()
+                        .filter(|&&(host, _, _)| host == object)
+                        .fold(0_i64, |total, &(_, batch, _)| total + i64::from(batch));
+                    let accepted =
+                        i64::from(count).min(i64::from(i32::MAX).saturating_sub(current).max(0));
+                    if accepted > 0 {
+                        batches.push((object, accepted as i32, source_name));
+                    }
                 } else if count < 0 {
-                    let mut remaining = -count;
-                    let batches = &mut self.modifier_provenance.counter_batches;
+                    let mut remaining = -i64::from(count);
                     while remaining > 0 {
-                        let Some(idx) = batches.iter().rposition(|&(o, _, _)| o == object) else {
+                        let Some(idx) = batches.iter().rposition(|&(host, _, _)| host == object)
+                        else {
                             break;
                         };
-                        let take = batches[idx].1.min(remaining);
-                        batches[idx].1 -= take;
+                        let take = i64::from(batches[idx].1).min(remaining);
+                        batches[idx].1 -= take as i32;
                         remaining -= take;
                         if batches[idx].1 == 0 {
                             batches.remove(idx);
@@ -1427,9 +1609,9 @@ impl Game {
                 kind,
                 count,
             } => {
-                let current = self.permanent(object).kind_counters[kind as usize] as i32;
+                let current = i64::from(self.permanent(object).kind_counters[kind as usize]);
                 self.permanent_mut(object).kind_counters[kind as usize] =
-                    (current + count).max(0) as u8;
+                    (current + i64::from(count)).clamp(0, i64::from(u8::MAX)) as u8;
             }
             Event::PlayerCountersPlaced {
                 player,
@@ -1437,7 +1619,7 @@ impl Game {
                 count,
             } => {
                 let slot = &mut self.players[player.0 as usize].kind_counters[kind as usize];
-                *slot = (*slot as i32 + count).max(0) as u8;
+                *slot = (i64::from(*slot) + i64::from(count)).clamp(0, i64::from(u8::MAX)) as u8;
             }
             Event::LoyaltyChanged { object, amount } => {
                 self.permanent_mut(object).loyalty += amount
@@ -2571,7 +2753,7 @@ impl Game {
                     self.record_damage_dealt(source, Target::Object(object), amount);
                 }
                 let p = self.permanent_mut(object);
-                p.marked_damage += amount;
+                p.marked_damage = p.marked_damage.saturating_add(amount);
                 // Disintegrate's riders mark the creature, not the damage — they stay set for the
                 // rest of the turn even when this hit isn't the one that kills it.
                 p.cant_be_regenerated_this_turn |= cant_be_regenerated;
@@ -3029,14 +3211,27 @@ impl Game {
                     .retain(|&o| o != from);
             }
             Event::LifeChanged { player, amount, .. } => {
-                self.players[player.0 as usize].life += amount;
+                // Magic integers are mathematically unbounded. At the engine's finite i32/u32
+                // boundary, saturation preserves their direction and avoids both wrapping and a
+                // debug-build panic when an authoritative debug edit starts at an endpoint.
+                let current = i128::from(self.players[player.0 as usize].life);
+                self.players[player.0 as usize].life = (current + i128::from(amount))
+                    .clamp(i128::from(i32::MIN), i128::from(i32::MAX))
+                    as i32;
                 if amount > 0 {
-                    self.players[player.0 as usize].life_gained_this_turn += amount as u32;
+                    let gained = amount.clamp(0, i64::from(u32::MAX)) as u32;
+                    self.players[player.0 as usize].life_gained_this_turn = self.players
+                        [player.0 as usize]
+                        .life_gained_this_turn
+                        .saturating_add(gained);
                 }
                 // A life *loss* (CR 118.9/119.3 — a decrease only, not a gain) — feeds
                 // `Trigger::YouLoseLifeFirstTimeEachTurn`, which fires on the turn's first.
                 if amount < 0 {
-                    self.players[player.0 as usize].life_losses_this_turn += 1;
+                    self.players[player.0 as usize].life_losses_this_turn = self.players
+                        [player.0 as usize]
+                        .life_losses_this_turn
+                        .saturating_add(1);
                 }
             }
             Event::DrewFromEmptyLibrary { player } => {
@@ -3088,9 +3283,13 @@ impl Game {
                 // field borrows: the closure reads `objects`, retain mutates other fields).
                 let objects = &self.objects;
                 let removed = |o: ObjectId| matches!(objects[o as usize], Object::Removed { .. });
-                self.stack.retain(|item| match item {
-                    StackItem::Spell(id) => !removed(*id),
-                    StackItem::Ability { source, .. } => !removed(*source),
+                self.stack.retain(|item| match &item.payload {
+                    StackPayload::Spell(id) => !removed(*id),
+                    StackPayload::Ability { source, .. } => !removed(*source),
+                    StackPayload::DebugNoOp => match &item.render_source {
+                        StackRenderSource::InlinePublic(render) => render.controller != player,
+                        StackRenderSource::Object(_) => false,
+                    },
                 });
                 self.combat.attackers.retain(|&a| !removed(a));
                 // Counter and boost batches leave with the object they describe — an object that
@@ -3231,6 +3430,7 @@ impl Game {
                 self.players[player.0 as usize].library.insert(0, id);
             }
         }
+        Ok(())
     }
 
     /// The next living seat after `player`, wrapping around the table and skipping any

@@ -195,6 +195,8 @@ function attackerObject(overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id: 9,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 4, toughness: 4 },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 0 },
     marked_damage: 0,

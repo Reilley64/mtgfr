@@ -82,6 +82,12 @@ message WireCost {
   bool has_x = 3;
   // Number of `{X}` symbols in the cost (0 = none). CR 107.3: each symbol is paid once.
   uint32 x_symbols = 4;
+  // Hybrid pips (CR 107.4e — `{a/b}`), counted per unordered color pair in `engine::COLOR_PAIRS`
+  // order (WU, WB, WR, WG, UB, UR, UG, BR, BG, RG); length 10. Without these a hybrid-only cost
+  // reads as free.
+  repeated uint32 hybrid = 5;
+  // Phyrexian pips (CR 107.4f — `{a/P}`), counted per color indexed WUBRG; length 5.
+  repeated uint32 phyrexian = 6;
 }
 
 // What a card fundamentally is, for the client (mirror of `engine::CardKind`).

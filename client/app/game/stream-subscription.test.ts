@@ -102,14 +102,38 @@ describe("game stream subscription streamDeltas", () => {
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(observe(h, { onFrame: (event) => frames.push(event.frame) }));
         yield* waitConn(h, 0);
-        h.frame(0, 1);
+        h.frame(0, { frame: "snapshot", seq: 1, state: { stack: [] } });
         h.raw(0, "\n");
-        h.frame(0, 2);
+        h.frame(0, { frame: "delta", seq: 2, events: [], state: { stack: [] } });
         yield* settle;
         yield* Fiber.interrupt(fiber);
       }),
     );
-    expect(frames).toEqual([1, 2]);
+    expect(frames).toEqual([
+      { frame: "snapshot", seq: 1, state: { stack: [] } },
+      { frame: "delta", seq: 2, events: [], state: { stack: [] } },
+    ]);
+  });
+
+  it("reconnects after malformed SSE JSON instead of dying with a defect", async () => {
+    const h = harness();
+    const status: boolean[] = [];
+    await drive(
+      Effect.gen(function* () {
+        const fiber = yield* Effect.forkChild(observe(h, { onStatus: (connected) => status.push(connected) }));
+        yield* waitConn(h, 0);
+        h.raw(0, 'data: {"frame":"snapshot"\n');
+        yield* settle;
+        expect(status).toEqual([false]);
+
+        yield* adjust(500);
+        yield* settle;
+        yield* waitConn(h, 1);
+        expect(h.conns).toHaveLength(2);
+
+        yield* Fiber.interrupt(fiber);
+      }),
+    );
   });
 
   it("reconnects with exponential backoff, doubling per failure and capping at 10s", async () => {
@@ -164,7 +188,7 @@ describe("game stream subscription streamDeltas", () => {
         yield* adjust(500);
         yield* settle;
         yield* waitConn(h, 1);
-        h.frame(1, 1);
+        h.frame(1, { frame: "heartbeat" });
         yield* settle;
         expect(status.at(-1)).toBe(true);
 
@@ -220,7 +244,7 @@ describe("game stream subscription streamDeltas", () => {
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(observe(h, { onStatus: (c) => status.push(c) }));
         yield* waitConn(h, 0);
-        h.frame(0, { frame: "snapshot", seq: 0, state: {} });
+        h.frame(0, { frame: "snapshot", seq: 0, state: { stack: [] } });
         yield* settle;
         expect(status.at(-1)).toBe(true);
 
@@ -248,7 +272,7 @@ describe("game stream subscription streamDeltas", () => {
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(observe(h, { onFrame: (event) => frames.push(event.frame) }));
         yield* waitConn(h, 0);
-        h.frame(0, { frame: "snapshot", seq: 0, state: {} });
+        h.frame(0, { frame: "snapshot", seq: 0, state: { stack: [] } });
         yield* settle;
 
         for (let t = 0; t < 4; t++) {
@@ -257,7 +281,7 @@ describe("game stream subscription streamDeltas", () => {
           yield* settle;
         }
         expect(h.conns.length).toBe(1);
-        expect(frames).toEqual([{ frame: "snapshot", seq: 0, state: {} }]);
+        expect(frames).toEqual([{ frame: "snapshot", seq: 0, state: { stack: [] } }]);
 
         yield* Fiber.interrupt(fiber);
       }),
@@ -287,15 +311,15 @@ describe("game stream subscription streamDeltas", () => {
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(observe(h, { onFrame: (event) => frames.push(event.frame) }));
         yield* waitConn(h, 0);
-        h.frame(0, 1);
+        h.frame(0, { frame: "snapshot", seq: 1, state: { stack: [] } });
         yield* settle;
-        expect(frames).toEqual([1]);
+        expect(frames).toEqual([{ frame: "snapshot", seq: 1, state: { stack: [] } }]);
 
         yield* Fiber.interrupt(fiber);
         yield* adjust(60_000);
         yield* settle;
         expect(h.conns.length).toBe(1);
-        expect(frames).toEqual([1]);
+        expect(frames).toEqual([{ frame: "snapshot", seq: 1, state: { stack: [] } }]);
       }),
     );
   });

@@ -27,7 +27,7 @@ jobs:
         id: pass
         with:
           path: .ci-pass
-          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py', '.agents/skills/card-dsl/DSL_REFERENCE.md') }}
+          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py', 'scripts/check_debug_release_absence.sh', 'docker/server/Dockerfile', '.agents/skills/card-dsl/DSL_REFERENCE.md') }}
 
       - name: Report pass-marker status
         run: |
@@ -36,6 +36,25 @@ jobs:
           else
             echo "Pass marker miss; lint + nextest shards + migrate will run."
           fi
+
+  verify-debug-release-isolation:
+    name: Verify (debug API release isolation)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container:
+      image: ghcr.io/reilley64/mtgfr-ci:latest
+      options: --user root
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify-debug-release-isolation
+
+      - name: Build positive debug control and verify release absence
+        run: just debug-release-isolation
 
   verify-server-lint:
     name: Verify (server lint)
@@ -147,6 +166,7 @@ jobs:
     needs:
       [
         verify-server-gate,
+        verify-debug-release-isolation,
         verify-server-lint,
         verify-server-test,
         verify-server-migrate,
@@ -154,6 +174,7 @@ jobs:
     if: |
       always()
       && needs.verify-server-gate.outputs.cache-hit != 'true'
+      && needs.verify-debug-release-isolation.result == 'success'
       && needs.verify-server-lint.result == 'success'
       && needs.verify-server-test.result == 'success'
       && needs.verify-server-migrate.result == 'success'
@@ -167,13 +188,14 @@ jobs:
       - uses: actions/cache/save@v6
         with:
           path: .ci-pass
-          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py', '.agents/skills/card-dsl/DSL_REFERENCE.md') }}
+          key: verify-server-v3-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml', 'docs/CR_INDEX.md', 'scripts/gen_cr_index.py', 'scripts/check_debug_release_absence.sh', 'docker/server/Dockerfile', '.agents/skills/card-dsl/DSL_REFERENCE.md') }}
 
   verify-server:
     name: Verify (server)
     needs:
       [
         verify-server-gate,
+        verify-debug-release-isolation,
         verify-server-lint,
         verify-server-test,
         verify-server-migrate,
@@ -185,9 +207,14 @@ jobs:
       - name: Aggregate server verify
         run: |
           set -euo pipefail
+          isolation='${{ needs.verify-debug-release-isolation.result }}'
+          if [[ "$isolation" != "success" ]]; then
+            echo "verify-debug-release-isolation result=$isolation"
+            exit 1
+          fi
           hit='${{ needs.verify-server-gate.outputs.cache-hit }}'
           if [[ "$hit" == "true" ]]; then
-            echo "Pass marker hit; server verify skipped."
+            echo "Pass marker hit; cached server checks skipped after release isolation passed."
             exit 0
           fi
           lint='${{ needs.verify-server-lint.result }}'
@@ -210,7 +237,7 @@ jobs:
             echo "verify-server-mark result=$mark"
             exit 1
           fi
-          echo "Lint + nextest shards + migrate + pass-marker save succeeded."
+          echo "Debug release isolation + lint + nextest shards + migrate + pass-marker save succeeded."
 
   verify-client:
     name: Verify (client)

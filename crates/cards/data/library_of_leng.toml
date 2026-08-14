@@ -3,7 +3,6 @@
 # instead of into your graveyard.
 name = "Library of Leng"
 otags = ["alliteration", "discard-matters", "hand-size-increase", "hate-discard", "rules-nightmare", "virtual-legendary"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "spg", "sum"]
 id = "867def48-4be8-4056-bcf1-d6b00450b9a3"
 default_print = "502d77d6-c5c9-4def-80cb-7905fbbdefcb"
 oracle = "You have no maximum hand size.\nIf an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard."
@@ -17,6 +16,7 @@ type = "artifact"
 
 # You have no maximum hand size.
 [[abilities]]
+oracle = "You have no maximum hand size."
 timing = "static"
 
 # You have no maximum hand size.
@@ -27,6 +27,7 @@ mode = "no_maximum_hand_size"
 # If an effect causes you to discard a card, discard it, but you may put it on top of your library
 # instead of into your graveyard.
 [[abilities]]
+oracle = "If an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard."
 timing = "static"
 
 # If an effect causes you to discard a card, discard it, but you may put it on top of your library

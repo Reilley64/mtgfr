@@ -3,7 +3,6 @@
 # {U}{R}{W}: Target opponent gains control of target permanent you control.
 name = "Zedruu the Greathearted"
 otags = ["activated-ability", "cycle-cmd-face-commander", "donate", "draw-engine", "hate-theft", "multiple-targets", "repeatable-crime", "repeatable-lifegain", "repeatable-pure-draw", "triggered-ability", "unique-type-line"]
-sets = ["c16", "cmd", "cmr", "ocmd", "prm", "pz1"]
 id = "514179c0-a50b-4565-8e71-9dad256edd85"
 default_print = "e9ea2a6b-5aaf-4178-b945-f409fe83c41a"
 oracle = "At the beginning of your upkeep, you gain X life and draw X cards, where X is the number of permanents you own that your opponents control.\n{U}{R}{W}: Target opponent gains control of target permanent you control."
@@ -24,6 +23,7 @@ toughness = 4
 # At the beginning of your upkeep, you gain X life and draw X cards, where X is the number of permanents you own that
 # your opponents control.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you gain X life and draw X cards, where X is the number of permanents you own that your opponents control."
 timing = "upkeep"
 
 # you gain X life ... where X is the number of permanents you own that your opponents control
@@ -40,6 +40,7 @@ count = "permanents_you_own_opponents_control"
 
 # {U}{R}{W}: Target opponent gains control of target permanent you control.
 [[abilities]]
+oracle = "{U}{R}{W}: Target opponent gains control of target permanent you control."
 timing = "activated"
 activation_cost = { blue = 1, red = 1, white = 1 }
 

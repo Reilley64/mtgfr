@@ -153,8 +153,7 @@ impl Game {
                 let owner =
                     owner.expect("the targeted player is baked in when the yes/no is raised");
                 let event = Event::LibraryShuffled { player: owner };
-                self.apply(&event);
-                events.push(event);
+                self.push_apply(&mut events, event);
             } else if matches!(resume, MayYesNoResume::ResolveInline)
                 && matches!(effect, Effect::Dig(DigEffect::SearchLibrary { .. }))
             {
@@ -225,7 +224,7 @@ impl Game {
             player,
             tapped: revealed.is_none(),
         });
-        self.apply_all(&events);
+        self.apply_all_recorded(&mut events);
         self.push_enters_with_counters(&printed, permanent, player, None, 0, &mut events);
         Ok(events)
     }
@@ -416,13 +415,13 @@ impl Game {
                 true => self.counter_spell(spell),
                 false => vec![Event::AbilityCountered { source: spell }],
             };
-            self.apply_all(&evs);
+            self.apply_all_recorded(&mut evs);
             // Power Sink's "if that player doesn't, they tap all lands with mana abilities they
             // control and lose all unspent mana" — the penalty rides on this decline, which is why
             // it lives here and not as a following resolution step. A plain tap, not a tap for
             // mana (CR 106.11): nothing is produced, and the pool goes next anyway.
             if strips_mana_on_decline {
-                let taps: Vec<Event> = self
+                let mut taps: Vec<Event> = self
                     .battlefield()
                     .into_iter()
                     .filter(|&id| {
@@ -433,15 +432,14 @@ impl Game {
                     })
                     .map(|object| Event::Tapped { object })
                     .collect();
-                self.apply_all(&taps);
+                self.apply_all_recorded(&mut taps);
                 evs.extend(taps);
                 let drain = Event::ManaEmptied {
                     player,
                     end_of_turn: true,
                     to: None,
                 };
-                self.apply(&drain);
-                evs.push(drain);
+                self.push_apply(&mut evs, drain);
             }
             return Ok(evs);
         }
@@ -733,7 +731,7 @@ impl Game {
                 &mut events,
                 Event::LifeChanged {
                     player,
-                    amount: -(life as i32),
+                    amount: -i64::from(life),
                     source: Some(source),
                 },
             );

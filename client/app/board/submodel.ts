@@ -20,6 +20,7 @@ import { mulliganChrome } from "~/mulligan";
 import { outcome } from "~/outcome";
 import type {
   ActionView,
+  CardTextView,
   CatalogCard,
   ObjectView,
   VisibleState,
@@ -31,6 +32,8 @@ import type {
   WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
+import { type FaceData, faceDataFrom } from "../domain/card-render/frame";
+import { cardTextFor } from "../domain/cardText";
 import { formatMessage } from "../domain/i18n/message";
 import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../domain/inspect";
 import { humanReason } from "../domain/reject";
@@ -99,6 +102,7 @@ import {
   type SpotlightStep,
   spotlightSteps,
 } from "./first-player-reveal";
+import { hitAttachmentHover } from "./geometry/attachment-hover";
 import type { Camera, Vec2 } from "./geometry/camera";
 import { panBy, screenToWorld, worldToScreen, zoomAt } from "./geometry/camera";
 import {
@@ -108,6 +112,7 @@ import {
   stagedAttackersForDisplay,
   stagedBands,
 } from "./geometry/combat-staging";
+import { HAND_BAR_H, handMetrics } from "./geometry/handMetrics";
 import { hitAvatar, hitTest } from "./geometry/hit-test";
 import {
   canSelectPermanent,
@@ -121,20 +126,28 @@ import {
   primaryActionFor,
   resolveClick,
 } from "./geometry/interaction";
-import { avatarPos, CARD_H, CARD_W, landRowCenter, layout, type RenderCard, seatSlot, ZONE } from "./geometry/layout";
+import {
+  type BoardBounds,
+  FLIGHT_CARD_H,
+  FLIGHT_CARD_W,
+  landRowCenter,
+  layout,
+  layoutBoard,
+  type RenderCard,
+  seatSlot,
+  ZONE,
+} from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
   STACK_HOLD_MAX_MS,
-  STACK_VERTICAL_RESERVED,
   shouldAutoCollapseStackExpand,
   stackFaceScreenOrigin,
-  stackPeekFor,
+  stackFanLayout,
   stackPresentation,
 } from "./geometry/stackLayout";
 import { modesForObject } from "./html/actions";
 import { selectedRadialOptions } from "./html/activation-menu";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
-import { HAND_BAR_H, handMetrics } from "./html/hand";
 import { CopyBoardLog } from "./log-commands";
 import {
   CombatCancelAttacker,
@@ -190,6 +203,7 @@ export type HandDragState = {
   action: ActionView;
   name: string;
   print: string;
+  face?: FaceData;
   manaCost: WireCost;
   kind?: string;
   zone?: "hand" | "command" | "graveyard" | "exile";
@@ -211,6 +225,8 @@ export type FirstPlayerReveal = { winner: number; steps: SpotlightStep[]; index:
 export type BoardModel = {
   camera: Camera;
   cameraFitPlayers: number | null;
+  cameraFitBounds: BoardBounds | null;
+  cameraFitBoundsKey: string | null;
   /** True after the player pans/zooms — stops automatic fitCamera from fighting them. */
   cameraUserMoved: boolean;
   exitFx: Map<number, ExitFx>;
@@ -222,6 +238,8 @@ export type BoardModel = {
   lastProvenanceSeq: number | null;
   ownedIds: Set<number>;
   pointer: PointerPhase;
+  /** Attached permanent under the idle battlefield pointer, if any. */
+  hoveredAttachmentId: number | null;
   selectedId: number | null;
   /** Activation radial pointer arm (down on a wedge). */
   radialPress: RadialPress;
@@ -259,6 +277,9 @@ export type BoardModel = {
   inspectPin: InspectPin | null;
   /** Catalog data for the current inspect pin. `undefined` = fetch in-flight; `null` = not found. */
   inspectCard: CatalogCard | null | undefined;
+  /** Printed words for the faces the bar draws, by `(card id, print)`. The snapshot carries the viewer's
+   *  whole deck once per connection, so there is nothing to fetch per card. */
+  cardText: ReadonlyMap<string, CardTextView>;
   /** Which face of a DFC to show in the inspect overlay. */
   inspectFace: "front" | "back";
   /** Hand-bar card under the pointer (DOM overlay above the canvas). */
@@ -331,6 +352,8 @@ export function initialBoardModel(): BoardModel {
   return {
     camera: { panX: 0, panY: 0, zoom: 1 },
     cameraFitPlayers: null,
+    cameraFitBounds: null,
+    cameraFitBoundsKey: null,
     cameraUserMoved: false,
     exitFx: new Map(),
     flights: new Map(),
@@ -341,6 +364,7 @@ export function initialBoardModel(): BoardModel {
     lastProvenanceSeq: null,
     ownedIds: new Set(),
     pointer: { kind: "idle" },
+    hoveredAttachmentId: null,
     selectedId: null,
     radialPress: { armed: null },
     radialHover: null,
@@ -365,6 +389,7 @@ export function initialBoardModel(): BoardModel {
     shiftDown: false,
     inspectPin: null,
     inspectCard: undefined,
+    cardText: new Map(),
     inspectFace: "front",
     handInspectHover: null,
     stackInspectHover: null,
@@ -400,7 +425,7 @@ export function initialBoardModel(): BoardModel {
 type BoardFold = Pick<GameFoldState, "provenance" | "seq" | "state">;
 
 export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardModel {
-  if (fold.state == null) return model;
+  if (fold.state == null) return { ...model, hoveredAttachmentId: null };
 
   let next = undecidedMulliganInspectLock(fold.state) ? clearInspectState(model) : model;
   next = syncCombatStaging(next, fold);
@@ -409,18 +434,28 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
     next = { ...next, priorityElapsed: 0, lastPriorityHolder: fold.state.priority };
   }
   const playerCount = Math.max(1, fold.state.players.length);
-  if (!next.cameraUserMoved && next.cameraFitPlayers !== playerCount) {
+  const boardLayout = layoutBoard(fold.state, fold.state.viewer, engagedIds(fold.state, next));
+  const playerCountChanged = next.cameraFitPlayers !== playerCount;
+  const contentBoundsChanged = next.cameraFitBoundsKey != null && next.cameraFitBoundsKey !== boardLayout.boundsKey;
+  if (!next.cameraUserMoved && (playerCountChanged || contentBoundsChanged)) {
     const fitted = fitCamera(
       { x: next.viewport.width, y: next.viewport.height },
       playerCount,
       handMetrics(next.viewport).barH,
+      boardLayout.bounds,
     );
     next = {
       ...next,
       flights: remapFlightsForZoom(next.flights, next.camera.zoom, fitted.zoom),
       camera: fitted,
       cameraFitPlayers: playerCount,
+      cameraFitBounds: boardLayout.bounds,
+      cameraFitBoundsKey: boardLayout.boundsKey,
     };
+  } else if (!next.cameraUserMoved && next.cameraFitBoundsKey == null) {
+    // Focused fixtures and hot-reload state may already carry a fitted player count from before
+    // content bounds existed. Establish their baseline without unexpectedly remapping flights.
+    next = { ...next, cameraFitBounds: boardLayout.bounds, cameraFitBoundsKey: boardLayout.boundsKey };
   }
 
   // Drop radial selection when the permanent leaves the battlefield.
@@ -435,7 +470,10 @@ export function syncBoardWithGame(model: BoardModel, fold: BoardFold): BoardMode
     next = syncFlightsWithGame(next, fold);
   }
   next = syncPlayModePick(next, fold);
-  return syncStackChrome(next, fold);
+  next = syncStackChrome(next, fold);
+  if (next.hoveredAttachmentId == null) return next;
+  if (boardLayout.cards.some((card) => card.id === next.hoveredAttachmentId && card.attachedTo != null)) return next;
+  return { ...next, hoveredAttachmentId: null };
 }
 
 function syncPlayModePick(model: BoardModel, fold: BoardFold): BoardModel {
@@ -459,11 +497,9 @@ function syncStackChrome(model: BoardModel, fold: BoardFold): BoardModel {
   const showStaged =
     (model.staged != null && stagedPickTargets(model.staged, state) === null) || pendingStackGhost(state) != null;
   const visualCount = state.stack.length + (showStaged ? 1 : 0);
-  const peek = stackPeekFor(visualCount, model.viewport.height, STACK_VERTICAL_RESERVED);
   const stackExpand = shouldAutoCollapseStackExpand({
     expanded: model.stackExpand,
     count: visualCount,
-    peek,
     staged: showStaged,
   })
     ? false
@@ -584,25 +620,25 @@ function stackFlightAim(
     viewportW: model.viewport.width,
     viewportH: model.viewport.height,
   });
+  const stackLayout = stackFanLayout(model.viewport, count);
   const origin = stackFaceScreenOrigin({
     presentation,
-    viewportW: model.viewport.width,
-    viewportH: model.viewport.height,
+    viewport: model.viewport,
     count,
     row,
-    peek: presentation === "pile" ? stackPeekFor(count, model.viewport.height) : undefined,
   });
-  return { x: origin.x, y: origin.y, scale: stackFlightScale(model.camera.zoom) };
+  return { x: origin.x, y: origin.y, scale: stackFlightScale(model.camera.zoom, stackLayout.cardW) };
 }
 
 function stackFlightAimForSource(
   model: BoardModel,
-  stack: ReadonlyArray<{ source: number }>,
+  stack: ReadonlyArray<{ source?: number; kind: string }>,
   sourceId: number,
-): { x: number; y: number; scale: number } {
+): { x: number; y: number; scale: number } | null {
   const count = Math.max(1, stack.length);
-  const row = stack.findIndex((entry) => entry.source === sourceId);
-  return stackFlightAim(model, { count, row: row >= 0 ? row : count - 1 });
+  const row = stack.findIndex((entry) => entry.kind === "spell" && entry.source === sourceId);
+  if (row < 0) return null;
+  return stackFlightAim(model, { count, row });
 }
 
 function cardTarget(camera: Camera, card: RenderCard): Vec2 {
@@ -614,8 +650,12 @@ function playerOrigin(model: BoardModel, fold: BoardFold, seat: number): Vec2 {
     const aim = stackFlightAim(model, { count: 1, row: 0 });
     return { x: aim.x, y: aim.y };
   }
-  const count = Math.max(1, fold.state.players.length);
-  const pos = avatarPos(seat, fold.state.viewer, count);
+  const boardLayout = layoutBoard(fold.state, fold.state.viewer, engagedIds(fold.state, model));
+  const pos = boardLayout.avatarPositions[seat];
+  if (pos == null) {
+    const aim = stackFlightAim(model, { count: 1, row: 0 });
+    return { x: aim.x, y: aim.y };
+  }
   return worldToScreen(model.camera, pos.x, pos.y);
 }
 
@@ -633,6 +673,26 @@ function hiddenCardIds(flights: ReadonlyMap<number, CardFlight>, exitFx: Readonl
   const hidden = flyingCardIds(flights);
   for (const id of exitFx.keys()) hidden.add(id);
   return hidden;
+}
+
+/** The same full rendered face the hand and resting stack surfaces derive from an object. */
+function renderedFaceData(model: BoardModel, card: ObjectView): FaceData {
+  const face = faceDataFrom(card);
+  const text = cardTextFor(model.cardText, card.card_id, card.print ?? "");
+  if (text == null) return face;
+  return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };
+}
+
+/** Refresh a stack flight from authority, including words for a non-front active spell face. */
+function renderedStackSpellFace(
+  model: BoardModel,
+  card: ObjectView,
+  entry: VisibleState["stack"][number] | undefined,
+): FaceData {
+  const face = renderedFaceData(model, card);
+  const text = entry?.active_face_text;
+  if (text == null) return face;
+  return { ...face, typeLine: text.type_line, oracle: text.oracle, flavor: text.flavor };
 }
 
 function battlefieldPoseFromCard(camera: Camera, card: RenderCard): BattlefieldPose {
@@ -687,6 +747,7 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     }
     if (flight.kind !== "stack") continue;
     const aim = stackFlightAimForSource(model, state.stack, id);
+    if (aim == null) continue;
     flights.set(id, retargetFlight(flight, { x: aim.x, y: aim.y, scale: aim.scale }));
   }
 
@@ -787,7 +848,19 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
   }
 
   for (const [spell, meta] of fold.provenance.stackEntrances) {
+    const stackCard = state.objects.find((object) => object.id === spell);
+    const stackEntry = state.stack.find((entry) => entry.source === spell && entry.kind === "spell");
+    if (stackEntry == null) {
+      flights.delete(spell);
+      if (meta.from != null) {
+        flights.delete(meta.from);
+        handHidden.delete(meta.from);
+      }
+      continue;
+    }
     const aim = stackFlightAimForSource(model, state.stack, spell);
+    if (aim == null) continue;
+    const authoritativeFace = stackCard == null ? undefined : renderedStackSpellFace(model, stackCard, stackEntry);
     if (!flights.has(spell) && flights.has(meta.from)) {
       flights = rebindFlightId(flights, meta.from, spell);
     }
@@ -820,7 +893,14 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       flights.set(
         spell,
         retargetFlight(
-          { ...existing, kind: "stack", fromCardId: meta.from },
+          {
+            ...existing,
+            print: stackCard?.print || stackEntry?.print || existing.print,
+            name: stackCard?.name || stackEntry?.name || existing.name,
+            face: authoritativeFace ?? existing.face,
+            kind: "stack",
+            fromCardId: meta.from,
+          },
           {
             x: aim.x,
             y: aim.y,
@@ -838,8 +918,9 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
       spell,
       spawnFlight({
         id: spell,
-        print: "",
-        name: "",
+        print: stackCard?.print || stackEntry?.print || "",
+        name: stackCard?.name || stackEntry?.name || "",
+        face: authoritativeFace,
         x: start.x,
         y: start.y,
         scale: handFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW),
@@ -880,6 +961,11 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     }
     if (flight.kind === "stack") {
       const aim = stackFlightAimForSource(model, state.stack, id);
+      if (aim == null) {
+        flights.delete(id);
+        if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+        continue;
+      }
       if (poseAtTarget(flight, aim) || poseNearHandoff(flight, aim)) {
         flights.delete(id);
         if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
@@ -979,7 +1065,11 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
     );
   }
 
-  const stackSources = new Set(state.stack.map((stackObject) => stackObject.source));
+  const stackSources = new Set(
+    state.stack
+      .filter((stackObject) => stackObject.kind === "spell" && stackObject.source != null)
+      .map((stackObject) => stackObject.source as number),
+  );
   const pendingResolve = fold.provenance.resolvedFromStack.size > 0 || fold.provenance.leftStackToPile.size > 0;
   for (const [id, flight] of flights) {
     if (flight.kind !== "stack") continue;
@@ -1004,19 +1094,43 @@ function syncFlightsWithGame(model: BoardModel, fold: BoardFold): BoardModel {
 
 function pointerDownModel(model: BoardModel, fold: GameFoldState, x: number, y: number): BoardModel {
   const state = fold.state;
-  if (state == null) return model;
+  if (state == null) return { ...model, hoveredAttachmentId: null };
 
   return {
     ...model,
     cursor: { x, y },
     pointer: pointerDown(cardAt(fold, model, x, y), x, y, stageableSeats(fold)),
+    hoveredAttachmentId: null,
   };
 }
 
-function pointerMoveModel(model: BoardModel, x: number, y: number): BoardModel {
+function pointerMoveModel(model: BoardModel, fold: GameFoldState, x: number, y: number): BoardModel {
   const moved = pointerMove(model.pointer, x, y);
+  if (moved.phase.kind === "idle" && fold.state != null) {
+    const cards = cardsFor(fold, model);
+    return {
+      ...model,
+      cursor: { x, y },
+      pointer: moved.phase,
+      hoveredAttachmentId: hitAttachmentHover(
+        model.camera,
+        x,
+        y,
+        cards,
+        model.hoveredAttachmentId,
+        fold.state.viewer,
+        fold.state.players.length,
+      ),
+    };
+  }
+
   if (moved.pan == null) {
-    return { ...model, cursor: { x, y }, pointer: moved.phase };
+    return {
+      ...model,
+      cursor: { x, y },
+      pointer: moved.phase,
+      hoveredAttachmentId: null,
+    };
   }
 
   return {
@@ -1025,18 +1139,15 @@ function pointerMoveModel(model: BoardModel, x: number, y: number): BoardModel {
     cameraUserMoved: true,
     cursor: { x, y },
     pointer: moved.phase,
+    hoveredAttachmentId: null,
   };
 }
 
 function avatarSeatAt(fold: GameFoldState, model: BoardModel, x: number, y: number): number | null {
   const state = fold.state;
   if (state == null) return null;
-  const count = Math.max(1, state.players.length);
-  const positions: Record<number, Vec2> = {};
-  for (const p of state.players) {
-    positions[p.player] = avatarPos(p.player, state.viewer, count);
-  }
-  return hitAvatar(model.camera, x, y, positions);
+  const boardLayout = layoutBoard(state, state.viewer, engagedIds(state, model));
+  return hitAvatar(model.camera, x, y, boardLayout.avatarPositions);
 }
 
 function stagedLegalObjectIds(staged: StagedAction): Set<number> {
@@ -1359,7 +1470,7 @@ function authorityOwnsFlightDestination(fold: BoardFold | null, flight: CardFlig
   if (state == null) return false;
 
   if (flight.kind === "stack") {
-    return state.stack.some((entry) => entry.source === flight.id);
+    return state.stack.some((entry) => entry.kind === "spell" && entry.source === flight.id);
   }
 
   if (flight.kind === "battlefield") {
@@ -1646,6 +1757,7 @@ function seedDropFromHand(
       id: card.id,
       print: card.print ?? existing.print,
       name: card.name,
+      face: renderedFaceData(model, card),
       targetX: aim.x,
       targetY: aim.y,
       targetScale: aim.scale,
@@ -1683,6 +1795,7 @@ function seedDropFromHand(
     id: card.id,
     print: card.print ?? "",
     name: card.name,
+    face: renderedFaceData(model, card),
     x: screenOrigin.x,
     y: screenOrigin.y,
     scale: startScale,
@@ -2059,7 +2172,7 @@ function handActivated(
   if (playPlan.kind === "ignore") return [model, []];
   const withHint = hideHintOnHandUse(model);
   const world = screenToWorld(withHint.camera, x, y);
-  const dropSeed: Vec = { x: world.x - CARD_W / 2, y: world.y - CARD_H / 2 };
+  const dropSeed: Vec = { x: world.x - FLIGHT_CARD_W / 2, y: world.y - FLIGHT_CARD_H / 2 };
   const screenOrigin: Vec = { x, y };
   if (playPlan.kind === "choose") {
     const firstMode = playPlan.modes[0];
@@ -2511,6 +2624,7 @@ export function updateBoard(
         { x: viewport.width, y: viewport.height },
         model.cameraFitPlayers,
         handMetrics(viewport).barH,
+        model.cameraFitBounds ?? undefined,
       );
       return [
         {
@@ -2526,7 +2640,7 @@ export function updateBoard(
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
     case "BoardPointerMove": {
-      const moved = releaseStickyHandInspect(pointerMoveModel(model, message.x, message.y));
+      const moved = releaseStickyHandInspect(pointerMoveModel(model, fold, message.x, message.y));
       return applyLiveInspectPin(moved, fold);
     }
     case "BoardPointerUp":
@@ -2553,6 +2667,7 @@ export function updateBoard(
             action: message.action,
             name: message.name,
             print: message.print,
+            face: message.face as FaceData | undefined,
             manaCost: message.manaCost,
             kind: message.kind,
             zone: message.zone,
@@ -2560,6 +2675,7 @@ export function updateBoard(
             y: message.y,
           },
           hoverActionId: message.action.id,
+          hoveredAttachmentId: null,
           cursor: { x: message.x, y: message.y },
         },
         [],

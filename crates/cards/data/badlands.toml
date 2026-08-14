@@ -1,7 +1,6 @@
 # ({T}: Add {B} or {R}.)
 name = "Badlands"
 otags = ["activated-ability", "cycle-abu-dual-land", "nonbasic-basic-land-type", "single-english-word-name"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me2", "me4", "olgc", "prm", "sum", "vma"]
 id = "13ff3222-91cb-4796-a34e-899ed817694c"
 default_print = "5804dcd3-d41d-4cbd-9f8f-9736f2d37a64"
 oracle = "({T}: Add {B} or {R}.)"

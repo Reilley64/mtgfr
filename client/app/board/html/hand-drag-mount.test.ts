@@ -23,7 +23,7 @@ function action(section: ActionView["section"]): ActionView {
   };
 }
 
-function hit(args: { action: ActionView; barZone?: string }): HTMLElement {
+function hit(args: { action: ActionView; barZone?: string; face?: unknown }): HTMLElement {
   const element = document.createElement("button");
   element.dataset.actionId = String(args.action.id);
   element.dataset.actionPayload = JSON.stringify(args.action);
@@ -32,6 +32,14 @@ function hit(args: { action: ActionView; barZone?: string }): HTMLElement {
   element.dataset.manaCost = JSON.stringify({ generic: 1, colored: [0, 0, 0, 0, 0] });
   if (args.barZone != null) {
     element.dataset.barZone = args.barZone;
+  }
+  if (args.face != null) {
+    // The real tile: the hit rect and the face host are siblings under the tile root.
+    const tile = document.createElement("div");
+    tile.dataset.handIndex = "0";
+    const faceHost = document.createElement("div");
+    faceHost.dataset.face = JSON.stringify(args.face);
+    tile.append(element, faceHost);
   }
   return element;
 }
@@ -144,5 +152,17 @@ describe("readHandDragPayload", () => {
   it("falls back to hand when neither source resolves to a bar zone", () => {
     const payload = readHandDragPayload(hit({ action: action("battlefield"), barZone: "battlefield" }), 10, 20);
     expect(payload?.zone).toBe("hand");
+  });
+
+  // The ghost paints on canvas from model state, so the face has to leave the DOM with the drag.
+  it("carries the tile's rendered face so the ghost flies the same card", () => {
+    const face = { name: "Lightning Bolt", print: "bolt-print" };
+    const payload = readHandDragPayload(hit({ action: action("hand"), face }), 10, 20);
+    expect(payload?.face).toEqual(face);
+  });
+
+  it("drags a faceless tile without a face", () => {
+    const payload = readHandDragPayload(hit({ action: action("hand") }), 10, 20);
+    expect(payload?.face).toBeUndefined();
   });
 });

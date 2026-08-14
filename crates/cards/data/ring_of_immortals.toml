@@ -1,7 +1,6 @@
 # {3}, {T}: Counter target instant or Aura spell that targets a permanent you control.
 name = "Ring of Immortals"
 otags = ["counterspell-instant-or-aura", "mana-rock", "single-target-instant-sorcery"]
-sets = ["leg"]
 id = "468a8c2e-0cc2-4108-809d-42ca1eb25ff2"
 default_print = "61706102-67fd-4167-bd7d-ec6da41db362"
 oracle = "{3}, {T}: Counter target instant or Aura spell that targets a permanent you control."
@@ -14,6 +13,7 @@ type = "artifact"
 
 # {3}, {T}: Counter target instant or Aura spell that targets a permanent you control.
 [[abilities]]
+oracle = "{3}, {T}: Counter target instant or Aura spell that targets a permanent you control."
 timing = "activated"
 taps_self = true
 

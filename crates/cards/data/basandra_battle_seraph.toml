@@ -2,7 +2,6 @@
 # Players can't cast spells during combat.
 # {R}: Target creature attacks this turn if able.
 name = "Basandra, Battle Seraph"
-sets = ["cma", "cmd", "cns", "pcmd", "vma"]
 id = "4a480736-4cdc-4e3a-a8cb-d1c726982f9f"
 default_print = "df9359aa-1ffd-4451-a154-bd46622f60b9"
 otags = ["activated-ability", "flying", "legendary", "must-attack", "static", "taxing-effect"]
@@ -23,6 +22,7 @@ toughness = 4
 
 # Players can't cast spells during combat.
 [[abilities]]
+oracle = "Players can't cast spells during combat."
 timing = "static"
 
 [[abilities.effects]]
@@ -31,6 +31,7 @@ mode = "cant_cast_during_combat"
 
 # {R}: Target creature attacks this turn if able.
 [[abilities]]
+oracle = "{R}: Target creature attacks this turn if able."
 timing = "activated"
 
 [abilities.activation_cost]

@@ -44,7 +44,7 @@ function fold(objects: ObjectView[], actions: ActionView[]): GameFoldState {
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
@@ -55,6 +55,8 @@ const bolt: ObjectView = {
   has_haste: false,
   id: 42,
   is_commander: false,
+  is_token: false,
+  legendary: false,
   kind: { kind: "instant" },
   mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
   marked_damage: 0,

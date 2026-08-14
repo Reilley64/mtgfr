@@ -2,7 +2,6 @@
 # prevent that damage.
 name = "Circle of Protection: Blue"
 otags = ["activated-ability", "cycle-lea-circle-protection", "damage-prevention-you", "hate-blue", "mana-sink"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "fbb", "ice", "lea", "leb", "sum", "tmp"]
 id = "d7572f17-f85d-45c0-ac64-43aac760eafe"
 default_print = "c19c60f7-92b7-4f84-b2c3-64e3d00dcb63"
 oracle = "{1}: The next time a blue source of your choice would deal damage to you this turn, prevent that damage."
@@ -18,6 +17,7 @@ type = "enchantment"
 # {1}: The next time a blue source of your choice would deal damage to you this turn,
 # prevent that damage.
 [[abilities]]
+oracle = "{1}: The next time a blue source of your choice would deal damage to you this turn, prevent that damage."
 timing = "activated"
 activation_cost = { generic = 1 }
 

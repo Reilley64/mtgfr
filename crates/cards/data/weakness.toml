@@ -2,7 +2,6 @@
 # Enchanted creature gets -2/-1.
 name = "Weakness"
 otags = ["removal-toughness", "single-english-word-name", "spot-removal", "vanilla-aura"]
-sets = ["2ed", "3ed", "4bb", "4ed", "5ed", "brb", "ced", "cei", "fbb", "itp", "lea", "leb", "m10", "me4", "rqs", "sum"]
 id = "f07a24c0-bf3c-4733-9473-c6be3b16950e"
 default_print = "b1646d85-2396-445c-9bbb-65bf65b0a63c"
 oracle = "Enchant creature\nEnchanted creature gets -2/-1."
@@ -16,6 +15,7 @@ type = "aura"
 
 # Enchanted creature gets -2/-1.
 [[abilities]]
+oracle = "Enchanted creature gets -2/-1."
 timing = "static"
 
 # Enchanted creature gets -2/-1.

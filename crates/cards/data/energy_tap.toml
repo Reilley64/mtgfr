@@ -2,7 +2,6 @@
 # creature's mana value.
 name = "Energy Tap"
 otags = ["mana-ritual", "tapper-creature"]
-sets = ["leg"]
 id = "106ae855-574b-411d-8689-cbb9eeb4f602"
 default_print = "37e69940-bdc8-48ff-a296-540343910adf"
 oracle = "Tap target untapped creature you control. If you do, add an amount of {C} equal to that creature's mana value."
@@ -16,6 +15,7 @@ type = "sorcery"
 # Tap target untapped creature you control. If you do, add an amount of {C} equal to that creature's
 # mana value.
 [[abilities]]
+oracle = "Tap target untapped creature you control. If you do, add an amount of {C} equal to that creature's mana value."
 timing = "spell"
 
 # Tap target untapped creature you control.

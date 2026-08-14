@@ -1,6 +1,5 @@
 # When this creature enters, return target creature to its owner's hand.
 name = "Man-o'-War"
-sets = ["a25", "brb", "dd2", "ddo", "dmr", "ema", "j21", "jvc", "mh1", "pal02", "plst", "por", "prm", "s99", "td0", "vis", "vma", "wc97", "wc98"]
 otags = ["real-life-animal-name", "spot-removal", "triggered-ability", "type-errata-summon-creature", "virtual-vanilla", "man-o-war"]
 subtypes = ["Jellyfish"]
 id = "67a3541c-8408-40c8-b44f-90035b860f57"
@@ -18,6 +17,7 @@ toughness = 2
 
 # When this creature enters, return target creature to its owner's hand.
 [[abilities]]
+oracle = "When this creature enters, return target creature to its owner's hand."
 timing = "etb"
 
 # return target creature to its owner's hand.

@@ -1,7 +1,6 @@
 # {W}{W}, {T}: Destroy target black permanent.
 name = "Northern Paladin"
 otags = ["activated-ability", "cycle-cardinal-paladin", "hate-black", "removal-destroy", "removal-nonland", "repeatable-crime", "repeatable-removal", "spot-removal", "type-addition-human", "virtual-legendary"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "7ed", "ced", "cei", "fbb", "lea", "leb", "sld", "sum"]
 id = "f5975294-508a-453e-893a-2fbea2487d17"
 default_print = "309cd081-13bb-428b-b561-60b7a81c0f1d"
 oracle = "{W}{W}, {T}: Destroy target black permanent."
@@ -18,6 +17,7 @@ toughness = 3
 
 # {W}{W}, {T}: Destroy target black permanent.
 [[abilities]]
+oracle = "{W}{W}, {T}: Destroy target black permanent."
 timing = "activated"
 taps_self = true
 

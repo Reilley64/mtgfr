@@ -1,7 +1,6 @@
 # You may have this creature enter as a copy of any creature on the battlefield.
 name = "Clone"
 otags = ["copy-creature", "single-english-word-name", "type-errata-name-self", "clone"]
-sets = ["10e", "2ed", "30a", "3ed", "9ed", "ced", "cei", "ddi", "fbb", "lea", "leb", "m10", "m11", "m13", "m14", "ons", "sld", "sum", "tle"]
 id = "42226b87-0746-4ebf-9fd0-108d508462af"
 default_print = "bcf09714-89cf-4feb-b941-74f791bbdf6e"
 oracle = "You may have this creature enter as a copy of any creature on the battlefield."

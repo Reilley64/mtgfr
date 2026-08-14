@@ -11,7 +11,6 @@
 #   • Target player creates a Treasure token.
 #   • Destroy target artifact.
 name = "Prismari Command"
-sets = ["lcc", "prm", "pstx", "soc", "stx", "tdc"]
 id = "fa3e28b1-131c-4223-81e0-18dfbab22c26"
 default_print = "372d0c0b-439c-413f-aac4-5174c75aadb0"
 otags = ["abrade", "burn-any", "cycle-stx-command", "donate-token", "force-draw", "hand-negative", "loot", "mini-refund", "multi-removal", "multiple-targets", "pillage-effect", "ramp"]

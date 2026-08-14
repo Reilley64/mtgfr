@@ -1,7 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Barktooth Warbeard"
 otags = ["deprecated-legend-type"]
-sets = ["leg", "me3", "sld"]
 id = "4a221518-c850-4e8a-a697-765c0a0e76e7"
 default_print = "bffbda3c-61c0-421d-a724-6bb9a7005c0f"
 legendary = true

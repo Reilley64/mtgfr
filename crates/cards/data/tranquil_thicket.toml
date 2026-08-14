@@ -2,7 +2,6 @@
 # {T}: Add {G}.
 # Cycling {G} ({G}, Discard this card: Draw a card.)
 name = "Tranquil Thicket"
-sets = ["arc", "blc", "c13", "c14", "c17", "c18", "c21", "cm2", "cma", "cmd", "dd1", "ddj", "ddu", "dsc", "evg", "ha2", "ltc", "m3c", "mh1", "mkc", "ons", "pf23", "td0", "vma", "wc04"]
 otags = ["activate-from-hand", "alliteration", "cycle-ons-m-cycling-land", "hand-neutral", "pure-draw", "utility-land"]
 oracle = "This land enters tapped.\n{T}: Add {G}.\nCycling {G} ({G}, Discard this card: Draw a card.)"
 id = "9f8fe514-77ed-41b4-a6f3-c6f095bb97be"

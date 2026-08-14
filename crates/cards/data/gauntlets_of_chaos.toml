@@ -6,7 +6,6 @@ otags = ["activated-ability", "egg", "exchange-control", "multiple-targets", "re
 id = "924ef69f-9977-439c-ace9-353b429e4be6"
 default_print = "6f8f11b5-3ba8-4913-b76a-fb469a74864d"
 oracle = "{5}, Sacrifice this artifact: Exchange control of target artifact, creature, or land you control and target permanent an opponent controls that shares one of those types with it. If those permanents are exchanged this way, destroy all Auras attached to them."
-sets = ["leg", "chr", "bchr", "5ed", "me3"]
 
 [cost]
 generic = 5
@@ -18,6 +17,7 @@ type = "artifact"
 # an opponent controls that shares one of those types with it. If those permanents are exchanged this way, destroy all
 # Auras attached to them.
 [[abilities]]
+oracle = "{5}, Sacrifice this artifact: Exchange control of target artifact, creature, or land you control and target permanent an opponent controls that shares one of those types with it. If those permanents are exchanged this way, destroy all Auras attached to them."
 timing = "activated"
 sacrifice = "this"
 

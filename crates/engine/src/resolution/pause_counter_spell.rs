@@ -61,8 +61,8 @@ impl Game {
                 let source_id = expect_object_target(target, "an activated ability to counter");
                 // Already off the stack (countered or resolved in response): nothing to hold
                 // hostage, so no choice is raised (CR 608.2b).
-                let Some(player) = self.stack.iter().find_map(|item| match item {
-                    StackItem::Ability {
+                let Some(player) = self.stack.iter().find_map(|item| match &item.payload {
+                    StackPayload::Ability {
                         source,
                         controller,
                         activated: true,
@@ -105,8 +105,8 @@ impl Game {
                         .iter()
                         .any(|&flagged| self.current_id(flagged) == original);
                 if !goes_to_graveyard {
-                    let evs = self.counter_spell(original);
-                    self.apply_all(&evs);
+                    let mut evs = self.counter_spell(original);
+                    self.apply_all_recorded(&mut evs);
                     events.extend(evs);
                     return;
                 }
@@ -140,12 +140,12 @@ impl Game {
                         .iter()
                         .any(|&flagged| self.current_id(flagged) == original);
                 if !goes_to_graveyard {
-                    let evs = self.counter_spell(original);
-                    self.apply_all(&evs);
+                    let mut evs = self.counter_spell(original);
+                    self.apply_all_recorded(&mut evs);
                     events.extend(evs);
                     return;
                 }
-                let evs = if self.is_copy_object(original) {
+                let mut evs = if self.is_copy_object(original) {
                     vec![Event::SpellCeasedToExist { spell: original }]
                 } else {
                     vec![Event::TuckedToLibrary {
@@ -155,7 +155,7 @@ impl Game {
                         second_from_top: false,
                     }]
                 };
-                self.apply_all(&evs);
+                self.apply_all_recorded(&mut evs);
                 events.extend(evs);
             }
             // "Whenever a player casts a spell, counter it [unless that player pays {N}]" (Presence
@@ -175,8 +175,8 @@ impl Game {
                     return;
                 }
                 let Some(amount) = unless_pays else {
-                    let evs = self.counter_spell(original);
-                    self.apply_all(&evs);
+                    let mut evs = self.counter_spell(original);
+                    self.apply_all_recorded(&mut evs);
                     events.extend(evs);
                     return;
                 };

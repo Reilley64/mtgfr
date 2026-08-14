@@ -2,7 +2,6 @@
 # Untap all creatures you control during each other player's untap step.
 # Drumbellower (soc): {2}{W} 2/1 Spirit with flying.
 name = "Drumbellower"
-sets = ["nec", "soc"]
 id = "03dee43b-6377-4f7b-956b-a384160322e4"
 default_print = "c19e0ebf-ca94-4684-8b2c-68e592b65a24"
 otags = ["evasion", "extra-untap", "untapper-creature"]
@@ -21,6 +20,7 @@ toughness = 1
 
 # Untap all creatures you control during each other player's untap step.
 [[abilities]]
+oracle = "Untap all creatures you control during each other player's untap step."
 timing = "each_other_player_untap_step"
 
 # Untap all creatures you control

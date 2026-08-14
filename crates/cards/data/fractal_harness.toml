@@ -8,7 +8,6 @@
 #   Whenever equipped creature attacks, double the number of +1/+1 counters on it.
 #   Equip {2}"
 name = "Fractal Harness"
-sets = ["c21", "prm", "soc"]
 id = "09342fd7-3dad-431e-8b87-de8a9287e757"
 default_print = "8d196dcf-80bc-4a0a-83c9-ae87da5e74bf"
 otags = ["activated-ability", "attack-trigger", "attacking-matters", "counter-doubler", "exponential", "gives-pp-counters", "living-weapon", "out-of-color-token", "pp-counters-matter", "repeatable-pp-counters"]
@@ -26,6 +25,7 @@ type = "artifact"
 # When this Equipment enters, create a 0/0 green and blue Fractal creature token. Put X +1/+1
 # counters on it and attach this Equipment to it.
 [[abilities]]
+oracle = "When this Equipment enters, create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it and attach this Equipment to it."
 timing = "etb"
 
 # create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it
@@ -42,6 +42,7 @@ mode = "attach_self_to_minted_token"
 
 # Whenever equipped creature attacks, double the number of +1/+1 counters on it.
 [[abilities]]
+oracle = "Whenever equipped creature attacks, double the number of +1/+1 counters on it."
 timing = "enchanted_creature_attacks"
 
 # double the number of +1/+1 counters on it.
@@ -51,6 +52,7 @@ mode = "double_counters_on_attached_creature"
 
 # Equip {2}
 [[abilities]]
+oracle = "Equip {2}"
 timing = "activated"
 
 [abilities.activation_cost]

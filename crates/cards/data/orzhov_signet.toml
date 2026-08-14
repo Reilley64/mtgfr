@@ -1,7 +1,6 @@
 # {1}, {T}: Add {W}{B}.
 name = "Orzhov Signet"
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
-sets = ["aa1", "brc", "c15", "c16", "c17", "c18", "c20", "c21", "clb", "clu", "cm2", "cma", "cmd", "drc", "dsc", "gk2", "gpt", "lcc", "mm3", "moc", "ncc", "otc", "prm", "rvr", "sld", "tdc"]
 oracle = "{1}, {T}: Add {W}{B}."
 id = "de3dcb5d-775a-479f-99f5-d1883ed9b1b5"
 default_print = "90894726-1940-4291-a05c-b85cefbfa344"
@@ -14,6 +13,7 @@ type = "artifact"
 
 # {1}, {T}: Add {W}{B}.
 [[abilities]]
+oracle = "{1}, {T}: Add {W}{B}."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 1 }

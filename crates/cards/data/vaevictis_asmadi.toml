@@ -5,7 +5,6 @@
 # {G}: Vaevictis Asmadi gets +1/+0 until end of turn.
 name = "Vaevictis Asmadi"
 otags = ["activated-ability", "bottomless-mana-sink", "cycle-leg-elder-dragon", "deprecated-legend-type", "drawback", "evasion", "firebreathing", "triggered-ability", "unique-mana-cost", "upkeep-cost"]
-sets = ["bchr", "chr", "leg", "me3", "sld"]
 id = "4d2cc2a8-e08a-420a-8922-c63e39129e23"
 default_print = "df01b548-9738-4c84-beb6-9a375f41d496"
 oracle = "Flying\nAt the beginning of your upkeep, sacrifice Vaevictis Asmadi unless you pay {B}{R}{G}.\n{B}: Vaevictis Asmadi gets +1/+0 until end of turn.\n{R}: Vaevictis Asmadi gets +1/+0 until end of turn.\n{G}: Vaevictis Asmadi gets +1/+0 until end of turn."
@@ -26,6 +25,7 @@ toughness = 7
 
 # At the beginning of your upkeep, sacrifice Vaevictis Asmadi unless you pay {B}{R}{G}.
 [[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice Vaevictis Asmadi unless you pay {B}{R}{G}."
 timing = "upkeep"
 
 # sacrifice Vaevictis Asmadi unless you pay {B}{R}{G}.
@@ -37,6 +37,7 @@ otherwise = [{ type = "sacrifice", mode = "source" }]
 
 # {B}: Vaevictis Asmadi gets +1/+0 until end of turn.
 [[abilities]]
+oracle = "{B}: Vaevictis Asmadi gets +1/+0 until end of turn."
 timing = "activated"
 activation_cost = { black = 1 }
 
@@ -49,6 +50,7 @@ toughness = 0
 
 # {R}: Vaevictis Asmadi gets +1/+0 until end of turn.
 [[abilities]]
+oracle = "{R}: Vaevictis Asmadi gets +1/+0 until end of turn."
 timing = "activated"
 activation_cost = { red = 1 }
 
@@ -61,6 +63,7 @@ toughness = 0
 
 # {G}: Vaevictis Asmadi gets +1/+0 until end of turn.
 [[abilities]]
+oracle = "{G}: Vaevictis Asmadi gets +1/+0 until end of turn."
 timing = "activated"
 activation_cost = { green = 1 }
 

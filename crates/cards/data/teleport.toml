@@ -2,7 +2,6 @@
 # Target creature can't be blocked this turn.
 name = "Teleport"
 otags = ["combat-timing-restriction", "gives-unblockable", "single-english-word-name", "single-target-instant-sorcery"]
-sets = ["bchr", "chr", "leg"]
 id = "9efcf3d1-a0be-4a34-90c6-85a46b48fb83"
 default_print = "39c65d23-4bc5-4f79-a0e5-0cd4b2660f96"
 oracle = "Cast this spell only during the declare attackers step.\nTarget creature can't be blocked this turn."
@@ -18,6 +17,7 @@ type = "instant"
 
 # Target creature can't be blocked this turn.
 [[abilities]]
+oracle = "Target creature can't be blocked this turn."
 timing = "spell"
 
 # Target creature can't be blocked this turn.

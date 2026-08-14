@@ -2,7 +2,6 @@
 # player equal to half the damage dealt by one of those sorcery spells this turn, rounded down.
 name = "Backdraft"
 otags = ["damage-player", "single-english-word-name", "single-target-instant-sorcery"]
-sets = ["leg"]
 id = "80734bb0-5032-4355-9304-49f4a4557aba"
 default_print = "58d5b9fe-b66a-48c9-94c4-db783e605f37"
 oracle = "Choose a player who cast one or more sorcery spells this turn. Backdraft deals damage to that player equal to half the damage dealt by one of those sorcery spells this turn, rounded down."
@@ -18,6 +17,7 @@ type = "instant"
 # Choose a player who cast one or more sorcery spells this turn. Backdraft deals damage to that
 # player equal to half the damage dealt by one of those sorcery spells this turn, rounded down.
 [[abilities]]
+oracle = "Choose a player who cast one or more sorcery spells this turn. Backdraft deals damage to that player equal to half the damage dealt by one of those sorcery spells this turn, rounded down."
 timing = "spell"
 
 # ... half the damage dealt by one of those sorcery spells this turn ...

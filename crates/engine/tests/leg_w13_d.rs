@@ -30,8 +30,8 @@ fn cast(game: &mut Game, object: ObjectId, target: Option<Target>, kicked: bool)
     })
     .unwrap_or_else(|e| panic!("cast should be legal: {e:?}"));
 
-    match game.stack().last() {
-        Some(StackEntry::Spell(id)) => *id,
+    match game.stack().last().map(|entry| &entry.kind) {
+        Some(StackEntryKind::Spell(id)) => *id,
         other => panic!("the cast spell should be on the stack, got {other:?}"),
     }
 }

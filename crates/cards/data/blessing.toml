@@ -2,7 +2,6 @@
 # {W}: Enchanted creature gets +1/+1 until end of turn.
 name = "Blessing"
 otags = ["activated-ability", "bottomless-mana-sink", "shade-pump", "single-english-word-name"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "ced", "cei", "fbb", "lea", "leb", "m14", "sum"]
 id = "5c84d8da-2bfb-4618-89a0-7d9ed604e854"
 default_print = "402e84fb-7c77-4491-9ece-c2d9b8506ece"
 oracle = "Enchant creature\n{W}: Enchanted creature gets +1/+1 until end of turn."
@@ -16,6 +15,7 @@ type = "aura"
 
 # {W}: Enchanted creature gets +1/+1 until end of turn.
 [[abilities]]
+oracle = "{W}: Enchanted creature gets +1/+1 until end of turn."
 timing = "activated"
 
 [abilities.activation_cost]

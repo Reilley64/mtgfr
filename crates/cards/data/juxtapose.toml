@@ -6,7 +6,6 @@ otags = ["exchange-control", "mana-value-matters", "single-english-word-name", "
 id = "a52ccb40-e950-4cd0-93ab-50daa52b03f3"
 default_print = "c48d78db-d982-4c28-9308-2d57dc2b947e"
 oracle = "You and target player exchange control of the creature you each control with the greatest mana value. Then exchange control of artifacts the same way. If two or more permanents a player controls are tied for greatest, their controller chooses one of them."
-sets = ["leg", "chr", "bchr", "5ed", "6ed", "me1"]
 approximates = "\"their controller chooses one of them\" is resolved deterministically instead of by the tied permanents' controller: the most recently timestamped of a player's tied-for-greatest permanents is the one exchanged. Exactly one of a tied group moves either way, so only which one is unfaithful (increment 124)"
 
 [cost]
@@ -20,6 +19,7 @@ type = "sorcery"
 # control of artifacts the same way. If two or more permanents a player controls are tied for greatest, their controller
 # chooses one of them.
 [[abilities]]
+oracle = "You and target player exchange control of the creature you each control with the greatest mana value. Then exchange control of artifacts the same way. If two or more permanents a player controls are tied for greatest, their controller chooses one of them."
 timing = "spell"
 
 # You and target player exchange control of the creature you each control with the greatest mana value.

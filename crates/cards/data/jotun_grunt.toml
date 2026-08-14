@@ -2,7 +2,6 @@
 # your upkeep, put an age counter on this permanent, then sacrifice it unless you pay its upkeep cost for each age
 # counter on it.)
 name = "Jotun Grunt"
-sets = ["cmd", "csp", "plst", "td0"]
 otags = ["creature-type-giant", "creature-type-soldier", "cumulative-upkeep", "graveyard-hate"]
 oracle = "Cumulative upkeep—Put two cards from a single graveyard on the bottom of their owner's library. (At the beginning of your upkeep, put an age counter on this permanent, then sacrifice it unless you pay its upkeep cost for each age counter on it.)"
 subtypes = ["Giant", "Soldier"]

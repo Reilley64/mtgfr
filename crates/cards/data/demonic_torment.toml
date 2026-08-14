@@ -3,7 +3,6 @@
 # Prevent all combat damage that would be dealt by enchanted creature.
 name = "Demonic Torment"
 otags = ["damage-prevention", "pacifism", "prevent-attack"]
-sets = ["leg", "me3"]
 id = "2172b724-9004-488e-88d3-a5fc48c50e41"
 default_print = "ac439803-71cc-4139-9314-2c0fff2ef876"
 oracle = "Enchant creature\nEnchanted creature can't attack.\nPrevent all combat damage that would be dealt by enchanted creature."
@@ -18,6 +17,7 @@ type = "aura"
 
 # Enchanted creature can't attack.
 [[abilities]]
+oracle = "Enchanted creature can't attack."
 timing = "static"
 
 # Enchanted creature can't attack.
@@ -28,6 +28,7 @@ cant_attack = true
 
 # Prevent all combat damage that would be dealt by enchanted creature.
 [[abilities]]
+oracle = "Prevent all combat damage that would be dealt by enchanted creature."
 timing = "static"
 
 # Prevent all combat damage that would be dealt by enchanted creature.

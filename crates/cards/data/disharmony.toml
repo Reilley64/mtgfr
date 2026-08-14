@@ -3,7 +3,6 @@
 # until end of turn.
 name = "Disharmony"
 otags = ["combat-timing-restriction", "hate-attacker", "remove-from-combat", "single-english-word-name", "single-target-instant-sorcery", "theft-creature", "threaten", "untapper-creature"]
-sets = ["leg", "me3"]
 id = "fc4f1aa1-e252-4454-9ad9-d41682dff13b"
 default_print = "37fd8d07-0eed-4b41-9468-b524439cd204"
 oracle = "Cast this spell only during combat before blockers are declared.\nUntap target attacking creature and remove it from combat. Gain control of that creature until end of turn."
@@ -23,6 +22,7 @@ type = "instant"
 # Untap target attacking creature and remove it from combat. Gain control of that creature until
 # end of turn.
 [[abilities]]
+oracle = "Untap target attacking creature and remove it from combat. Gain control of that creature until end of turn."
 timing = "spell"
 
 # Untap target attacking creature

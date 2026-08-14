@@ -3,7 +3,6 @@
 # Grim Backwoods (soc): "{T}: Add {C}. {2}{B}{G}, {T}, Sacrifice a creature: Draw a card."
 # The colorless mana ability and the sac-a-creature draw outlet are both exact.
 name = "Grim Backwoods"
-sets = ["blc", "c13", "c15", "c18", "c20", "cma", "dka", "dsc", "sld", "soc"]
 id = "5effaa94-7f87-4485-8959-473d584c5034"
 default_print = "606c5f42-fe5f-4dcd-b8f4-b67beabe3f0a"
 otags = ["activated-ability", "cycle-dka-enemy-utilityland", "draw-engine", "repeatable-plunder", "sacrifice-outlet-creature", "utility-land"]
@@ -15,6 +14,7 @@ produces = "colorless"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 
@@ -26,6 +26,7 @@ mana = ["colorless"]
 
 # {2}{B}{G}, {T}, Sacrifice a creature: Draw a card.
 [[abilities]]
+oracle = "{2}{B}{G}, {T}, Sacrifice a creature: Draw a card."
 timing = "activated"
 taps_self = true
 sacrifice = "creature"

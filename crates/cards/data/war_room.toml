@@ -3,7 +3,6 @@
 # War Room (SOC): "{T}: Add {C}. {3}, {T}, Pay life equal to the number of colors in your
 # commanders' color identity: Draw a card."
 name = "War Room"
-sets = ["clb", "cmm", "cmr", "mkc", "pcmr", "pip", "plst", "prm", "soc", "who"]
 id = "71c52bf5-2a5d-488e-8b15-7ef290e4b77d"
 default_print = "0775b4be-881c-4832-8954-d961064315b6"
 otags = ["activated-ability", "commander-identity-matters", "draw-engine", "life-for-cards", "mana-sink", "repeatable-pure-draw", "synergy-commander", "utility-land"]
@@ -15,6 +14,7 @@ produces = "colorless"
 
 # {T}: Add {C}.
 [[abilities]]
+oracle = "{T}: Add {C}."
 timing = "activated"
 taps_self = true
 

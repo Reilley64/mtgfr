@@ -4,7 +4,6 @@
 #   "This creature enters with X +1/+1 counters on it.
 #    {2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment."
 name = "Steelbane Hydra"
-sets = ["eld", "ncc", "soc", "tmc"]
 id = "e38e3723-05f5-4a51-8364-1cda19f9cc49"
 default_print = "c9889a59-519c-4adb-9002-dbed400a0d33"
 otags = ["activated-ability", "counter-fuel-pp", "disenchant-naturalize", "gains-pp-counters", "removal-destroy", "repeatable-crime", "repeatable-removal", "spot-removal"]
@@ -22,6 +21,7 @@ toughness = 0
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities]]
+oracle = "This creature enters with X +1/+1 counters on it."
 timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
@@ -32,6 +32,7 @@ count = "x"
 
 # {2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment.
 [[abilities]]
+oracle = "{2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment."
 timing = "activated"
 activation_cost = { generic = 2, green = 1 }
 remove_counters = 1

@@ -1,7 +1,6 @@
 # Whenever a player casts a black spell, you may pay {1}. If you do, you gain 1 life.
 name = "Throne of Bone"
 otags = ["cast-trigger", "cycle-lea-lucky-charm", "hate-black", "meme", "repeatable-lifegain", "synergy-black", "toll"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "f73c7edf-ed2c-41e8-ac83-c83ddd543f14"
 default_print = "5a242eb1-8625-4063-9376-a1df32547b58"
 oracle = "Whenever a player casts a black spell, you may pay {1}. If you do, you gain 1 life."
@@ -14,6 +13,7 @@ type = "artifact"
 
 # Whenever a player casts a black spell, you may pay {1}. If you do, you gain 1 life.
 [[abilities]]
+oracle = "Whenever a player casts a black spell, you may pay {1}. If you do, you gain 1 life."
 timing = "cast_spell"
 spell_filter = { color = "black" }
 caster = "any_player"

@@ -3,7 +3,6 @@
 # creature and this Aura gains "Enchanted creature loses flying."
 name = "Earthbind"
 otags = ["burn-creature", "intervening-if-clause", "meme", "removes-flying", "spot-removal"]
-sets = ["2ed", "3ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "e8e35b49-8cfb-4fb5-89aa-8050f15b11bf"
 default_print = "8a05dcd8-4c5d-413c-b1c0-3613f211a284"
 oracle = "Enchant creature\nWhen this Aura enters, if enchanted creature has flying, this Aura deals 2 damage to that creature and this Aura gains \"Enchanted creature loses flying.\""
@@ -18,6 +17,7 @@ type = "aura"
 # When this Aura enters, if enchanted creature has flying, this Aura deals 2 damage to that
 # creature and this Aura gains "Enchanted creature loses flying."
 [[abilities]]
+oracle = "When this Aura enters, if enchanted creature has flying, this Aura deals 2 damage to that creature and this Aura gains \"Enchanted creature loses flying.\""
 timing = "etb"
 condition = { type = "enchanted_creature_has_keyword", keyword = "flying" }
 

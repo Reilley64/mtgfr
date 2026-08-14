@@ -2,7 +2,6 @@
 # {2}{B}: Each player loses 1 life.
 name = "Orzhov Guildmage"
 otags = ["activated-ability", "bottomless-mana-sink", "cycle-block-rav-guildmage", "group-slug", "opponent-loses-life", "repeatable-crime", "repeatable-lifegain"]
-sets = ["clu", "cma", "cmd", "gpt", "rvr"]
 id = "877bfa3f-6e30-4cb3-831e-d56849b01334"
 default_print = "5eb5c82b-71aa-4c94-bda0-3e5abe10ea67"
 oracle = "{2}{W}: Target player gains 1 life.\n{2}{B}: Each player loses 1 life."
@@ -19,6 +18,7 @@ toughness = 2
 
 # {2}{W}: Target player gains 1 life.
 [[abilities]]
+oracle = "{2}{W}: Target player gains 1 life."
 timing = "activated"
 activation_cost = { generic = 2, white = 1 }
 
@@ -31,6 +31,7 @@ amount = 1
 
 # {2}{B}: Each player loses 1 life.
 [[abilities]]
+oracle = "{2}{B}: Each player loses 1 life."
 timing = "activated"
 activation_cost = { generic = 2, black = 1 }
 

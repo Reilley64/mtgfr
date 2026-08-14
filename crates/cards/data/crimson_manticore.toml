@@ -2,7 +2,6 @@
 # {R}, {T}: This creature deals 1 damage to target attacking or blocking creature.
 name = "Crimson Manticore"
 otags = ["activated-ability", "burn-creature", "evasion", "hate-attacker", "hate-blocker", "pinger", "repeatable-crime", "repeatable-removal", "spot-removal"]
-sets = ["4bb", "4ed", "5ed", "leg", "me3", "ren"]
 id = "35d4e500-28c8-44c9-990f-3aa25ed5dd14"
 default_print = "9de6ffe8-70af-4505-bc2d-b0113cd6db99"
 oracle = "Flying\n{R}, {T}: This creature deals 1 damage to target attacking or blocking creature."
@@ -20,6 +19,7 @@ toughness = 2
 
 # {R}, {T}: This creature deals 1 damage to target attacking or blocking creature.
 [[abilities]]
+oracle = "{R}, {T}: This creature deals 1 damage to target attacking or blocking creature."
 timing = "activated"
 taps_self = true
 

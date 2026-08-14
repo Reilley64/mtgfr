@@ -1,7 +1,6 @@
 # Destroy target creature or land.
 name = "Wrecking Ball"
 otags = ["cycle-mm2-draft-signpost", "punny-name", "removal-creature", "removal-destroy", "removal-land", "single-target-instant-sorcery", "spot-removal"]
-sets = ["cma", "cmd", "dis", "gk2", "mm2"]
 id = "0a1b0910-3b0c-4aa3-b47f-8eb069122743"
 default_print = "9a8fafff-e9b1-49e1-9bba-5f3c82cac894"
 oracle = "Destroy target creature or land."
@@ -16,6 +15,7 @@ type = "instant"
 
 # Destroy target creature or land.
 [[abilities]]
+oracle = "Destroy target creature or land."
 timing = "spell"
 
 # Destroy target creature or land.

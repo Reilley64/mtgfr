@@ -12,19 +12,23 @@ import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import { testHtml } from "~/test-html";
+import { BindCardFace } from "~/ui/card-face";
 import { fromProtoWire } from "~/wire/protoMap";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type PlayModePick, type XPromptState } from "../action/execution";
 import { CARD_NAME_COMBOBOX_ID, CardNameCombobox } from "../card-name-combobox";
 import { STEP, ZONE } from "../geometry/layout";
-import type { Message } from "../messages";
-import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID } from "../submodel";
+import { KeyboardEscape, type Message } from "../messages";
+import { type BoardModel, CONCEDE_DIALOG_ID, initialBoardModel, RESULT_DIALOG_ID, updateBoard } from "../submodel";
 import { type BoardViewModel, view as boardView, type ViewMessage } from "../view";
 import { handMetrics } from "./hand";
+import { MountBoardKeyboard } from "./keyboard-mount";
 import { boardOverlays } from "./overlays";
+import { priorityBarBottom } from "./priority-bar";
 import {
   resolveBoardCardArtMounts,
+  resolveBoardCardFaceMounts,
   resolveBoardOverlayMounts,
   resolveCardNameComboboxMounts,
   resolveLiveBoardMounts,
@@ -127,6 +131,14 @@ const overlayView = Submodel.defineView<OverlayModel, Message>((model) => {
   return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h);
 });
 
+const keyboardOverlayView = Submodel.defineView<OverlayModel, Message>((model) => {
+  if (model.fold.state == null) return h.div([], []);
+  return h.div(
+    [h.OnMount(MountBoardKeyboard())],
+    [boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log, h)],
+  );
+});
+
 const fullBoardView = boardView;
 
 function player(
@@ -171,6 +183,8 @@ function card(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: cost({ generic: 1 }),
     marked_damage: 0,
@@ -185,6 +199,25 @@ function card(id: number, overrides: Partial<ObjectView> = {}): ObjectView {
     toughness: 0,
     zone: ZONE.Hand,
     ...overrides,
+  };
+}
+
+function stackObjects(count: number): Pick<VisibleState, "objects" | "stack"> {
+  return {
+    objects: Array.from({ length: count }, (_, row) =>
+      card(100 + row, {
+        name: `Spell ${row}`,
+        print: `print-${row}`,
+        zone: ZONE.Stack,
+      }),
+    ),
+    stack: Array.from({ length: count }, (_, row) => ({
+      entry_id: BigInt(row + 1),
+      controller: 0,
+      kind: "spell" as const,
+      label: testMessageRef(`Spell ${row}`),
+      source: 100 + row,
+    })),
   };
 }
 
@@ -204,6 +237,65 @@ function gameState(overrides: Partial<VisibleState> = {}): VisibleState {
   };
 }
 
+test("priority bar reserves the stack action lane", () => {
+  expect(priorityBarBottom(0)).toBe("calc(var(--hand-bar-h) + 10px)");
+  expect(priorityBarBottom(1)).toBe("calc(var(--hand-bar-h) + 2px)");
+});
+
+test("priority bar exposes stack presence and uses the reserved offset", () => {
+  overlayScene(
+    overlayModel(initialBoardModel(), gameState()),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveAttr("data-stack-present", "false"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--b", "calc(var(--hand-bar-h) + 10px)"),
+  );
+
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        stack: [{ entry_id: 1n, controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
+      }),
+    ),
+    resolveBoardCardFaceMounts(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveAttr("data-stack-present", "true"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--b", "calc(var(--hand-bar-h) + 2px)"),
+  );
+});
+
+test("wide non-empty-stack actions stay inside the shared short-landscape action column", () => {
+  const waitingStack = stackObjects(1);
+  const staged = stagedBoard();
+  if (staged.staged == null) throw new Error("missing staged action");
+  const nonTargetedStaged = {
+    ...staged,
+    staged: {
+      ...staged.staged,
+      action: { ...staged.staged.action, needs_target: false, targets: undefined },
+    },
+  };
+  overlayScene(
+    overlayModel(
+      nonTargetedStaged,
+      gameState({
+        ...waitingStack,
+        can_act: true,
+        priority: 0,
+        viewer: 0,
+      }),
+    ),
+    resolveBoardCardFaceMounts(2),
+    Scene.expect(Scene.testId("board-pass")).toExist(),
+    Scene.expect(Scene.testId("board-stack-yield")).toExist(),
+    Scene.expect(Scene.testId("board-cancel-target")).toExist(),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveClass("stack-action-column"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--stack-action-column-w", "220px"),
+    Scene.expect(Scene.testId("board-pass")).toHaveClass("max-w-full"),
+    Scene.expect(Scene.testId("board-stack-yield")).toHaveClass("max-w-full"),
+    Scene.expect(Scene.testId("board-cancel-target")).toHaveClass("max-w-full"),
+  );
+});
+
 function gameFold(state: VisibleState | null = gameState(), log: ReadonlyArray<LogLine> = []): GameFoldState {
   return {
     seq: 1,
@@ -219,7 +311,7 @@ function gameFold(state: VisibleState | null = gameState(), log: ReadonlyArray<L
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
@@ -335,7 +427,7 @@ test("smoke scene keeps existing chrome visible", () => {
 
   overlayScene(
     model,
-    resolveBoardCardArtMounts(),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("hand-bar")).toExist(),
     Scene.expect(Scene.testId("board-primary")).toExist(),
     Scene.expect(Scene.testId("board-concede")).toExist(),
@@ -389,14 +481,111 @@ test("turn chrome drives phase and label chrome from data attributes", () => {
   );
 });
 
-test("stack context renders resolve stack affordance and top caption", () => {
+test("seven authoritative stack entries keep lossless identity through compact, expand, and collapse", () => {
+  const firstId = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+  const ids = Array.from({ length: 7 }, (_, index) => firstId + BigInt(index));
+  const objects = Array.from({ length: 6 }, (_, index) =>
+    card(100 + index, {
+      card_id: `card-${index}`,
+      name: `Known label ${index}`,
+      print: `print-${index}`,
+      zone: ZONE.Stack,
+    }),
+  );
+  const stack: VisibleState["stack"] = ids.map((entry_id, index) =>
+    index < 6
+      ? {
+          controller: 0,
+          entry_id,
+          kind: index < 2 ? "ability" : "spell",
+          label: testMessageRef(`Known label ${index}`),
+          // Two abilities deliberately share one source but retain different entry identity.
+          source: index < 2 ? objects[0]?.id : objects[index]?.id,
+          printed_sentences: [`Known rules ${index}`],
+        }
+      : {
+          card_id: "public-ghost-card",
+          controller: 1,
+          entry_id,
+          kind: "ability",
+          label: testMessageRef("Public ghost label"),
+          name: "Public Ghost",
+          print: "public-ghost-print",
+          printed_sentences: ["Public ghost rules text."],
+        },
+  );
+  const model = overlayModel(initialBoardModel(), gameState({ objects, stack }));
+
+  Scene.scene<OverlayModel, Message>(
+    {
+      update: (current, message) => {
+        const [board] = updateBoard(current.board, message, current.fold, current.tableId);
+        return [{ ...current, board }, []];
+      },
+      view: overlayView,
+    },
+    Scene.given(model),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(4),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expectAll(Scene.all.selector('[data-testid^="stack-face-"]')).toHaveCount(4),
+    Scene.expect(Scene.testId("stack-face-3")).toHaveAttr("aria-label", "Known label 3 Known rules 3"),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveAttr(
+      "aria-label",
+      "Public Ghost Public ghost label Public ghost rules text.",
+    ),
+    ...ids
+      .slice(3)
+      .flatMap((id, index) => [
+        Scene.expect(Scene.testId(`stack-face-${index + 3}`)).toHaveAttr("data-stack-entry-id", String(id)),
+      ]),
+    Scene.expect(Scene.testId("stack-face-3")).toHaveAttr("data-inspect-card-id", "card-3"),
+    Scene.expect(Scene.testId("stack-face-6")).not.toHaveAttr("data-inspect-card-id"),
+    Scene.expect(Scene.testId("stack-face-6")).toHaveAttr("title", "Public Ghost"),
+    Scene.expect(Scene.testId("stack-expand")).toHaveText("+3"),
+    Scene.expect(Scene.testId("stack-expand")).toHaveAccessibleName("Show 3 older stack objects"),
+    Scene.click(Scene.testId("stack-expand")),
+    resolveBoardCardFaceMounts(3),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
+    Scene.expectAll(Scene.all.selector('[data-testid^="stack-face-"]')).toHaveCount(7),
+    ...ids.flatMap((id, row) => [
+      Scene.expect(Scene.testId(`stack-face-${row}`)).toHaveAttr("data-stack-entry-id", String(id)),
+    ]),
+    Scene.click(Scene.testId("stack-collapse")),
+    Scene.Mount.expectEnded(BindCardFace, BindCardFace, BindCardFace),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toBeAbsent(),
+  );
+
+  Scene.scene<OverlayModel, Message>(
+    {
+      update: (current, message) => {
+        const [board] = updateBoard(current.board, message, current.fold, current.tableId);
+        return [{ ...current, board }, []];
+      },
+      view: keyboardOverlayView,
+    },
+    Scene.given({ ...model, board: { ...model.board, stackExpand: true } }),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardFaceMounts(7),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
+    Scene.Mount.resolve(MountBoardKeyboard(), KeyboardEscape()),
+    Scene.Mount.expectEnded(BindCardFace, BindCardFace, BindCardFace),
+    Scene.expect(Scene.testId("stack-overlay-expanded")).toBeAbsent(),
+    Scene.expect(Scene.testId("stack-overlay")).toExist(),
+    Scene.expectAll(Scene.all.selector('[data-testid^="stack-face-"]')).toHaveCount(4),
+  );
+});
+
+test("stack context renders resolve stack affordance without an untargeted caption", () => {
   const state = gameState({
-    stack: [{ controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
+    stack: [{ entry_id: 1n, controller: 1, kind: "ability", label: testMessageRef("Ward 2"), source: 99 }],
   });
   overlayScene(
     overlayModel(initialBoardModel(), state),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("board-stack-yield")).toExist(),
-    Scene.expect(Scene.testId("stack-top-caption")).toExist(),
+    Scene.expect(Scene.testId("stack-top-caption")).toBeAbsent(),
   );
 });
 
@@ -405,10 +594,11 @@ test("armed stack yield state renders separately", () => {
     overlayModel(
       initialBoardModel(),
       gameState({
-        stack: [{ controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }],
+        stack: [{ entry_id: 1n, controller: 1, kind: "spell", label: testMessageRef("Bolt"), source: 77 }],
         yielded: true,
       }),
     ),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("board-stack-yield-armed")).toExist(),
   );
 });
@@ -525,6 +715,7 @@ test("staged targeting shows cancel affordance and staged hint", () => {
       },
       gameState({ objects: [target] }),
     ),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("board-cancel-target")).toExist(),
     Scene.expect(Scene.testId("board-staged-hint")).toHaveText("You gain 1 life: click a highlighted card"),
   );
@@ -611,7 +802,7 @@ test("hand surfaces render cost pips and fade the drag source without an HTML gh
       },
       gameState({ actions: [castAction], objects: [handCard] }),
     ),
-    resolveBoardCardArtMounts(1),
+    resolveBoardCardFaceMounts(1),
     Scene.expect(Scene.testId("hand-cost-pips")).toExist(),
     Scene.expect(Scene.testId("hand-drag-ghost")).not.toExist(),
   );
@@ -698,6 +889,8 @@ test("inspect overlay shows per-commander damage breakdown for a player pin", ()
     owner: 1,
     controller: 1,
     is_commander: true,
+    is_token: false,
+    legendary: false,
     name: "Atraxa, Praetors' Voice",
     zone: ZONE.Battlefield,
     kind: { kind: "creature", power: 4, toughness: 4 },
@@ -1425,6 +1618,7 @@ test("multi on-board choose_target shows Confirm count chrome", () => {
         },
       }),
     ),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("pending-target-aim")).toExist(),
     Scene.expect(Scene.testId("pending-target-count")).toHaveText("1 / 2 selected"),
     Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
@@ -2720,6 +2914,7 @@ test("simple prompt primary bar stacks above pile and prompt modal backdrops", (
     zone: ZONE.Exile,
     kind: { kind: "instant" },
   });
+  const waitingStack = stackObjects(1);
   overlayScene(
     overlayModel(
       {
@@ -2728,7 +2923,8 @@ test("simple prompt primary bar stacks above pile and prompt modal backdrops", (
         promptDraft: { kind: "card-pick", picked: [] },
       },
       gameState({
-        objects: [a, b],
+        objects: [a, b, ...waitingStack.objects],
+        stack: waitingStack.stack,
         pending_choice: {
           kind: "choose_exiled_to_cast_free",
           player: 0,
@@ -2741,11 +2937,17 @@ test("simple prompt primary bar stacks above pile and prompt modal backdrops", (
         },
       }),
     ),
+    resolveBoardCardFaceMounts(),
     Scene.expect(Scene.testId("pile-overlay")).toExist(),
     Scene.expect(Scene.testId("pile-overlay")).toHaveClass("z-29"),
     Scene.expect(Scene.testId("pending-exile-aim")).toExist(),
     Scene.expect(Scene.testId("priority-context-bar")).toHaveClass("z-45"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveClass("stack-action-column"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveAttr("data-stack-present", "true"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--b", "calc(var(--hand-bar-h) + 2px)"),
+    Scene.expect(Scene.testId("priority-context-bar")).toHaveStyle("--stack-action-column-w", "220px"),
     Scene.expect(Scene.selector('[data-testid="priority-context-bar"] [data-testid="prompt-submit"]')).toBeEnabled(),
+    Scene.expect(Scene.testId("prompt-submit")).toHaveClass("max-w-full"),
     Scene.expect(Scene.testId("pending-exile-count")).toContainText("0 / up to 2"),
     Scene.tap((sim) => {
       const ids = collectTestIds(sim.html);
@@ -3294,6 +3496,7 @@ test("full board view mounts the flight layer above the hand bar", () => {
 
 test("tiny board HUD close controls keep coarse pointer hit targets", () => {
   const stack = Array.from({ length: 6 }, (_, index) => ({
+    entry_id: BigInt(index + 1),
     controller: index % 2,
     kind: "spell" as const,
     label: testMessageRef(`Spell ${index}`),
@@ -3302,6 +3505,7 @@ test("tiny board HUD close controls keep coarse pointer hit targets", () => {
   overlayScene(
     overlayModel({ ...initialBoardModel(), legendOpen: true, stackExpand: true }, gameState({ stack })),
     resolveBoardCardArtMounts(0),
+    resolveBoardCardFaceMounts(6),
     Scene.tap((sim) => {
       expect(className(findAttr(sim.html, "aria-label", "Dismiss hint"))).toContain("hit-quiet");
       expect(className(findAttr(sim.html, "aria-label", "Close legend"))).toContain("hit-quiet");

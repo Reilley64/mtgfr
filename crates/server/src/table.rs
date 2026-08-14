@@ -12,7 +12,9 @@ use schema::SeedSeat;
 use tokio::sync::broadcast;
 
 use crate::chrome::ChromeState;
-use crate::session::{Broadcast, PublishedDelta};
+#[cfg(debug_assertions)]
+use crate::debug::TableDebugState;
+use crate::session::{Broadcast, PublishedState, PublishedUpdate};
 
 /// One seated player: the user who owns the seat and their public display chrome.
 #[derive(Debug, Clone, Default)]
@@ -38,7 +40,7 @@ pub struct Table {
     pub seed: [u8; 32],
     /// Drand round used to derive [`Self::seed`]; `0` means `MTGFR_MASTER_SEED`/test override.
     pub beacon_round: u64,
-    /// Monotonic delta sequence number; the snapshot watermark for resume.
+    /// Monotonic authoritative game-state sequence; the snapshot watermark for resume.
     pub seq: u64,
     /// Monotonic publish id for the stream fan-out (gRPC broadcast). Advances on every
     /// broadcast, including hold-only ticks that keep game `seq` unchanged (dwell must not kill
@@ -47,6 +49,9 @@ pub struct Table {
     pub tx: broadcast::Sender<Broadcast>,
     /// Auto-pass / stack-hold / dwell policy — see [`crate::chrome::ChromeState`].
     pub chrome: ChromeState,
+    /// Debug-only transaction state; omitted from release builds.
+    #[cfg(debug_assertions)]
+    pub(crate) debug: TableDebugState,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
     /// When `Game.Stream` last went quiet (`None` = has/had listeners, grace not armed).
@@ -75,6 +80,8 @@ impl Table {
             broadcast_seq: 0,
             tx,
             chrome: ChromeState::default(),
+            #[cfg(debug_assertions)]
+            debug: TableDebugState::default(),
             prints: Default::default(),
             quiet_since: Some(Instant::now()),
         }
@@ -109,16 +116,50 @@ impl Table {
             return;
         };
         self.broadcast_seq += 1;
-        let _ = self.tx.send(std::sync::Arc::new(PublishedDelta {
+        let state = PublishedState {
             seq: self.seq,
             broadcast_seq: self.broadcast_seq,
-            events: vec![],
             game: game.clone(),
-            auto_actions: vec![],
             yields: *self.chrome.yields(),
             turn_yields: *self.chrome.turn_yields(),
             stack_hold_remaining_ms: self.stack_hold_remaining_ms(),
+            seats: self.seats.clone(),
+            prints: self.prints.clone(),
+            object_print_overrides: self.current_object_print_overrides().clone(),
+        };
+        let _ = self.tx.send(std::sync::Arc::new(PublishedUpdate::Delta {
+            state,
+            events: vec![],
+            auto_actions: vec![],
         }));
+    }
+
+    /// Remove presentation overlays whose exact object identity is no longer live.
+    #[cfg(debug_assertions)]
+    pub(crate) fn prune_object_print_overrides(&mut self) {
+        let Some(game) = self.game.as_ref() else {
+            self.debug.object_prints.clear();
+            return;
+        };
+        let live = crate::debug::live_object_ids(game);
+        self.debug
+            .object_prints
+            .retain(|object_id, _| live.contains(object_id));
+    }
+
+    /// Current exact-object presentation overlays. Live ownership is debug-only; release tables
+    /// always project the shared empty map.
+    pub(crate) fn current_object_print_overrides(&self) -> &schema::ObjectPrintOverrides {
+        #[cfg(debug_assertions)]
+        {
+            &self.debug.object_prints
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            static EMPTY: std::sync::LazyLock<schema::ObjectPrintOverrides> =
+                std::sync::LazyLock::new(schema::ObjectPrintOverrides::new);
+            &EMPTY
+        }
     }
 
     /// The seat index a user holds, if any.
@@ -173,6 +214,20 @@ impl Registry {
     /// [`Table::seeded`] — so this is simply how many tables are registered).
     pub fn active_table_count(&self) -> usize {
         self.tables.values().filter(|t| t.game.is_some()).count()
+    }
+
+    /// Active table IDs and their debug/table revisions, ordered for stable operator output.
+    #[cfg(debug_assertions)]
+    #[allow(dead_code)]
+    pub(crate) fn debug_table_summaries(&self) -> Vec<(String, u64, u64)> {
+        let mut summaries: Vec<_> = self
+            .tables
+            .iter()
+            .filter(|(_, table)| table.game.is_some())
+            .map(|(table_id, table)| (table_id.clone(), table.debug.revision, table.seq))
+            .collect();
+        summaries.sort_unstable_by(|left, right| left.0.cmp(&right.0));
+        summaries
     }
 
     /// Drop started tables that have had no stream subscribers for at least `grace`.

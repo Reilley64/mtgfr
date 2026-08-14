@@ -4,7 +4,12 @@ import type { StackObjectView, WireAttack, WireBlock } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import type { RenderCard } from "../geometry/layout";
-import { STACK_PEEK, type StackPresentation, stackFaceScreenOrigin } from "../geometry/stackLayout";
+import {
+  type StackPresentation,
+  stackFaceScreenOrigin,
+  stackFanLayout,
+  stackFanPlacement,
+} from "../geometry/stackLayout";
 import { stackEntryTargets } from "../geometry/stackTargets";
 import type { AvatarScreenPositions } from "./avatars";
 import { combatArrowEndpoints } from "./combatArrowEndpoints";
@@ -65,20 +70,12 @@ export function aimArrowShapes(input: { from: Vec; to: Vec }): Shape[] {
 }
 
 /** Screen-space center of stack pile face at `row` (0 = bottom, last = top). */
-export function stackPileFaceOrigin(
-  viewportW: number,
-  viewportH: number,
-  count: number,
-  row: number,
-  peek = STACK_PEEK,
-): Vec {
+export function stackPileFaceOrigin(viewportW: number, viewportH: number, count: number, row: number): Vec {
   return stackFaceScreenOrigin({
     presentation: "pile",
-    viewportW,
-    viewportH,
+    viewport: { width: viewportW, height: viewportH },
     count,
     row,
-    peek,
   });
 }
 
@@ -95,17 +92,21 @@ export function stackTargetArrowEndpoints(input: {
   if (count === 0) return [];
   const presentation = input.presentation ?? "pile";
   const byId = new Map(input.cards.map((card) => [card.id, card]));
+  const compact = presentation === "pile" ? stackFanLayout(input.viewport, count) : null;
   const endpoints: Array<{ from: Vec; to: Vec }> = [];
   for (let row = 0; row < count; row++) {
     const entry = input.stack[row];
     if (entry == null) continue;
-    const from = stackFaceScreenOrigin({
-      presentation,
-      viewportW: input.viewport.width,
-      viewportH: input.viewport.height,
-      count,
-      row,
-    });
+    const compactPlacement = compact == null ? null : stackFanPlacement(compact, row);
+    const from =
+      compact != null && compactPlacement == null
+        ? { x: compact.left, y: compact.top + compact.cardH / 2 }
+        : stackFaceScreenOrigin({
+            presentation,
+            viewport: input.viewport,
+            count,
+            row,
+          });
     for (const target of stackEntryTargets(entry)) {
       let to: Vec | null = null;
       if (target.kind === "player") {

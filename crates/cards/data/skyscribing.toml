@@ -3,7 +3,6 @@
 # and only once each turn.)
 name = "Skyscribing"
 otags = ["activate-from-hand", "burst-draw", "draw-engine", "force-draw", "group-hug", "hand-positive", "more-expensive-than-mv", "repeatable-pure-draw", "symmetrical"]
-sets = ["c13", "cmd", "dis"]
 id = "c3416e6c-ec46-410c-ab80-6e8fdb89f42d"
 default_print = "079bcd66-a083-4c3b-9113-50966374e79f"
 oracle = "Each player draws X cards.\nForecast — {2}{U}, Reveal this card from your hand: Each player draws a card. (Activate only during your upkeep and only once each turn.)"
@@ -17,6 +16,7 @@ type = "sorcery"
 
 # Each player draws X cards.
 [[abilities]]
+oracle = "Each player draws X cards."
 timing = "spell"
 
 # Each player draws X cards.

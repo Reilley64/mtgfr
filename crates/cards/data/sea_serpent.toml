@@ -2,7 +2,6 @@
 # When you control no Islands, sacrifice this creature.
 name = "Sea Serpent"
 otags = ["alliteration", "landhome", "restricted-attacker", "state-trigger"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "c16495fc-784d-4bac-9a68-ed437008df73"
 default_print = "af430730-2ce8-45c3-b1da-9745fc792d71"
 oracle = "This creature can't attack unless defending player controls an Island.\nWhen you control no Islands, sacrifice this creature."
@@ -20,6 +19,7 @@ toughness = 5
 
 # This creature can't attack unless defending player controls an Island.
 [[abilities]]
+oracle = "This creature can't attack unless defending player controls an Island."
 timing = "static"
 
 # can't attack unless defending player controls an Island
@@ -30,6 +30,7 @@ filter = { types = "land", subtypes = ["Island"] }
 
 # When you control no Islands, sacrifice this creature.
 [[abilities]]
+oracle = "When you control no Islands, sacrifice this creature."
 timing = "each_end_step"
 
 [abilities.condition]

@@ -2,7 +2,6 @@
 # When this creature enters, if you control two or more Plains, you may destroy target enchantment.
 name = "Duergar Hedge-Mage"
 otags = ["cycle-eve-hedge-mage", "disenchant-naturalize", "intervening-if-clause", "multi-removal", "multiple-targets", "removal-destroy", "spot-removal", "synergy-mountain", "synergy-plains", "virtual-vanilla"]
-sets = ["cma", "cmd", "dci", "eve", "hop", "moc", "plst", "prm"]
 id = "ecb2fd58-b880-4d9e-93cb-c4d2b28233c9"
 default_print = "a55e7048-4532-443b-9480-a139069ecf0a"
 oracle = "When this creature enters, if you control two or more Mountains, you may destroy target artifact.\nWhen this creature enters, if you control two or more Plains, you may destroy target enchantment."
@@ -19,6 +18,7 @@ toughness = 2
 
 # When this creature enters, if you control two or more Mountains, you may destroy target artifact.
 [[abilities]]
+oracle = "When this creature enters, if you control two or more Mountains, you may destroy target artifact."
 timing = "etb"
 optional = true
 
@@ -35,6 +35,7 @@ target = { permanent = { types = "artifact" } }
 
 # When this creature enters, if you control two or more Plains, you may destroy target enchantment.
 [[abilities]]
+oracle = "When this creature enters, if you control two or more Plains, you may destroy target enchantment."
 timing = "etb"
 optional = true
 

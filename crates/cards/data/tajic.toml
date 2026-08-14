@@ -1,5 +1,4 @@
 name = "Tajic, Legion's Edge"
-sets = ["grn", "pgrn", "rvr"]
 id = "ae6f21a2-e6b6-4793-8343-e27310c0bea1"
 default_print = "45c4c3b3-be18-4d74-99d8-f137498673d7"
 otags = ["activated-ability", "attack-trigger", "attacking-matters", "attacking-matters-self", "cycle-grn-guild-champion", "cycle-rvr-r-two-color-legend", "damage-prevention", "damage-prevention-creature", "gains-first-strike", "gives-pp-counters", "power-matters-self"]
@@ -21,6 +20,7 @@ toughness = 3
 # Mentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature
 # with lesser power.)
 [[abilities]]
+oracle = "Mentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature with lesser power.)"
 timing = "attacks"
 
 # put a +1/+1 counter on target attacking creature with lesser power
@@ -32,6 +32,7 @@ target = { permanent = { types = "creature", attacking = true, power_less_than_s
 
 # Prevent all noncombat damage that would be dealt to other creatures you control.
 [[abilities]]
+oracle = "Prevent all noncombat damage that would be dealt to other creatures you control."
 timing = "static"
 
 # Prevent all noncombat damage that would be dealt to other creatures you control
@@ -41,6 +42,7 @@ mode = "prevent_noncombat_damage_to_other_creatures_you_control"
 
 # {R}{W}: Tajic gains first strike until end of turn.
 [[abilities]]
+oracle = "{R}{W}: Tajic gains first strike until end of turn."
 timing = "activated"
 activation_cost = { red = 1, white = 1 }
 

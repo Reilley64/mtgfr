@@ -1,6 +1,7 @@
 import * as Combobox from "@foldkit/ui/combobox";
 import { Scene } from "foldkit/test";
 import { BindCardArt, CardArtTick } from "~/ui/card-art";
+import { BindCardFace, CardFaceTick } from "~/ui/card-face";
 import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
 import { AltDown, ArtLoaded, BoardCameraZoomed, HandActionHovered, HintAutoHidden, PriorityElapsed } from "../messages";
 import { MountBoardAudio, MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
@@ -25,9 +26,15 @@ export function resolveCardNameComboboxMounts() {
   );
 }
 
-/** Resolve `cardArt` hosts when the rendered overlay includes card faces. */
+/** Resolve `cardArt` hosts when the rendered overlay includes printed card images. */
 export function resolveBoardCardArtMounts(count = 1) {
   const resolvers = Array.from({ length: count }, () => [BindCardArt, CardArtTick()] as const);
+  return Scene.Mount.resolveAll(...resolvers);
+}
+
+/** Resolve `cardFace` hosts — the rendered (frame-drawn) faces the bar tiles paint. */
+export function resolveBoardCardFaceMounts(count = 1) {
+  const resolvers = Array.from({ length: count }, () => [BindCardFace, CardFaceTick()] as const);
   return Scene.Mount.resolveAll(...resolvers);
 }
 

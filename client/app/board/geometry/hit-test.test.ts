@@ -30,15 +30,12 @@ describe("hitTest", () => {
     expect(hitTest(identity, 220, 120, cards)).toBeNull();
   });
 
-  it("uses the sideways footprint of a tapped card", () => {
-    // Upright, card 1 spans x 0..100, y 0..140. Tapped, it rotates 90° about its center (50, 70),
-    // so it spans x -20..120, y 20..120 instead.
-    const upright: CardRect[] = [{ id: 1, x: 0, y: 0, w: 100, h: 140 }];
-    const tapped: CardRect[] = [{ ...upright[0], tapped: true }];
-    expect(hitTest(identity, 110, 70, tapped)).toBe(1); // right of the upright rect, on the tapped one
-    expect(hitTest(identity, 110, 70, upright)).toBeNull(); //   …and a miss while it stands upright
-    expect(hitTest(identity, 50, 130, tapped)).toBeNull(); // below the tapped rect, inside the upright
-    expect(hitTest(identity, 50, 130, upright)).toBe(1);
+  it("keeps a card's footprint where it is drawn, tapped or not", () => {
+    // A tapped permanent tilts a few degrees about its center rather than turning a quarter turn,
+    // so the upright rect is still where you click it.
+    const square: CardRect[] = [{ id: 1, x: 0, y: 0, w: 96, h: 96 }];
+    expect(hitTest(identity, 90, 90, square)).toBe(1);
+    expect(hitTest(identity, 110, 48, square)).toBeNull();
   });
 });
 

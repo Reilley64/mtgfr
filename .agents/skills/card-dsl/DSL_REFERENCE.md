@@ -76,7 +76,6 @@ This mirrors the DSL's top-level card shape with owned fields, then folds into t
 | `otags` | array<string> | no | `[]` | Scryfall Tagger oracle-tag slugs for thematic catalog search. Pure metadata. |
 | `recover` | CostToml \| null | no | - | Recover (CR 702.59) — `[recover]` with the same `[cost]`-table shape as `[echo]`; absent for a card without recover. |
 | `retrace` | boolean | no | `false` | Retrace (CR 702.83) — `retrace = true`; absent (`false`) for a card without retrace. |
-| `sets` | array<string> | no | `[]` | Every Scryfall set code with a printing of this oracle, used by coverage and catalog search. Pure metadata; gameplay never reads it. |
 | `snow` | boolean | no | `false` | Snow supertype (CR 205.4g) — `snow = true`; absent (`false`) for every ordinary card. |
 | `subtypes` | array<string> | no | `[]` | Printed non-land subtypes, such as creature, artifact, and enchantment subtypes. Land types live under `[kind].subtypes`. |
 | `suspend` | Suspend \| null | no | - | Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost` sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards. |

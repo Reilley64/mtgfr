@@ -2,7 +2,6 @@
 # creatures named Kobolds of Kher Keep, then an opponent gains control of them.
 # Creatures you control named Kobolds of Kher Keep get +2/+2.
 name = "Rohgahh of Kher Keep"
-sets = ["leg", "me3"]
 id = "44412804-aa69-4e62-b118-123741d91914"
 default_print = "1429cc3d-f6a2-4011-b716-5c3e0cf251d0"
 oracle = "At the beginning of your upkeep, you may pay {R}{R}{R}. If you don't, tap Rohgahh and all creatures named Kobolds of Kher Keep, then an opponent gains control of them.\nCreatures you control named Kobolds of Kher Keep get +2/+2."
@@ -31,6 +30,7 @@ toughness = 5
 # At the beginning of your upkeep, you may pay {R}{R}{R}. If you don't, tap Rohgahh and all
 # creatures named Kobolds of Kher Keep, then an opponent gains control of them.
 [[abilities]]
+oracle = "At the beginning of your upkeep, you may pay {R}{R}{R}. If you don't, tap Rohgahh and all creatures named Kobolds of Kher Keep, then an opponent gains control of them."
 timing = "upkeep"
 
 # you may pay {R}{R}{R}. If you don't, tap Rohgahh and all creatures named Kobolds of Kher Keep,
@@ -48,6 +48,7 @@ otherwise = [
 
 # Creatures you control named Kobolds of Kher Keep get +2/+2.
 [[abilities]]
+oracle = "Creatures you control named Kobolds of Kher Keep get +2/+2."
 timing = "static"
 
 # Creatures you control named Kobolds of Kher Keep get +2/+2.

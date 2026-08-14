@@ -2,7 +2,6 @@
 # At the beginning of your upkeep, sacrifice Palladia-Mors unless you pay {R}{G}{W}.
 name = "Palladia-Mors"
 otags = ["cycle-leg-elder-dragon", "deprecated-legend-type", "drawback", "evasion", "triggered-ability", "unique-mana-cost", "upkeep-cost"]
-sets = ["bchr", "chr", "leg", "me3", "sld"]
 id = "d7121ac7-e425-46cd-b006-1af391d97f87"
 default_print = "ede0ce7a-0799-40b9-b725-665dc9c1cede"
 oracle = "Flying, trample\nAt the beginning of your upkeep, sacrifice Palladia-Mors unless you pay {R}{G}{W}."
@@ -23,6 +22,7 @@ toughness = 7
 
 # At the beginning of your upkeep, sacrifice Palladia-Mors unless you pay {R}{G}{W}.
 [[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice Palladia-Mors unless you pay {R}{G}{W}."
 timing = "upkeep"
 
 # sacrifice Palladia-Mors unless you pay {R}{G}{W}

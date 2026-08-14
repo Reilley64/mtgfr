@@ -8,7 +8,6 @@
 #   At the beginning of your upkeep, if this enchantment has no charge counters on it, return it to
 #   its owner's hand."
 name = "Mana Bloom"
-sets = ["rtr", "soc"]
 id = "7c699180-d18e-4599-acd1-27b951d82136"
 default_print = "03a40bf7-5eb9-4b36-9388-48b482a6fcf2"
 otags = ["activated-ability", "bounce-self", "counter-fuel-charge", "intervening-if-clause", "mana-storage", "ramp"]
@@ -35,6 +34,7 @@ kind = "charge"
 # Remove a charge counter from this enchantment: Add one mana of any color. Activate only once
 # each turn.
 [[abilities]]
+oracle = "Remove a charge counter from this enchantment: Add one mana of any color. Activate only once each turn."
 timing = "activated"
 remove_counters = 1
 remove_counters_kind = "charge"
@@ -49,6 +49,7 @@ mana = ["any"]
 # At the beginning of your upkeep, if this enchantment has no charge counters on it, return it to
 # its owner's hand.
 [[abilities]]
+oracle = "At the beginning of your upkeep, if this enchantment has no charge counters on it, return it to its owner's hand."
 timing = "upkeep"
 condition = { type = "compare", left = { per_counter_of_kind = "charge" }, op = "at_most", right = 0 }
 

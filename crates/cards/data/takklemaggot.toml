@@ -8,7 +8,6 @@
 # upkeep, this enchantment deals 1 damage to that player."
 name = "Takklemaggot"
 otags = ["burn-player", "cheat-death-self", "death-trigger", "parasitic-aura", "pinger", "removal-toughness", "repeatable-removal", "spot-removal", "transferrable-aura", "triggered-ability"]
-sets = ["bchr", "chr", "leg", "me3"]
 id = "31d01633-86f8-4a3f-9c28-f6968e056ba3"
 default_print = "d8f49b3d-7fcb-4169-9298-cdf7a1dbe3f5"
 oracle = "Enchant creature\nAt the beginning of the upkeep of enchanted creature's controller, put a -0/-1 counter on that creature.\nWhen enchanted creature dies, that creature's controller chooses a creature that this card could enchant. If the player does, return this card to the battlefield under your control attached to that creature. If they don't, return this card to the battlefield under your control as a non-Aura enchantment. It loses \"enchant creature\" and gains \"At the beginning of that player's upkeep, this enchantment deals 1 damage to that player.\""
@@ -27,6 +26,7 @@ type = "aura"
 # At the beginning of the upkeep of enchanted creature's controller, put a -0/-1 counter on that
 # creature.
 [[abilities]]
+oracle = "At the beginning of the upkeep of enchanted creature's controller, put a -0/-1 counter on that creature."
 timing = "each_upkeep"
 condition = { type = "enchanted_permanents_controllers_upkeep" }
 
@@ -43,6 +43,7 @@ target = "enchanted_creature"
 # that creature. If they don't, return this card to the battlefield under your control as a
 # non-Aura enchantment.
 [[abilities]]
+oracle = "When enchanted creature dies, that creature's controller chooses a creature that this card could enchant. If the player does, return this card to the battlefield under your control attached to that creature. If they don't, return this card to the battlefield under your control as a non-Aura enchantment."
 timing = "enchanted_creature_dies"
 
 # that creature's controller chooses a creature that this card could enchant ... return this card

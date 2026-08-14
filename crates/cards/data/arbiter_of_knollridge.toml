@@ -2,7 +2,6 @@
 # When this creature enters, each player's life total becomes the highest life total among all
 # players.
 name = "Arbiter of Knollridge"
-sets = ["c15", "cm2", "cmd", "lrw"]
 id = "62705a41-7c4d-4e6c-85b0-36a9d27ab5ae"
 default_print = "1fc2e7c4-5dbe-49f4-8c3f-192e7544df74"
 otags = ["life-total-set", "vigilance"]
@@ -22,6 +21,7 @@ toughness = 5
 # When this creature enters, each player's life total becomes the highest life total among all
 # players.
 [[abilities]]
+oracle = "When this creature enters, each player's life total becomes the highest life total among all players."
 timing = "etb"
 
 # each player's life total becomes the highest life total among all players.

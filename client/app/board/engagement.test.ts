@@ -10,6 +10,8 @@ function creature(id: number, over: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
     marked_damage: 0,
@@ -83,6 +85,7 @@ test("objects targeted by a stack entry are engaged", () => {
       stack: [
         {
           controller: 0,
+          entry_id: 1n,
           kind: "spell",
           label: testMessageRef("Shock"),
           source: 50,

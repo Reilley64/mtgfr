@@ -3,7 +3,6 @@
 # {W} for each charge counter removed this way.
 name = "White Mana Battery"
 otags = ["activated-ability", "adds-multiple-mana", "counter-fuel-charge", "cycle-leg-battery", "mana-rock", "mana-storage", "mini-refund", "notorious-templating"]
-sets = ["4bb", "4ed", "leg", "ren"]
 id = "cf58682f-c305-4803-b54b-37f0841788e9"
 default_print = "b622e694-858d-482f-a67d-0e52d268708c"
 oracle = "{2}, {T}: Put a charge counter on this artifact.\n{T}, Remove any number of charge counters from this artifact: Add {W}, then add an additional {W} for each charge counter removed this way."
@@ -16,6 +15,7 @@ type = "artifact"
 
 # {2}, {T}: Put a charge counter on this artifact.
 [[abilities]]
+oracle = "{2}, {T}: Put a charge counter on this artifact."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 2 }
@@ -31,6 +31,7 @@ kind = "charge"
 # {T}, Remove any number of charge counters from this artifact: Add {W}, then add an additional
 # {W} for each charge counter removed this way.
 [[abilities]]
+oracle = "{T}, Remove any number of charge counters from this artifact: Add {W}, then add an additional {W} for each charge counter removed this way."
 timing = "activated"
 taps_self = true
 remove_counters_x = true

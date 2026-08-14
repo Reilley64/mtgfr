@@ -48,9 +48,9 @@ pub(crate) fn u8_trunc(v: u32) -> u8 {
     v.min(255) as u8
 }
 
-/// `[u8; 5]` from a `repeated uint32` — pads with `0` when short, ignores anything past index 4.
-fn colored5(v: &[u32]) -> [u8; 5] {
-    let mut out = [0u8; 5];
+/// `[u8; N]` from a `repeated uint32` — pads with `0` when short, ignores anything past index N-1.
+fn counts<const N: usize>(v: &[u32]) -> [u8; N] {
+    let mut out = [0u8; N];
     for (slot, &value) in out.iter_mut().zip(v.iter()) {
         *slot = u8_trunc(value);
     }
@@ -171,15 +171,19 @@ pub fn wire_cost_to_pb(cost: WireCost) -> pb::WireCost {
         colored: u8s(cost.colored),
         has_x: cost.has_x,
         x_symbols: u32::from(cost.x_symbols),
+        hybrid: u8s(cost.hybrid),
+        phyrexian: u8s(cost.phyrexian),
     }
 }
 
 pub fn wire_cost_from_pb(cost: pb::WireCost) -> WireCost {
     WireCost {
         generic: u8_trunc(cost.generic),
-        colored: colored5(&cost.colored),
+        colored: counts(&cost.colored),
         has_x: cost.has_x,
         x_symbols: u8_trunc(cost.x_symbols),
+        hybrid: counts(&cost.hybrid),
+        phyrexian: counts(&cost.phyrexian),
     }
 }
 
@@ -322,6 +326,7 @@ mod tests {
             colored: vec![1, 2],
             has_x: true,
             x_symbols: 2,
+            ..Default::default()
         };
         let wire = wire_cost_from_pb(pb);
         assert_eq!(wire.colored, [1, 2, 0, 0, 0]);
@@ -330,8 +335,7 @@ mod tests {
         let pb_long = pb::WireCost {
             generic: 0,
             colored: vec![1, 2, 3, 4, 5, 6, 7],
-            has_x: false,
-            x_symbols: 0,
+            ..Default::default()
         };
         assert_eq!(wire_cost_from_pb(pb_long).colored, [1, 2, 3, 4, 5]);
     }

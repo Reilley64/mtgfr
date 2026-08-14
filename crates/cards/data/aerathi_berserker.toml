@@ -2,7 +2,6 @@
 # beyond the first.)
 name = "Aerathi Berserker"
 otags = ["block-trigger", "french-vanilla", "rampage", "type-addition-human"]
-sets = ["leg"]
 id = "5cb495a2-c683-4066-b6ee-d0b7d8843cb9"
 default_print = "06673800-22a7-4ee3-92fa-7c7cd4865d30"
 oracle = "Rampage 3 (Whenever this creature becomes blocked, it gets +3/+3 until end of turn for each creature blocking it beyond the first.)"

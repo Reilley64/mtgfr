@@ -2,7 +2,6 @@
 # When enchanted land becomes tapped, destroy it.
 name = "Blight"
 otags = ["hate-tapped", "removal-destroy", "removal-land", "shares-name-with-a-mechanic", "single-english-word-name", "spot-removal", "triggered-ability", "uninspired"]
-sets = ["4bb", "4ed", "5ed", "6ed", "leg", "me1", "ren"]
 id = "19066c43-eccd-461b-9695-c3fad95dc1da"
 default_print = "d857076b-d130-482b-b015-37c22f0bdd43"
 oracle = "Enchant land\nWhen enchanted land becomes tapped, destroy it."
@@ -19,6 +18,7 @@ type = "aura"
 
 # When enchanted land becomes tapped, destroy it.
 [[abilities]]
+oracle = "When enchanted land becomes tapped, destroy it."
 timing = "enchanted_permanent_becomes_tapped"
 
 # destroy it

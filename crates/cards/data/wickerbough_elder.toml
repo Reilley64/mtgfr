@@ -2,7 +2,6 @@
 # {G}, Remove a -1/-1 counter from this creature: Destroy target artifact or enchantment.
 name = "Wickerbough Elder"
 otags = ["activated-ability", "counter-fuel-mm", "gains-mm-counters", "naturalize-with-set-mechanic", "removal-destroy", "removes-mm-counters-self", "repeatable-crime", "repeatable-removal", "spot-removal"]
-sets = ["arc", "cmr", "ecc", "eve", "ncc", "plst", "td0", "uma"]
 id = "3d794629-9014-460a-8d3b-785eadc1cdb5"
 default_print = "83e0b855-0259-4229-a6b9-d0faaf225355"
 oracle = "This creature enters with a -1/-1 counter on it.\n{G}, Remove a -1/-1 counter from this creature: Destroy target artifact or enchantment."
@@ -19,6 +18,7 @@ toughness = 4
 
 # This creature enters with a -1/-1 counter on it.
 [[abilities]]
+oracle = "This creature enters with a -1/-1 counter on it."
 timing = "static"
 
 # This creature enters with a -1/-1 counter on it.
@@ -30,6 +30,7 @@ kind = "minus_one_minus_one"
 
 # {G}, Remove a -1/-1 counter from this creature: Destroy target artifact or enchantment.
 [[abilities]]
+oracle = "{G}, Remove a -1/-1 counter from this creature: Destroy target artifact or enchantment."
 timing = "activated"
 remove_counters = 1
 remove_counters_kind = "minus_one_minus_one"

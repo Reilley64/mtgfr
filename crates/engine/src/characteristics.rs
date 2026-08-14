@@ -2264,26 +2264,28 @@ impl Game {
         mut layers: Vec<ContinuousEffect>,
     ) -> (i32, i32) {
         layers.sort_by_key(|effect| (effect.layer(), effect.timestamp, effect.source));
-        let mut power = printed_power;
-        let mut toughness = printed_toughness;
+        // Magic integers are mathematically unbounded. Accumulate the layer in a wider type so
+        // opposite deltas still cancel before clamping at the engine's i32 representation boundary.
+        let mut power = i64::from(printed_power);
+        let mut toughness = i64::from(printed_toughness);
         for effect in layers {
             match effect.kind {
                 ContinuousEffectKind::BasePtSet {
                     power: base_power,
                     toughness: base_toughness,
                 } => {
-                    power = base_power;
-                    toughness = base_toughness;
+                    power = i64::from(base_power);
+                    toughness = i64::from(base_toughness);
                 }
                 ContinuousEffectKind::BaseToughnessSet {
                     toughness: base_toughness,
-                } => toughness = base_toughness,
+                } => toughness = i64::from(base_toughness),
                 ContinuousEffectKind::PtDelta {
                     power: delta_power,
                     toughness: delta_toughness,
                 } => {
-                    power += delta_power;
-                    toughness += delta_toughness;
+                    power += i64::from(delta_power);
+                    toughness += i64::from(delta_toughness);
                 }
                 ContinuousEffectKind::PtSwitch => std::mem::swap(&mut power, &mut toughness),
                 ContinuousEffectKind::SetTypes { .. }
@@ -2292,7 +2294,10 @@ impl Game {
                 | ContinuousEffectKind::LoseKeywords { .. } => {}
             }
         }
-        (power, toughness)
+        (
+            power.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32,
+            toughness.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32,
+        )
     }
 
     fn compute_effective_keywords_uncached(&self, object: ObjectId) -> Vec<Keyword> {
@@ -2906,6 +2911,7 @@ impl Game {
         let mana_grants = self.granted_mana_abilities(object);
         if let Some(&(cost, mana, single_color)) = mana_grants.get(granted_index) {
             return Some(Ability {
+                oracle: None,
                 timing: Timing::Activated(cost),
                 effect: Effect::Mana(ManaEffect::Add {
                     // `mana` is already spend-restricted where applicable — `granted_mana_abilities`
@@ -2941,6 +2947,7 @@ impl Game {
             },
         };
         Some(Ability {
+            oracle: None,
             timing: Timing::Activated(cost),
             effect,
             optional: false,
@@ -3118,7 +3125,7 @@ impl Game {
 
     /// Every "you may spend `from` mana as though it were `to` mana" substitution `player`
     /// controls (Sunglasses of Urza, CR 609.4b), as `(from, to)` color pairs. The payment path
-    /// hands these to [`ManaPool::substituted`] before planning — [`Game::plan_payment`] and
+    /// hands these to the exact widened planner — [`Game::plan_payment`] and
     /// [`Game::plan_auto_taps`] (so a cost can actually be paid and auto-tapped that way) and
     /// [`Game::available_mana`] (so the playability/`{X}`-ceiling estimate agrees with them).
     /// Empty — and so free — for every board without one.
@@ -3496,7 +3503,7 @@ impl Game {
     /// life-gain replacements (CR 614 — Pest Rescuer, "you gain that much life plus 1 instead").
     /// Each [`Effect::Static(StaticEffect::LifeGainReplacement)`] that `recipient` controls adds its `plus`; the addends
     /// fold together. Gaining `base <= 0` is not "gaining life", so no replacement applies.
-    pub(crate) fn life_gain_after_replacements(&self, recipient: PlayerId, base: i32) -> i32 {
+    pub(crate) fn life_gain_after_replacements(&self, recipient: PlayerId, base: i64) -> i64 {
         self.replacement_registry()
             .life_gain_replaced_amount(recipient, base)
     }
@@ -3547,7 +3554,7 @@ impl Game {
 
     /// Test/setup helper: place a +1/+1 counter on a permanent (raw — bypasses replacements).
     pub fn add_plus_counter(&mut self, object: ObjectId) {
-        self.apply(&Event::CountersPlaced {
+        self.apply_recorded(&Event::CountersPlaced {
             object,
             count: 1,
             source_name: self.def_of(object).name,
@@ -3556,7 +3563,7 @@ impl Game {
 
     /// Test/setup helper: place one named counter on a permanent (raw — bypasses replacements).
     pub fn add_kind_counter(&mut self, object: ObjectId, kind: CounterKind) {
-        self.apply(&Event::KindCountersPlaced {
+        self.apply_recorded(&Event::KindCountersPlaced {
             object,
             kind,
             count: 1,
@@ -3583,6 +3590,9 @@ fn granted_triggered_ability(g: &GrantedAbility) -> Option<Ability> {
         },
     };
     Some(Ability {
+        // A granted ability is on no card's oracle — the label the effect generates is all the
+        // stack can show for it.
+        oracle: None,
         timing: Timing::Triggered(trigger),
         effect,
         optional: g.optional,
@@ -3724,6 +3734,7 @@ mod cache_tests {
 
     fn anthem() -> CardDef {
         static ABILITIES: &[Ability] = &[Ability {
+            oracle: None,
             timing: Timing::Static,
             effect: Effect::Static(StaticEffect::Anthem {
                 power: Amount::Fixed(1),
@@ -3847,7 +3858,7 @@ mod cache_tests {
         let bear = game.spawn_on_battlefield(PlayerId(0), creature(2, 2));
         assert_eq!(game.power(bear), 2);
 
-        game.apply(&Event::CountersPlaced {
+        game.apply_recorded(&Event::CountersPlaced {
             object: bear,
             count: 1,
             source_name: "Test",
@@ -3905,7 +3916,7 @@ mod cache_tests {
             }),
         );
         let permanent = game.objects.len() as ObjectId;
-        game.apply(&Event::PermanentEntered {
+        game.apply_recorded(&Event::PermanentEntered {
             permanent,
             from: spell,
         });
@@ -3923,7 +3934,7 @@ mod cache_tests {
                 .read(|cache| cache.keywords(bear).is_some())
         );
 
-        game.apply(&Event::TempBoost {
+        game.apply_recorded(&Event::TempBoost {
             object: bear,
             power: 0,
             toughness: 0,
@@ -4023,7 +4034,7 @@ mod cache_tests {
         assert_eq!(game.power(bear), 2);
         let from = game.spawn_in_hand(PlayerId(0), forest());
         let permanent = game.next_object_id();
-        game.apply(&Event::LandPlayed {
+        game.apply_recorded(&Event::LandPlayed {
             player: PlayerId(0),
             from,
             permanent,
@@ -4042,7 +4053,7 @@ mod cache_tests {
         let bear = game.spawn_on_battlefield(PlayerId(0), creature(2, 2));
         assert_eq!(game.power(bear), 2);
         let token = game.next_object_id();
-        game.apply(&Event::TokenCreated {
+        game.apply_recorded(&Event::TokenCreated {
             token,
             controller: PlayerId(0),
             def: intern_card_def(creature(1, 1)),
@@ -4060,7 +4071,7 @@ mod cache_tests {
         let mut game = Game::with_players(2, 0);
         let bear = game.spawn_on_battlefield(PlayerId(0), creature(2, 2));
         assert_eq!(game.power(bear), 2);
-        game.apply(&Event::CombatCleared);
+        game.apply_recorded(&Event::CombatCleared);
         assert!(
             game.characteristics_cache
                 .read(|cache| cache.power(bear).is_none()),

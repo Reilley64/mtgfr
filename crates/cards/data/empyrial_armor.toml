@@ -1,7 +1,6 @@
 # Enchant creature
 # Enchanted creature gets +1/+1 for each card in your hand.
 name = "Empyrial Armor"
-sets = ["pal01", "plst", "prm", "td0", "vma", "wc98", "wth"]
 otags = ["maro"]
 subtypes = ["Aura"]
 id = "ec9e8611-e785-4d5d-b6e1-bf63daf408df"
@@ -17,6 +16,7 @@ type = "aura"
 
 # Enchanted creature gets +1/+1 for each card in your hand.
 [[abilities]]
+oracle = "Enchanted creature gets +1/+1 for each card in your hand."
 timing = "static"
 
 # Enchanted creature gets +1/+1 for each card in your hand.

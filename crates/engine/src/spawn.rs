@@ -213,7 +213,7 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{num::NonZeroU64, sync::Arc};
 
     use crate::*;
 
@@ -418,7 +418,7 @@ mod tests {
         };
         let mut game = Game::new();
         let permanent = game.spawn_on_battlefield(P0, front);
-        game.apply(&Event::Flipped { object: permanent });
+        game.apply_recorded(&Event::Flipped { object: permanent });
 
         let before = interned_len();
         let first = game.def_id_of(permanent);
@@ -453,7 +453,7 @@ mod tests {
         let front_id = game.def_id_of(source);
         let spell = game.next_object_id();
 
-        game.apply(&Event::AdventureSpellCast {
+        game.apply_recorded(&Event::AdventureSpellCast {
             spell,
             source,
             controller: P0,
@@ -462,7 +462,7 @@ mod tests {
         });
         let after_cast = interned_len();
         let exiled = game.next_object_id();
-        game.apply(&Event::ExiledOnAdventure {
+        game.apply_recorded(&Event::ExiledOnAdventure {
             card: exiled,
             from: spell,
             owner: P0,
@@ -502,7 +502,7 @@ mod tests {
             "interning a split card should also intern both castable halves"
         );
 
-        game.apply(&Event::SplitHalfSpellCast {
+        game.apply_recorded(&Event::SplitHalfSpellCast {
             spell,
             source,
             half: 0,
@@ -512,7 +512,7 @@ mod tests {
         });
         let after_cast = interned_len();
         let graveyard_card = game.next_object_id();
-        game.apply(&Event::MovedToGraveyard {
+        game.apply_recorded(&Event::MovedToGraveyard {
             card: graveyard_card,
             from: spell,
         });
@@ -526,5 +526,282 @@ mod tests {
             after_cast,
             "restoring the fused split card off the stack must not reintern it"
         );
+    }
+
+    fn push_test_ability(game: &mut Game, source: ObjectId) {
+        game.apply_recorded(&Event::TriggeredAbilityOnStack {
+            controller: P0,
+            source,
+            effect: Effect::Sequence {
+                steps: Arc::from([]),
+            },
+            target: None,
+            targets_second: TargetList::default(),
+            x: 0,
+            spent_mana: [0; 6],
+            activated: true,
+        });
+    }
+
+    #[test]
+    fn public_stack_view_carries_stable_entry_identity() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(P0, vanilla_creature("Source", ""));
+        push_test_ability(&mut game, source);
+
+        let entry = &game.stack()[0];
+        assert_eq!(entry.entry_id, game.stack[0].entry_id);
+        assert!(matches!(
+            &entry.kind,
+            StackEntryKind::Ability {
+                source: ability_source,
+                ..
+            } if *ability_source == source
+        ));
+    }
+
+    #[test]
+    fn stack_entry_id_distinguishes_abilities_from_the_same_source() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(P0, vanilla_creature("Source", ""));
+
+        push_test_ability(&mut game, source);
+        push_test_ability(&mut game, source);
+
+        assert_ne!(game.stack[0].entry_id, game.stack[1].entry_id);
+        assert_ne!(game.stack[0].entry_id.0, 0);
+        assert_ne!(game.stack[1].entry_id.0, 0);
+    }
+
+    #[test]
+    fn stack_entry_id_for_a_copied_spell_is_fresh() {
+        let mut game = Game::new();
+        let original = game.spawn_in_hand(P0, spell("Original"));
+        let first_copy = game.next_object_id();
+        game.apply_recorded(&Event::SpellCopied {
+            copy: first_copy,
+            original,
+            controller: P0,
+            set_color: None,
+        });
+        let second_copy = game.next_object_id();
+        game.apply_recorded(&Event::SpellCopied {
+            copy: second_copy,
+            original,
+            controller: P0,
+            set_color: None,
+        });
+
+        assert_ne!(game.stack[0].entry_id, game.stack[1].entry_id);
+    }
+
+    #[test]
+    fn stack_entry_id_of_lower_entry_survives_top_resolution() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(P0, vanilla_creature("Source", ""));
+        push_test_ability(&mut game, source);
+        let lower_id = game.stack[0].entry_id;
+        push_test_ability(&mut game, source);
+
+        game.apply_recorded(&Event::AbilityResolved { source });
+
+        assert_eq!(game.stack.len(), 1);
+        assert_eq!(game.stack[0].entry_id, lower_id);
+    }
+
+    #[test]
+    fn stack_entry_id_keeps_source_keyed_countering_topmost() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(P0, vanilla_creature("Source", ""));
+        push_test_ability(&mut game, source);
+        let lower_id = game.stack[0].entry_id;
+        push_test_ability(&mut game, source);
+        let upper_id = game.stack[1].entry_id;
+
+        game.apply_recorded(&Event::AbilityCountered { source });
+
+        assert_eq!(game.stack.len(), 1);
+        assert_eq!(game.stack[0].entry_id, lower_id);
+        assert_ne!(game.stack[0].entry_id, upper_id);
+    }
+
+    #[test]
+    fn stack_entry_id_allocator_issues_max_once_before_exhaustion() {
+        let mut game = Game::new();
+        game.next_stack_entry_id = Some(NonZeroU64::new(u64::MAX).unwrap());
+
+        assert_eq!(game.allocate_stack_entry_id(), Ok(StackEntryId(u64::MAX)));
+        assert_eq!(game.next_stack_entry_id, None);
+        assert_eq!(game.allocate_stack_entry_id(), Err(StackEntryIdExhausted));
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn exhausted_stack_identity_rejects_an_ordinary_cast_without_partial_state() {
+        let mut game = Game::new();
+        let final_card = game.spawn_in_hand(P0, spell("Final identity"));
+        let rejected_card = game.spawn_in_hand(
+            P0,
+            CardDef {
+                kind: CardKind::Spell {
+                    speed: SpellSpeed::Instant,
+                },
+                ..vanilla_creature("Rejected cast", "")
+            },
+        );
+        game.next_stack_entry_id = Some(NonZeroU64::new(u64::MAX).unwrap());
+
+        let final_events = game
+            .submit(Intent::Cast {
+                player: P0,
+                object: final_card,
+                target: None,
+                x: 0,
+                modes: vec![],
+                discard_cost: vec![],
+                graveyard_exile: vec![],
+                sacrifice_cost: vec![],
+                kicked: false,
+                bought_back: false,
+                evoked: false,
+                strive_count: 0,
+                replicate_count: 0,
+                multikicker_count: 0,
+                alternative_cost: false,
+            })
+            .expect("the final nonzero identity remains available");
+        assert!(
+            final_events
+                .iter()
+                .any(|event| matches!(event, Event::SpellCast { .. }))
+        );
+        assert_eq!(game.stack[0].entry_id, StackEntryId(u64::MAX));
+        assert_eq!(game.next_stack_entry_id, None);
+        game.priority = P0;
+
+        let before = crate::debug::inspect(&game);
+        let pending_before = crate::debug::inspect_pending_orchestration(&game);
+        let actions_before = game.actions.clone();
+        let result = game.submit(Intent::Cast {
+            player: P0,
+            object: rejected_card,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            multikicker_count: 0,
+            alternative_cost: false,
+        });
+
+        assert_eq!(result, Err(Reject::StackEntryIdExhausted));
+        assert_eq!(crate::debug::inspect(&game), before);
+        assert_eq!(
+            crate::debug::inspect_pending_orchestration(&game),
+            pending_before
+        );
+        assert_eq!(game.actions, actions_before);
+    }
+
+    #[cfg(debug_assertions)]
+    fn test_ability_event(source: ObjectId) -> Event {
+        Event::TriggeredAbilityOnStack {
+            controller: P0,
+            source,
+            effect: Effect::Sequence {
+                steps: Arc::from([]),
+            },
+            target: None,
+            targets_second: TargetList::default(),
+            x: 0,
+            spent_mana: [0; 6],
+            activated: true,
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn direct_ability_replay_uses_max_then_fails_atomically() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(P0, vanilla_creature("Source", ""));
+        game.next_stack_entry_id = Some(NonZeroU64::new(u64::MAX).unwrap());
+
+        game.apply(&test_ability_event(source))
+            .expect("max remains a valid nonzero identity");
+        assert_eq!(game.stack[0].entry_id, StackEntryId(u64::MAX));
+
+        let before = crate::debug::inspect(&game);
+        let allocator_before = game.next_stack_entry_id;
+        let error_before = game.stack_entry_id_error;
+        assert_eq!(
+            game.apply(&test_ability_event(source)),
+            Err(StackEntryIdExhausted)
+        );
+        assert_eq!(crate::debug::inspect(&game), before);
+        assert_eq!(game.next_stack_entry_id, allocator_before);
+        assert_eq!(game.stack_entry_id_error, error_before);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn replay_batch_is_atomic_when_it_needs_more_identities_than_remain() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(P0, vanilla_creature("Source", ""));
+        game.next_stack_entry_id = Some(NonZeroU64::new(u64::MAX).unwrap());
+        let mut events = vec![test_ability_event(source), test_ability_event(source)];
+        let requested = events.clone();
+        let before = crate::debug::inspect(&game);
+        let allocator_before = game.next_stack_entry_id;
+        let error_before = game.stack_entry_id_error;
+
+        assert_eq!(game.apply_all(&mut events), Err(StackEntryIdExhausted));
+        assert_eq!(crate::debug::inspect(&game), before);
+        assert_eq!(game.next_stack_entry_id, allocator_before);
+        assert_eq!(game.stack_entry_id_error, error_before);
+        assert_eq!(events, requested);
+    }
+
+    #[test]
+    fn stack_entry_id_clone_preserves_entries_and_allocator_checkpoint() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(P0, vanilla_creature("Source", ""));
+        push_test_ability(&mut game, source);
+        let mut checkpoint = game.clone();
+
+        assert_eq!(checkpoint.stack[0].entry_id, game.stack[0].entry_id);
+        push_test_ability(&mut game, source);
+        push_test_ability(&mut checkpoint, source);
+        assert_eq!(checkpoint.stack[1].entry_id, game.stack[1].entry_id);
+    }
+
+    #[test]
+    fn stack_entry_id_is_not_reused_after_countering() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(P0, vanilla_creature("Source", ""));
+        push_test_ability(&mut game, source);
+        let removed_id = game.stack[0].entry_id;
+        game.apply_recorded(&Event::AbilityCountered { source });
+        push_test_ability(&mut game, source);
+
+        assert_ne!(game.stack[0].entry_id, removed_id);
+        assert!(game.stack[0].entry_id.0 > removed_id.0);
+    }
+
+    #[test]
+    fn stack_entry_id_projection_does_not_advance_allocator() {
+        let mut game = Game::new();
+        let source = game.spawn_on_battlefield(P0, vanilla_creature("Source", ""));
+        push_test_ability(&mut game, source);
+        let next_id = game.next_stack_entry_id;
+
+        let _ = game.stack();
+
+        assert_eq!(game.next_stack_entry_id, next_id);
     }
 }

@@ -1,7 +1,6 @@
 # When this creature enters, reveal the top card of your library. If it's a land card, put it
 # onto the battlefield. Otherwise, put that card into your hand.
 name = "Coiling Oracle"
-sets = ["2x2", "blc", "c15", "c16", "c21", "cmr", "cn2", "ddo", "dis", "dmc", "gk2", "mm3", "pal06", "plst", "prm", "rvr", "td0"]
 otags = ["cantrip", "cycle-cn2-draft-signpost", "cycle-rvr-c-two-color", "hand-neutral", "land-ramp", "multiple-species-types", "triggered-ability", "unique-type-line", "virtual-vanilla", "land-or-hand"]
 subtypes = ["Snake", "Elf", "Druid"]
 id = "69fd4ddf-9ed8-4c56-bef3-9944daf05e4f"
@@ -20,6 +19,7 @@ toughness = 1
 # When this creature enters, reveal the top card of your library. If it's a land card, put it
 # onto the battlefield. Otherwise, put that card into your hand.
 [[abilities]]
+oracle = "When this creature enters, reveal the top card of your library. If it's a land card, put it onto the battlefield. Otherwise, put that card into your hand."
 timing = "etb"
 
 # reveal the top card of your library. If it's a land card, put it onto the battlefield.

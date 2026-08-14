@@ -2,7 +2,6 @@
 # {T}: Add {G}.
 # {T}, Remove a charge counter from this land: Add one mana of any color.
 name = "Vivid Grove"
-sets = ["c13", "c15", "c17", "cma", "cmd", "cmr", "h09", "lrw", "mma", "ncc", "plst"]
 id = "b7a68899-c0d3-49e0-854b-19268ae9b89d"
 default_print = "12ccc686-bbaa-4c34-a7b8-a1e763fe0ad0"
 otags = ["activated-ability", "counters-matter", "charge-counter-land"]
@@ -14,6 +13,7 @@ type = "land"
 
 # This land enters tapped with two charge counters on it.
 [[abilities]]
+oracle = "This land enters tapped with two charge counters on it."
 timing = "static"
 
 # This land enters tapped with two charge counters on it.
@@ -25,6 +25,7 @@ kind = "charge"
 
 # {T}: Add {G}.
 [[abilities]]
+oracle = "{T}: Add {G}."
 timing = "activated"
 taps_self = true
 
@@ -36,6 +37,7 @@ mana = ["green"]
 
 # {T}, Remove a charge counter from this land: Add one mana of any color.
 [[abilities]]
+oracle = "{T}, Remove a charge counter from this land: Add one mana of any color."
 timing = "activated"
 taps_self = true
 remove_counters = 1

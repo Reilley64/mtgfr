@@ -1,7 +1,6 @@
 # Whenever an opponent casts a creature spell that doesn't share a color with a creature you control, counter that spell unless that player pays {X}, where X is its mana value.
 name = "Invoke Prejudice"
 otags = ["cast-trigger-other", "counterspell-automatic", "counterspell-creature", "counterspell-reusable", "counterspell-soft", "hate-color", "hate-color-non-share", "scales-with-mana-value"]
-sets = ["leg"]
 id = "854ad486-0c59-4c57-9a76-ab1dff0ff37c"
 default_print = "903d9fde-d7da-4a0e-a337-b63023c6d74b"
 oracle = "Whenever an opponent casts a creature spell that doesn't share a color with a creature you control, counter that spell unless that player pays {X}, where X is its mana value."
@@ -15,6 +14,7 @@ type = "enchantment"
 # Whenever an opponent casts a creature spell that doesn't share a color with a creature you
 # control, counter that spell unless that player pays {X}, where X is its mana value.
 [[abilities]]
+oracle = "Whenever an opponent casts a creature spell that doesn't share a color with a creature you control, counter that spell unless that player pays {X}, where X is its mana value."
 timing = "cast_spell"
 caster = "opponent"
 spell_filter = "creature_not_sharing_color_with_creature_you_control"

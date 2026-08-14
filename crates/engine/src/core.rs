@@ -43,6 +43,8 @@ impl Game {
             ],
             objects: Vec::new(),
             stack: Vec::new(),
+            next_stack_entry_id: std::num::NonZeroU64::new(1),
+            stack_entry_id_error: None,
             // The raw constructor hands back a game already parked in the active player's first
             // main phase — the ready-to-play state direct-API tests build boards against. It does
             // NOT run turn 1's beginning steps: at construction every zone is empty, so there are
@@ -171,6 +173,47 @@ impl Game {
         self.priority
     }
 
+    /// Allocate the next stable stack-entry identity without wrapping.
+    pub(crate) fn allocate_stack_entry_id(
+        &mut self,
+    ) -> Result<StackEntryId, StackEntryIdExhausted> {
+        let Some(current) = self.next_stack_entry_id else {
+            return Err(StackEntryIdExhausted);
+        };
+        let entry_id = StackEntryId(current.get());
+        self.next_stack_entry_id = current
+            .get()
+            .checked_add(1)
+            .and_then(std::num::NonZeroU64::new);
+        Ok(entry_id)
+    }
+
+    #[cfg(all(test, debug_assertions))]
+    pub(crate) fn push_stack_item(
+        &mut self,
+        render_source: StackRenderSource,
+        payload: StackPayload,
+    ) -> Result<StackEntryId, StackEntryIdExhausted> {
+        let entry_id = self.allocate_stack_entry_id()?;
+        self.push_stack_item_with_id(entry_id, render_source, payload);
+        Ok(entry_id)
+    }
+
+    /// The single insertion choke for ordinary spell, ability, trigger, and copy entries.
+    /// The caller reserves `entry_id` before mutating any other fact for the insertion event.
+    pub(crate) fn push_stack_item_with_id(
+        &mut self,
+        entry_id: StackEntryId,
+        render_source: StackRenderSource,
+        payload: StackPayload,
+    ) {
+        self.stack.push(StackItem {
+            entry_id,
+            render_source,
+            payload,
+        });
+    }
+
     /// Whether the stack is empty — cheaper than [`Game::stack`] (which builds a render view)
     /// for callers that only need the emptiness fact (the server's yield scoping).
     pub fn stack_is_empty(&self) -> bool {
@@ -183,26 +226,51 @@ impl Game {
     pub fn stack(&self) -> Vec<StackEntry> {
         self.stack
             .iter()
-            .map(|item| match item {
-                StackItem::Spell(id) => StackEntry::Spell(*id),
+            .map(|item| match (&item.render_source, &item.payload) {
+                (StackRenderSource::Object(source), StackPayload::Spell(id)) => {
+                    debug_assert_eq!(source, id);
+                    StackEntry {
+                        entry_id: item.entry_id,
+                        kind: StackEntryKind::Spell(*id),
+                    }
+                }
                 // `x` (the ability's chosen `{X}`) and `targets_second` (a second target clause's
                 // chosen targets) are internal resolution state, not rendered on the stack view, so
                 // they're dropped from the public `StackEntry` (which shows the primary target).
-                StackItem::Ability {
-                    controller,
-                    source,
-                    effect,
-                    target,
-                    targets_second: _,
-                    x: _,
-                    spent_mana: _,
-                    activated: _,
-                } => StackEntry::Ability {
-                    controller: *controller,
-                    source: *source,
-                    effect: effect.clone(),
-                    target: *target,
+                (
+                    StackRenderSource::Object(render_source),
+                    StackPayload::Ability {
+                        controller,
+                        source,
+                        effect,
+                        target,
+                        targets_second: _,
+                        x: _,
+                        spent_mana: _,
+                        activated: _,
+                    },
+                ) => {
+                    debug_assert_eq!(render_source, source);
+                    StackEntry {
+                        entry_id: item.entry_id,
+                        kind: StackEntryKind::Ability {
+                            controller: *controller,
+                            source: *source,
+                            effect: effect.clone(),
+                            target: *target,
+                        },
+                    }
+                }
+                (StackRenderSource::InlinePublic(render), StackPayload::DebugNoOp) => StackEntry {
+                    entry_id: item.entry_id,
+                    kind: StackEntryKind::DebugNoOp {
+                        controller: render.controller,
+                        public: render.public.clone(),
+                    },
                 },
+                _ => unreachable!(
+                    "structural validation rejects mismatched stack render/payload pairs"
+                ),
             })
             .collect()
     }
@@ -235,7 +303,7 @@ impl Game {
         if count == 0 {
             return;
         }
-        self.apply(&Event::PlayerCountersPlaced {
+        self.apply_recorded(&Event::PlayerCountersPlaced {
             player,
             kind,
             count,
@@ -246,7 +314,7 @@ impl Game {
     /// event, exactly as [`Game::place_player_counters`]) — the setup a test needs to reach an
     /// ultimate a card has no plus ability to climb to.
     pub fn add_loyalty(&mut self, object: ObjectId, amount: i32) {
-        self.apply(&Event::LoyaltyChanged { object, amount });
+        self.apply_recorded(&Event::LoyaltyChanged { object, amount });
     }
 
     /// Whether a player has lost the game.
@@ -281,20 +349,19 @@ impl Game {
     /// Test/setup helper: deal `amount` commander damage to `player` from `source` (routed through
     /// an event so state stays mutated only by [`Game::apply`], exactly as [`Game::set_life`] does).
     pub fn deal_commander_damage(&mut self, source: ObjectId, player: PlayerId, amount: i32) {
-        self.apply(&Event::CommanderDamageDealt {
+        self.apply_recorded(&Event::CommanderDamageDealt {
             source,
             player,
             amount,
         });
     }
 
-    /// Test/setup helper: set a player's life to `value` (routed through an event
-    /// so state stays mutated only by [`Game::apply`]).
+    /// Test/setup helper: set a player's life to `value` through one logical event, even when the
+    /// delta spans the full stored range. This preserves gain/loss trigger and turn-tally cardinality.
     pub fn set_life(&mut self, player: PlayerId, value: i32) {
-        let delta = value - self.life(player);
-        self.apply(&Event::LifeChanged {
+        self.apply_recorded(&Event::LifeChanged {
             player,
-            amount: delta,
+            amount: i64::from(value) - i64::from(self.life(player)),
             source: None,
         });
     }
@@ -468,7 +535,17 @@ impl Game {
     pub fn front_def_of(&self, id: ObjectId) -> CardDef {
         match &self.objects[id as usize] {
             Object::Card(c) => card_def(c.def).as_ref().clone(),
-            Object::Spell(s) => card_def(s.def).as_ref().clone(),
+            Object::Spell(s) => self
+                .play_permissions
+                .prepared_spell_fronts
+                .iter()
+                .chain(self.play_permissions.adventure_fronts.iter())
+                .chain(self.play_permissions.split_halves_on_stack.iter())
+                .find_map(|(spell, front)| (*spell == id).then_some(*front))
+                .map(card_def)
+                .unwrap_or_else(|| card_def(s.def))
+                .as_ref()
+                .clone(),
             Object::Permanent(p) => card_def(p.def).as_ref().clone(),
             Object::Moved { to } => self.front_def_of(*to),
             Object::Removed { def, .. } => card_def(*def).as_ref().clone(),
@@ -608,8 +685,8 @@ impl Game {
             .counter_batches
             .iter()
             .filter(|&&(o, _, _)| o == id)
-            .map(|&(_, c, _)| c)
-            .sum()
+            .fold(0_i64, |total, &(_, count, _)| total + i64::from(count))
+            .clamp(0, i64::from(i32::MAX)) as i32
     }
 
     /// Whether any inspect-ledger provenance batches remain for `object` (cleared when it leaves
@@ -749,7 +826,10 @@ impl Game {
             .iter()
             .map(|&kind| self.counters_of_kind(id, kind) as u32)
             .sum();
-        self.plus_counters(id).max(0) as u32 + named + self.finality_counter(id) as u32
+        (u64::from(self.plus_counters(id).max(0) as u32)
+            + u64::from(named)
+            + u64::from(self.finality_counter(id) as u32))
+        .min(u64::from(u32::MAX)) as u32
     }
 
     /// Whether the permanent at `id` is "prepared" (soc/sos prepare DFCs — its controller may
@@ -777,6 +857,17 @@ impl Game {
     /// `id` isn't a permanent. Read by the characteristics overrides and the wire redaction layer.
     pub fn is_face_down(&self, id: ObjectId) -> bool {
         self.as_permanent(id).is_some_and(|p| p.face_down)
+    }
+
+    /// Whether the spell at `id` was cast face down (CR 702.37b). Kept separate from
+    /// [`Self::is_face_down`] because permanent characteristic layers must not inspect a spell,
+    /// while wire projection must redact both objects.
+    pub fn is_spell_face_down(&self, id: ObjectId) -> bool {
+        match &self.objects[id as usize] {
+            Object::Spell(spell) => spell.face_down,
+            Object::Moved { to } => self.is_spell_face_down(*to),
+            _ => false,
+        }
     }
 
     /// Whether the card at `id` sits face down in a hidden/graveyard/exile/command zone (CR

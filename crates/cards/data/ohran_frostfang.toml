@@ -1,7 +1,6 @@
 # Attacking creatures you control have deathtouch.
 # Whenever a creature you control deals combat damage to a player, draw a card.
 name = "Ohran Frostfang"
-sets = ["c19", "cmm", "mkc", "otc", "plst", "sld", "soc"]
 id = "b99ada26-9a61-4175-9fb8-15a106960220"
 default_print = "55fb93e6-d057-4b70-ad12-e98291fd4a2c"
 otags = ["attacking-matters", "curiosity", "draw-engine", "gives-deathtouch", "keyword-anthem", "repeatable-pure-draw", "triggered-ability"]
@@ -20,6 +19,7 @@ toughness = 6
 
 # Attacking creatures you control have deathtouch.
 [[abilities]]
+oracle = "Attacking creatures you control have deathtouch."
 timing = "static"
 
 # Attacking creatures you control have deathtouch.
@@ -31,6 +31,7 @@ attacking_only = true
 
 # Whenever a creature you control deals combat damage to a player, draw a card.
 [[abilities]]
+oracle = "Whenever a creature you control deals combat damage to a player, draw a card."
 timing = "deals_combat_damage_to_player"
 who = "your_creatures"
 

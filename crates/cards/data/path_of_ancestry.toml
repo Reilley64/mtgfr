@@ -3,7 +3,6 @@
 # that shares a creature type with your commander, scry 1. (Look at the top card of your library. You may put that card
 # on the bottom.)
 name = "Path of Ancestry"
-sets = ["40k", "afc", "blc", "brc", "c17", "c20", "clb", "cmm", "cmr", "drc", "ecc", "fic", "khc", "lcc", "ltc", "m3c", "mic", "mkc", "moc", "msc", "ncc", "onc", "otc", "p30a", "pip", "plg21", "plst", "prm", "pz2", "scd", "sld", "soc", "tdc", "tmc", "voc", "who", "woc"]
 id = "b473e293-59e3-4e04-acf2-622604aeb25f"
 default_print = "836b8f52-10d2-4716-9f7b-38fb23bc68de"
 otags = ["activated-ability", "buff-mana", "cast-trigger-you", "commander-identity-matters", "delayed-trigger", "rainbow-land", "scry", "synergy-color-share", "synergy-commander", "tapland-with-set-s-mechanic", "typal-share", "utility-land"]
@@ -15,6 +14,7 @@ type = "land"
 
 # {T}: Add one mana of any color in your commander's color identity.
 [[abilities]]
+oracle = "{T}: Add one mana of any color in your commander's color identity."
 timing = "activated"
 taps_self = true
 
@@ -28,6 +28,7 @@ track_provenance = true
 # When that mana is spent to cast a creature spell that shares a creature type with your
 # commander, scry 1. (Look at the top card of your library. You may put that card on the bottom.)
 [[abilities]]
+oracle = "When that mana is spent to cast a creature spell that shares a creature type with your commander, scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
 timing = "spend_mana_to_cast"
 spend_predicate = "creature_sharing_type_with_commander"
 

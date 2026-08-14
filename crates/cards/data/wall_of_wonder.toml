@@ -2,7 +2,6 @@
 # {2}{U}{U}: This creature gets +4/-4 until end of turn and can attack this turn as though it didn't have defender.
 name = "Wall of Wonder"
 otags = ["activated-ability", "pump-self", "removes-defender-self", "turns-off-defender-self", "typal-wall"]
-sets = ["7ed", "bchr", "chr", "leg"]
 id = "10889b44-d031-413c-a8c4-d6c13c400e01"
 default_print = "bcd9af40-b46c-44b4-878e-8eb026c96b51"
 oracle = "Defender (This creature can't attack.)\n{2}{U}{U}: This creature gets +4/-4 until end of turn and can attack this turn as though it didn't have defender."
@@ -21,6 +20,7 @@ toughness = 5
 # {2}{U}{U}: This creature gets +4/-4 until end of turn and can attack this turn as though it didn't
 # have defender.
 [[abilities]]
+oracle = "{2}{U}{U}: This creature gets +4/-4 until end of turn and can attack this turn as though it didn't have defender."
 timing = "activated"
 activation_cost = { generic = 2, blue = 2 }
 

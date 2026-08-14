@@ -4,7 +4,6 @@
 # combat except by creatures with flying and creatures in a pile with the chosen label.
 name = "Raging River"
 otags = ["alliteration", "attack-trigger", "divides-battlefield", "gives-evasion", "minigame", "notorious-templating", "pile", "prevent-mass-blockers", "rules-nightmare", "unique-evasion"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb"]
 id = "a2310312-6e1e-4e34-a351-9aef499a810f"
 default_print = "7ee63877-056e-413d-932a-a393a4183686"
 oracle = "Whenever one or more creatures you control attack, each defending player divides all creatures without flying they control into a \"left\" pile and a \"right\" pile. Then, for each attacking creature you control, choose \"left\" or \"right.\" That creature can't be blocked this combat except by creatures with flying and creatures in a pile with the chosen label."
@@ -20,6 +19,7 @@ type = "enchantment"
 # attacking creature you control, choose "left" or "right." That creature can't be blocked this
 # combat except by creatures with flying and creatures in a pile with the chosen label.
 [[abilities]]
+oracle = "Whenever one or more creatures you control attack, each defending player divides all creatures without flying they control into a \"left\" pile and a \"right\" pile. Then, for each attacking creature you control, choose \"left\" or \"right.\" That creature can't be blocked this combat except by creatures with flying and creatures in a pile with the chosen label."
 timing = "you_attack_with_creatures"
 at_least = 1
 

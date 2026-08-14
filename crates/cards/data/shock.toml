@@ -1,6 +1,5 @@
 # Shock deals 2 damage to any target.
 name = "Shock"
-sets = ["10e", "6ed", "7ed", "8ed", "9ed", "aer", "anb", "bbd", "btd", "ddn", "dpa", "fnm", "j25", "m12", "m14", "m19", "m20", "m21", "mar", "mkm", "msc", "om1", "omb", "ons", "plst", "pmei", "prm", "ps11", "psal", "spm", "sta", "sth", "wc98", "wc99"]
 id = "a9d288b8-cdc1-4e55-a0c9-d6edfc95e65d"
 default_print = "b23900fb-efe9-43ab-9f67-4545dd01fb9c"
 otags = ["burn-any", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
@@ -14,6 +13,7 @@ type = "instant"
 
 # Shock deals 2 damage to any target.
 [[abilities]]
+oracle = "Shock deals 2 damage to any target."
 timing = "spell"
 
 # Shock deals 2 damage to any target.

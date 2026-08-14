@@ -4,7 +4,6 @@
 # you control, and all other Auras attached to attacking creatures your opponents control.
 name = "Remove Enchantments"
 otags = ["hate-enchantment", "mass-removal", "sweeper-enchantment"]
-sets = ["leg"]
 id = "fa879d99-3d2b-4a9a-a17f-d5ac109f8f44"
 default_print = "bf2e3a8a-b386-474d-b8e9-4c2d56a2b742"
 oracle = "Return to your hand all enchantments you both own and control, all Auras you own attached to permanents you control, and all Auras you own attached to attacking creatures your opponents control. Then destroy all other enchantments you control, all other Auras attached to permanents you control, and all other Auras attached to attacking creatures your opponents control."
@@ -20,6 +19,7 @@ type = "instant"
 # control. Then destroy all other enchantments you control, all other Auras attached to permanents
 # you control, and all other Auras attached to attacking creatures your opponents control.
 [[abilities]]
+oracle = "Return to your hand all enchantments you both own and control, all Auras you own attached to permanents you control, and all Auras you own attached to attacking creatures your opponents control. Then destroy all other enchantments you control, all other Auras attached to permanents you control, and all other Auras attached to attacking creatures your opponents control."
 timing = "spell"
 
 # The card names one set of enchantments three ways and then splits it: the ones you own go back to

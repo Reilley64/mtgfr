@@ -3,7 +3,6 @@
 # {4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)
 # Lorehold Campus: Campus lands enter tapped and have a {4},{T}: scry 1 activated ability.
 name = "Lorehold Campus"
-sets = ["soc", "stx"]
 id = "45773715-3f46-4671-b633-bf087e892e26"
 default_print = "b6ad08da-c9e8-4061-a4a6-032d6957a403"
 otags = ["activated-ability", "cycle-stx-campus", "mana-sink", "scry", "utility-land"]
@@ -17,6 +16,7 @@ produces = ["red", "white"]
 
 # {4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)
 [[abilities]]
+oracle = "{4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
 timing = "activated"
 taps_self = true
 

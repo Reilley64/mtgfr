@@ -12,7 +12,7 @@ When a live drive fails mysteriously, use **`systematic-debugging`** before patc
 ## Handles
 
 - **Dev loop is usually already running**: `just dev` = `bacon server` (auto-rebuilds+restarts `target/debug/server serve` — health on :8080, gRPC on :50051 — on source change) + vite on :5173. Check `lsof -nP -i :8080` — if `server`'s parent is `bacon server`, the running binary already has your changes (bacon restarted it after your last build). Don't start a second server; listen addrs come from `Settings` (`config/mtgfr.toml` / env).
-- Cold start: `DATABASE_URL="sqlite::memory:" cargo run -p server` + `cd client && bun run dev`. If
+- Cold start: `DATABASE_URL="sqlite::memory:" cargo run -p server --bin server` + `cd client && bun run dev`. If
   the build has no sqlite feature (`unsupported feature: sqlite feature not enabled`), give the
   smoke run its own two Postgres DBs instead of touching the dev ones: `createdb mtgfr_smoke_api` +
   `server migration apply`, and `createdb mtgfr_smoke` + `WEB_DATABASE_URL=… just client-migrate`

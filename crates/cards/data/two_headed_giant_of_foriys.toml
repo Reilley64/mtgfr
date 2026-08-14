@@ -2,7 +2,6 @@
 # This creature can block an additional creature each combat.
 name = "Two-Headed Giant of Foriys"
 otags = ["block-additional", "synergy-blocker-self"]
-sets = ["2ed", "30a", "ced", "cei", "lea", "leb", "me4", "prm"]
 id = "38aa31bd-7145-43b9-9409-463d9ad6cd69"
 default_print = "67299451-5302-4639-a4bc-6109521a2c0c"
 oracle = "Trample\nThis creature can block an additional creature each combat."
@@ -20,6 +19,7 @@ toughness = 4
 
 # This creature can block an additional creature each combat.
 [[abilities]]
+oracle = "This creature can block an additional creature each combat."
 timing = "static"
 
 # This creature can block an additional creature each combat.

@@ -1,7 +1,6 @@
 # Whenever a player casts an instant spell, counter it unless that player pays {X}, where X is its mana value.
 name = "In the Eye of Chaos"
 otags = ["cast-tax", "cast-trigger", "counterspell-automatic", "counterspell-instant", "counterspell-reusable", "counterspell-soft", "hate-high-mv", "hate-instant", "scales-with-mana-value", "symmetrical"]
-sets = ["leg", "me4"]
 id = "6a0da9f3-cb06-42b1-ae73-b142c0eedaff"
 default_print = "6964fc80-7f39-4ffd-80fd-17d9a75e8e84"
 oracle = "Whenever a player casts an instant spell, counter it unless that player pays {X}, where X is its mana value."
@@ -17,6 +16,7 @@ type = "enchantment"
 # Whenever a player casts an instant spell, counter it unless that player pays {X}, where X is its
 # mana value.
 [[abilities]]
+oracle = "Whenever a player casts an instant spell, counter it unless that player pays {X}, where X is its mana value."
 timing = "cast_spell"
 caster = "any_player"
 spell_filter = "instant"

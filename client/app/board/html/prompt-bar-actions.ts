@@ -93,7 +93,7 @@ function barButton(
       disabled,
       onClick,
       variant: primary ? "game" : "game-quiet",
-      class: primary ? priorityPrimaryClass(true) : null,
+      class: [primary ? priorityPrimaryClass(true) : null, "max-w-full whitespace-normal break-words"],
       attrs: pressed == null ? [] : [h.AriaPressed(pressed ? "true" : "false")],
     },
     [label],

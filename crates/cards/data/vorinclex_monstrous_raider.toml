@@ -8,7 +8,6 @@ otags = ["counter-doubler", "cycle-extraplanar-praetor", "division", "energy-inc
 id = "5a3fdf5a-bff8-4896-b288-3f43f9a72d9b"
 default_print = "92613468-205e-488b-930d-11908477e9f8"
 oracle = "Trample, haste\nIf you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead.\nIf an opponent would put one or more counters on a permanent or player, they put half that many of each of those kinds of counters on that permanent or player instead, rounded down."
-sets = ["khm"]
 legendary = true
 subtypes = ["Phyrexian", "Praetor"]
 keywords = ["trample", "haste"]
@@ -26,6 +25,7 @@ toughness = 6
 # If you would put one or more counters on a permanent or player, put twice that many of each of
 # those kinds of counters on that permanent or player instead.
 [[abilities]]
+oracle = "If you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead."
 timing = "static"
 
 # put twice that many of each of those kinds of counters on that permanent or player instead
@@ -40,6 +40,7 @@ recipients = "permanents_and_players"
 # If an opponent would put one or more counters on a permanent or player, they put half that many
 # of each of those kinds of counters on that permanent or player instead, rounded down.
 [[abilities]]
+oracle = "If an opponent would put one or more counters on a permanent or player, they put half that many of each of those kinds of counters on that permanent or player instead, rounded down."
 timing = "static"
 
 # they put half that many of each of those kinds of counters on that permanent or player instead,

@@ -1,7 +1,6 @@
 # {T}: This creature deals 1 damage to target attacking or blocking creature.
 name = "D'Avenant Archer"
 otags = ["activated-ability", "burn-creature", "hate-attacker", "hate-blocker", "pinger", "repeatable-crime", "repeatable-removal", "spot-removal", "type-addition-human"]
-sets = ["5ed", "6ed", "bchr", "chr", "leg", "me3"]
 id = "81bc4a5e-812f-4809-b6df-271c3c22f4fc"
 default_print = "dfc44b22-c46c-4b7e-91ff-3eff416bb357"
 oracle = "{T}: This creature deals 1 damage to target attacking or blocking creature."
@@ -18,6 +17,7 @@ toughness = 2
 
 # {T}: This creature deals 1 damage to target attacking or blocking creature.
 [[abilities]]
+oracle = "{T}: This creature deals 1 damage to target attacking or blocking creature."
 timing = "activated"
 taps_self = true
 

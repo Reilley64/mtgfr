@@ -63,7 +63,7 @@ function gameFold(over: Partial<VisibleState> = {}): GameFoldState {
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
   };
@@ -75,6 +75,8 @@ function creature(id: number, controller: number): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { colored: [0, 0, 0, 0, 0], generic: 2 },
     marked_damage: 0,
@@ -88,6 +90,18 @@ function creature(id: number, controller: number): ObjectView {
     toughness: 2,
     zone: 2, // battlefield
   };
+}
+
+function fourPlayers(): VisibleState["players"] {
+  const base = state().players[0];
+  return [0, 1, 2, 3].map((player) => ({ ...base, player }));
+}
+
+function crowdedCreatures(count: number): ObjectView[] {
+  return Array.from({ length: count }, (_, index) => ({
+    ...creature(index + 1, 0),
+    name: `Unique Bear ${index}`,
+  }));
 }
 
 /** A combat declaration as the engine projects it: `declare_for` names the seats it covers. */
@@ -355,6 +369,35 @@ test("syncBoardWithGame keeps a user-panned camera across game syncs", () => {
   // A later delta / action must not re-fit and wipe the pan.
   const afterAction = syncBoardWithGame(moved, { ...fold, seq: fold.seq + 1 });
   expect(afterAction.camera).toEqual(moved.camera);
+});
+
+test("syncBoardWithGame refits automatic camera when battlefield overflow appears and clears", () => {
+  const normalFold = gameFold({ players: fourPlayers() });
+  const normal = syncBoardWithGame(initialBoardModel(), normalFold);
+  const normalKey = normal.cameraFitBoundsKey;
+
+  const overflowFold = gameFold({ players: fourPlayers(), objects: crowdedCreatures(59) });
+  const expanded = syncBoardWithGame(normal, { ...overflowFold, seq: normalFold.seq + 1 });
+
+  expect(expanded.cameraFitBoundsKey).not.toBe(normalKey);
+  expect(expanded.camera.zoom).toBeLessThan(normal.camera.zoom);
+  expect(expanded.cameraFitBounds?.maxX).toBeGreaterThan(normal.cameraFitBounds?.maxX ?? Infinity);
+
+  const cleared = syncBoardWithGame(expanded, { ...normalFold, seq: overflowFold.seq + 2 });
+  expect(cleared.cameraFitBoundsKey).toBe(normalKey);
+  expect(cleared.camera.zoom).toBeGreaterThan(expanded.camera.zoom);
+});
+
+test("syncBoardWithGame leaves a user-owned camera unchanged when battlefield overflow changes", () => {
+  const fold = gameFold({ players: fourPlayers() });
+  const fitted = syncBoardWithGame(initialBoardModel(), fold);
+  const [zoomed] = updateBoard(fitted, BoardCameraZoomed({ x: 720, y: 420, factor: 1.25 }), fold, null);
+  const overflowFold = gameFold({ players: fourPlayers(), objects: crowdedCreatures(59) });
+
+  const afterSync = syncBoardWithGame(zoomed, { ...overflowFold, seq: fold.seq + 1 });
+
+  expect(afterSync.camera).toEqual(zoomed.camera);
+  expect(afterSync.cameraFitBoundsKey).toBe(zoomed.cameraFitBoundsKey);
 });
 
 test("wheel or pinch zoom marks the camera user-moved and blocks later refit", () => {

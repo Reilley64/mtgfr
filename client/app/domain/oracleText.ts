@@ -129,6 +129,24 @@ function reminderSpans(text: string): Array<{ text: string; reminder: boolean }>
   return spans.length > 0 ? spans : [{ text, reminder: false }];
 }
 
+/**
+ * Flavor text marks emphasis with `*…*` — a quoted book title, a word leaned on. Print sets those
+ * words roman against the italic flavor, so the asterisks are markup and never ink. An unpaired `*`
+ * stays literal.
+ */
+export function emphasisSpans(text: string): Array<{ text: string; emphasis: boolean }> {
+  const spans: Array<{ text: string; emphasis: boolean }> = [];
+  let last = 0;
+  for (const match of text.matchAll(/\*([^*]+)\*/g)) {
+    const start = match.index ?? 0;
+    if (start > last) spans.push({ text: text.slice(last, start), emphasis: false });
+    spans.push({ text: match[1] ?? "", emphasis: true });
+    last = start + match[0].length;
+  }
+  if (last < text.length) spans.push({ text: text.slice(last), emphasis: false });
+  return spans;
+}
+
 /** Split one span on `{…}` mana/tap symbols; unknown braces stay in text runs. */
 function splitManaSymbols(text: string, reminder: boolean): OraclePart[] {
   const parts: OraclePart[] = [];

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { cardTextKey } from "~/cardText";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
-import { CARD_W, ZONE } from "./geometry/layout";
-import { STACK_CARD_W, stackFaceScreenOrigin, stackPeekFor, stackPresentation } from "./geometry/stackLayout";
+import { handMetrics } from "./geometry/handMetrics";
+import { FLIGHT_CARD_W, ZONE } from "./geometry/layout";
+import { stackExpandedLayout, stackFaceScreenOrigin, stackPresentation } from "./geometry/stackLayout";
 import { FlightsSynced, HandActionActivated, KeyboardEscape } from "./messages";
 import { handFlightScale, spawnFlight, stackFlightScale, stepFlights } from "./motion/flights";
 import { BOARD_VIEWPORT, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
@@ -53,7 +55,7 @@ function gameFold(visible: VisibleState, provenance: Partial<GameFoldState["prov
       landPlayFrom: new Map(),
       zonePileEntrances: new Map(),
       stackEntrances: new Map(),
-      priorStackObjectIds: new Set(),
+      priorStackEntryIds: new Set(),
       ...provenance,
     },
     tableFeel: { land: false, stack: false, resolve: false, damage: false, destroy: false, exile: false },
@@ -66,6 +68,8 @@ function spell(id: number, name: string): ObjectView {
     has_haste: false,
     id,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "instant" },
     mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
     marked_damage: 0,
@@ -91,28 +95,43 @@ function restingStackFace(model: ReturnType<typeof initialBoardModel>, count: nu
   });
   return stackFaceScreenOrigin({
     presentation,
-    viewportW: model.viewport.width,
-    viewportH: model.viewport.height,
+    viewport: model.viewport,
     count,
     row,
-    peek: presentation === "pile" ? stackPeekFor(count, model.viewport.height) : undefined,
   });
+}
+function restingStackScale(model: ReturnType<typeof initialBoardModel>): number {
+  return stackFlightScale(model.camera.zoom, handMetrics(model.viewport).cardW);
 }
 
 describe("stack flight settle handoff", () => {
   it("sizes stack flights to the resting HTML stack face width", () => {
-    const zoom = 1;
-    expect(stackFlightScale(zoom)).toBe(STACK_CARD_W / (CARD_W * zoom));
-    expect(STACK_CARD_W).toBe(180);
+    const board0 = initialBoardModel();
+    const metrics = handMetrics(board0.viewport);
+    expect(stackFlightScale(board0.camera.zoom, metrics.cardW)).toBe(
+      metrics.cardW / (FLIGHT_CARD_W * board0.camera.zoom),
+    );
   });
 
   it("retargets stack entrance flights to the resting stack face center", () => {
     const spellId = 42;
     const fromHand = 7;
-    const bolt = spell(spellId, "Lightning Bolt");
+    const bolt = { ...spell(spellId, "Lightning Bolt"), card_id: "lightning-bolt" };
     const board = {
       ...initialBoardModel(),
       viewport: { ...BOARD_VIEWPORT },
+      cardText: new Map([
+        [
+          cardTextKey("lightning-bolt", bolt.print ?? ""),
+          {
+            card_id: "lightning-bolt",
+            print: bolt.print ?? "",
+            type_line: "Instant",
+            oracle: "Lightning Bolt deals 3 damage to any target.",
+            flavor: "The sparkmage shrieked.",
+          },
+        ],
+      ]),
       flights: new Map([
         [
           spellId,
@@ -125,7 +144,7 @@ describe("stack flight settle handoff", () => {
             scale: 2,
             targetX: BOARD_VIEWPORT.width - 160,
             targetY: BOARD_VIEWPORT.height / 2,
-            targetScale: 112 / CARD_W,
+            targetScale: 112 / FLIGHT_CARD_W,
             kind: "stack",
             fromCardId: fromHand,
           }),
@@ -141,7 +160,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: fromHand, controller: 0 }]]),
@@ -154,7 +175,168 @@ describe("stack flight settle handoff", () => {
     const face = restingStackFace(after, 1, 0);
     expect(flight?.targetX).toBe(face.x);
     expect(flight?.targetY).toBe(face.y);
-    expect(flight?.targetScale).toBe(stackFlightScale(after.camera.zoom));
+    expect(flight?.targetScale).toBe(stackFlightScale(after.camera.zoom, handMetrics(after.viewport).cardW));
+    expect(flight?.print).toBe("Lightning Bolt-print");
+    expect(flight?.name).toBe("Lightning Bolt");
+    expect(flight?.face).toMatchObject({
+      name: "Lightning Bolt",
+      typeLine: "Instant",
+      oracle: "Lightning Bolt deals 3 damage to any target.",
+      flavor: "The sparkmage shrieked.",
+    });
+  });
+
+  it.each([
+    { width: 1280, height: 720 },
+    { width: 2560, height: 1440 },
+  ] as const)("targets the expanded mounted top-face center at $width×$height", (viewport) => {
+    const count = 7;
+    const objects = Array.from({ length: count }, (_, index) => spell(index + 1, `Spell ${index + 1}`));
+    const stack = objects.map((object, index) => ({
+      entry_id: BigInt(index + 1),
+      controller: 0,
+      kind: "spell" as const,
+      label: testMessageRef(object.name),
+      source: object.id,
+    }));
+    const top = objects[count - 1];
+    const board = {
+      ...initialBoardModel(),
+      viewport,
+      stackExpand: true,
+      flights: new Map([
+        [
+          top.id,
+          spawnFlight({
+            id: top.id,
+            print: top.print ?? "",
+            name: top.name,
+            x: 20,
+            y: 20,
+            scale: 1,
+            targetX: 0,
+            targetY: 0,
+            targetScale: 1,
+            kind: "stack",
+            fromCardId: 99,
+          }),
+        ],
+      ]),
+    };
+    const after = syncBoardWithGame(
+      board,
+      gameFold(state({ objects, stack }), { stackEntrances: new Map([[top.id, { from: 99, controller: 0 }]]) }),
+    );
+    const layout = stackExpandedLayout({ presentation: "expanded", viewport, count });
+    const expected = {
+      x: layout.left + (count - 1) * layout.peek + layout.cardW / 2,
+      y: layout.top + layout.headerH + layout.gap + layout.cardH / 2,
+    };
+    expect(after.flights.get(top.id)).toMatchObject({ targetX: expected.x, targetY: expected.y });
+  });
+
+  it("refreshes a prepared stack flight with the active back-face words", () => {
+    const spellId = 42;
+    const fromHand = 7;
+    const prepared = { ...spell(spellId, "Pack a Punch"), card_id: "kirol-history-buff" };
+    const board = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      cardText: new Map([
+        [
+          cardTextKey("kirol-history-buff", prepared.print ?? ""),
+          {
+            card_id: "kirol-history-buff",
+            print: prepared.print ?? "",
+            type_line: "Legendary Creature — Vampire Cleric",
+            oracle: "Front-face words.",
+            flavor: "Front-face flavor.",
+          },
+        ],
+      ]),
+    };
+    const activeFaceText = {
+      card_id: "kirol-history-buff",
+      print: prepared.print ?? "",
+      type_line: "Sorcery",
+      oracle: "Mill a card. Put two +1/+1 counters on target creature.",
+      flavor: "Back-face flavor.",
+    };
+
+    const after = syncBoardWithGame(
+      board,
+      gameFold(
+        state({
+          objects: [prepared],
+          stack: [
+            {
+              entry_id: 1n,
+              controller: 0,
+              kind: "spell",
+              label: testMessageRef("Pack a Punch"),
+              source: spellId,
+              active_face_text: activeFaceText,
+            },
+          ],
+        }),
+        {
+          stackEntrances: new Map([[spellId, { from: fromHand, controller: 0 }]]),
+        },
+      ),
+    );
+
+    expect(after.flights.get(spellId)?.face).toMatchObject({
+      name: "Pack a Punch",
+      typeLine: "Sorcery",
+      oracle: activeFaceText.oracle,
+      flavor: "Back-face flavor.",
+    });
+  });
+
+  it("seeds a local stack entrance with the rendered hand face", () => {
+    const card = {
+      ...spell(7, "Lightning Bolt"),
+      card_id: "lightning-bolt",
+      zone: ZONE.Hand,
+    };
+    const action = {
+      id: 9,
+      kind: "cast",
+      label: testMessageRef("Cast Lightning Bolt"),
+      needs_target: false,
+      object: card.id,
+      section: "hand",
+    };
+    const board = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      cardText: new Map([
+        [
+          cardTextKey("lightning-bolt", card.print ?? ""),
+          {
+            card_id: "lightning-bolt",
+            print: card.print ?? "",
+            type_line: "Instant",
+            oracle: "Lightning Bolt deals 3 damage to any target.",
+            flavor: "The sparkmage shrieked.",
+          },
+        ],
+      ]),
+    };
+
+    const [after] = updateBoard(
+      board,
+      HandActionActivated({ action, x: 400, y: 700 }),
+      gameFold(state({ objects: [card], actions: [action] })),
+      "T1",
+    );
+
+    expect(after.flights.get(card.id)?.face).toMatchObject({
+      name: "Lightning Bolt",
+      typeLine: "Instant",
+      oracle: "Lightning Bolt deals 3 damage to any target.",
+      flavor: "The sparkmage shrieked.",
+    });
   });
 
   it("aims a multi-card pile flight at that spell's resting face, not viewport mid-right", () => {
@@ -194,8 +376,8 @@ describe("stack flight settle handoff", () => {
         state({
           objects: [bottom, top],
           stack: [
-            { controller: 0, kind: "spell", label: testMessageRef("Counterspell"), source: bottomId },
-            { controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: topId },
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Counterspell"), source: bottomId },
+            { entry_id: 2n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: topId },
           ],
         }),
         {
@@ -229,7 +411,7 @@ describe("stack flight settle handoff", () => {
       scale: 2,
       targetX: face.x,
       targetY: face.y,
-      targetScale: stackFlightScale(board0.camera.zoom),
+      targetScale: restingStackScale(board0),
       kind: "stack",
       fromCardId: handId,
       hold: true,
@@ -269,7 +451,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -289,7 +473,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 0 };
     const face = restingStackFace(board0, 1, 0);
-    const targetScale = stackFlightScale(board0.camera.zoom);
+    const targetScale = restingStackScale(board0);
     const parked = {
       ...spawnFlight({
         id: handId,
@@ -319,7 +503,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -380,10 +566,10 @@ describe("stack flight settle handoff", () => {
         name: bolt.name,
         x: face.x,
         y: face.y + 17,
-        scale: stackFlightScale(board0.camera.zoom),
+        scale: restingStackScale(board0),
         targetX: face.x,
         targetY: face.y + 17,
-        targetScale: stackFlightScale(board0.camera.zoom),
+        targetScale: restingStackScale(board0),
         kind: "stack",
         fromCardId: handId,
         hold: true,
@@ -402,7 +588,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -517,7 +705,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     // Still flying, ~40px shy of the face — classic "full animation then a short one" setup.
     const nearEnd = spawnFlight({
       id: handId,
@@ -545,7 +733,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -565,7 +755,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     // Pose is near the real stack face, but target still points at a wrong seed aim.
     // Continuing that glide then retargeting is the double animation.
     const nearFaceStaleAim = spawnFlight({
@@ -594,7 +784,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -612,7 +804,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const far = spawnFlight({
       id: handId,
       print: bolt.print ?? "",
@@ -639,7 +831,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
         {
           stackEntrances: new Map([[spellId, { from: handId, controller: 0 }]]),
@@ -677,13 +871,87 @@ describe("stack flight settle handoff", () => {
         ...gameFold(
           state({
             objects: [bolt],
-            stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+            stack: [
+              { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+            ],
           }),
         ),
         seq: 2,
       },
     );
     expect(afterSettle.flights.size).toBe(0);
+  });
+
+  it("drops a held spell seed when only a same-source ability remains on the stack", () => {
+    const spellId = 42;
+    const held = spawnFlight({
+      id: spellId,
+      print: "bolt-print",
+      name: "Lightning Bolt",
+      x: 200,
+      y: 700,
+      scale: 1,
+      targetX: 200,
+      targetY: 700,
+      targetScale: 1,
+      kind: "stack",
+      fromCardId: 7,
+      hold: true,
+    });
+    const board0 = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      flights: new Map([[spellId, held]]),
+      handHidden: new Set([7]),
+    };
+
+    const after = syncBoardWithGame(
+      board0,
+      gameFold(
+        state({
+          objects: [],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "ability", label: testMessageRef("Bolt trigger"), source: spellId },
+          ],
+        }),
+      ),
+    );
+
+    expect(after.flights.size).toBe(0);
+    expect(after.handHidden.has(7)).toBe(false);
+  });
+
+  it("removes a non-held spell flight when only a same-source ability remains", () => {
+    const spellId = 42;
+    const flight = spawnFlight({
+      id: spellId,
+      print: "bolt-print",
+      name: "Lightning Bolt",
+      x: 200,
+      y: 700,
+      scale: 1,
+      targetX: 250,
+      targetY: 700,
+      targetScale: 1,
+      kind: "stack",
+    });
+    const board0 = {
+      ...initialBoardModel(),
+      viewport: { ...BOARD_VIEWPORT },
+      flights: new Map([[spellId, flight]]),
+    };
+    const after = syncBoardWithGame(
+      board0,
+      gameFold(
+        state({
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "ability", label: testMessageRef("Bolt trigger"), source: spellId },
+          ],
+        }),
+      ),
+    );
+
+    expect(after.flights.has(spellId)).toBe(false);
   });
 
   it("FlightsSynced hands off a settled held stack flight once the spell is on the stack", () => {
@@ -694,7 +962,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const parked = {
       ...spawnFlight({
         id: spellId,
@@ -715,7 +983,9 @@ describe("stack flight settle handoff", () => {
     const fold = gameFold(
       state({
         objects: [bolt],
-        stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+        stack: [
+          { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+        ],
       }),
     );
     const [after] = updateBoard(
@@ -739,7 +1009,7 @@ describe("stack flight settle handoff", () => {
     const handId = 7;
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT } };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const parked = {
       ...spawnFlight({
         id: handId,
@@ -815,7 +1085,7 @@ describe("stack flight settle handoff", () => {
     const bolt = spell(spellId, "Lightning Bolt");
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const parked = {
       ...spawnFlight({
         id: handId,
@@ -845,7 +1115,9 @@ describe("stack flight settle handoff", () => {
       gameFold(
         state({
           objects: [bolt],
-          stack: [{ controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId }],
+          stack: [
+            { entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Lightning Bolt"), source: spellId },
+          ],
         }),
       ),
     );
@@ -860,7 +1132,7 @@ describe("stack flight settle handoff", () => {
     const inHand: ObjectView = { ...spell(handId, "Lightning Bolt"), zone: ZONE.Hand };
     const board0 = { ...initialBoardModel(), viewport: { ...BOARD_VIEWPORT }, cameraFitPlayers: 2 };
     const face = restingStackFace(board0, 1, 0);
-    const scale = stackFlightScale(board0.camera.zoom);
+    const scale = restingStackScale(board0);
     const seeded = spawnFlight({
       id: handId,
       print: inHand.print ?? "",

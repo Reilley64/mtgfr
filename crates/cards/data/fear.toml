@@ -4,7 +4,6 @@
 # creatures.)
 name = "Fear"
 otags = ["french-vanilla-aura", "shares-name-with-a-mechanic", "single-english-word-name", "gives-fear"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "ice", "lea", "leb", "sum"]
 id = "355bbe9b-59bf-470f-8600-410af4c7fe18"
 default_print = "e48c7fd2-860e-4266-b8c0-f6d48f52b851"
 oracle = "Enchant creature (Target a creature as you cast this. This card enters attached to that creature.)\nEnchanted creature has fear. (It can't be blocked except by artifact creatures and/or black creatures.)"
@@ -18,6 +17,7 @@ type = "aura"
 
 # Enchanted creature has fear.
 [[abilities]]
+oracle = "Enchanted creature has fear."
 timing = "static"
 
 # Enchanted creature has fear.

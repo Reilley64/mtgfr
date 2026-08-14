@@ -2,7 +2,6 @@
 # Untap all lands you control.
 name = "Reset"
 otags = ["mana-ramp", "untap-permanent"]
-sets = ["leg", "mb2", "me3"]
 id = "4faa5a70-ac0c-4a29-8bec-218a35a29fdf"
 default_print = "1c829d83-d5b8-4be7-80f7-55b42f52b309"
 oracle = "Cast this spell only during an opponent's turn after their upkeep step.\nUntap all lands you control."
@@ -19,6 +18,7 @@ type = "instant"
 
 # Untap all lands you control.
 [[abilities]]
+oracle = "Untap all lands you control."
 timing = "spell"
 
 # Untap all lands you control.

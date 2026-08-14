@@ -5,7 +5,6 @@ otags = ["combat-trick", "flowstone", "single-target-instant-sorcery"]
 id = "55a253f9-f44d-4898-af83-fea68b7b279d"
 default_print = "fbbf1a9c-8b94-4ee7-92db-65b531149990"
 oracle = "If target creature has toughness 5 or greater, it gets +4/-4 until end of turn. Otherwise, it gets +4/-X until end of turn, where X is its toughness minus 1."
-sets = ["leg", "4ed", "4bb", "ren", "5ed", "me3"]
 
 [cost]
 generic = 1
@@ -17,6 +16,7 @@ type = "instant"
 # If target creature has toughness 5 or greater, it gets +4/-4 until end of turn. Otherwise, it gets +4/-X until end
 # of turn, where X is its toughness minus 1.
 [[abilities]]
+oracle = "If target creature has toughness 5 or greater, it gets +4/-4 until end of turn. Otherwise, it gets +4/-X until end of turn, where X is its toughness minus 1."
 timing = "spell"
 
 # If target creature has toughness 5 or greater, it gets +4/-4 until end of turn. Otherwise, it gets +4/-X until end

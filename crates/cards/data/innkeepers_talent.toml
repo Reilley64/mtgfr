@@ -10,7 +10,6 @@ otags = ["activated-ability", "counter-doubler", "counters-matter", "cycle-blb-r
 id = "915b75d1-b5e3-4aca-a54c-beaccef0a2e4"
 default_print = "941b0afc-0e8f-45f2-ae7f-07595e164611"
 oracle = "(Gain the next level as a sorcery to add its ability.)\nAt the beginning of combat on your turn, put a +1/+1 counter on target creature you control.\n{G}: Level 2\nPermanents you control with counters on them have ward {1}.\n{3}{G}: Level 3\nIf you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead."
-sets = ["blb"]
 subtypes = ["Class"]
 approximates = "Level 2's ward misses this Class itself: the engine tracks a Class's level as a plain level scalar, not as the level counters CR 717.2 puts on it, so a leveled Class never satisfies its own \"with counters on them\" filter."
 
@@ -23,6 +22,7 @@ type = "enchantment"
 
 # At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.
 [[abilities]]
+oracle = "At the beginning of combat on your turn, put a +1/+1 counter on target creature you control."
 timing = "begin_combat"
 
 # put a +1/+1 counter on target creature you control.
@@ -34,6 +34,7 @@ target = "creature_you_control"
 
 # {G}: Level 2
 [[abilities]]
+oracle = "{G}: Level 2"
 timing = "activated"
 sorcery_speed = true
 
@@ -48,6 +49,7 @@ level = 2
 
 # Permanents you control with counters on them have ward {1}.
 [[abilities]]
+oracle = "Permanents you control with counters on them have ward {1}."
 timing = "static"
 min_level = 2
 
@@ -60,6 +62,7 @@ filter = { controller = "you", with_counter = "any" }
 
 # {3}{G}: Level 3
 [[abilities]]
+oracle = "{3}{G}: Level 3"
 timing = "activated"
 sorcery_speed = true
 
@@ -76,6 +79,7 @@ level = 3
 # If you would put one or more counters on a permanent or player, put twice that many of each of
 # those kinds of counters on that permanent or player instead.
 [[abilities]]
+oracle = "If you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead."
 timing = "static"
 min_level = 3
 

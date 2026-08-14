@@ -7,7 +7,6 @@
 # this combat become unblocked. If you don't, destroy this Aura.
 name = "Imprison"
 otags = ["remove-from-combat", "single-english-word-name", "triggered-ability"]
-sets = ["leg"]
 id = "632de66b-2314-4299-847c-16a84bf9121f"
 default_print = "12671381-beb7-41b8-9484-97f8aca5c981"
 oracle = "Enchant creature\nWhenever a player activates an ability of enchanted creature with {T} in its activation cost that isn't a mana ability, you may pay {1}. If you do, counter that ability. If you don't, destroy this Aura.\nWhenever enchanted creature attacks or blocks, you may pay {1}. If you do, tap the creature, remove it from combat, and creatures it was blocking that had become blocked by only that creature this combat become unblocked. If you don't, destroy this Aura."
@@ -24,6 +23,7 @@ type = "aura"
 # isn't a mana ability, you may pay {1}. If you do, counter that ability. If you don't, destroy this
 # Aura.
 [[abilities]]
+oracle = "Whenever a player activates an ability of enchanted creature with {T} in its activation cost that isn't a mana ability, you may pay {1}. If you do, counter that ability. If you don't, destroy this Aura."
 timing = "enchanted_creature_activates_tap_ability"
 
 # you may pay {1}. If you do, counter that ability. If you don't, destroy this Aura.
@@ -40,6 +40,7 @@ otherwise = [{ type = "destroy", mode = "target", target = "this" }]
 # remove it from combat, and creatures it was blocking that had become blocked by only that creature
 # this combat become unblocked. If you don't, destroy this Aura.
 [[abilities]]
+oracle = "Whenever enchanted creature attacks or blocks, you may pay {1}. If you do, tap the creature, remove it from combat, and creatures it was blocking that had become blocked by only that creature this combat become unblocked. If you don't, destroy this Aura."
 timing = "enchanted_creature_attacks_or_blocks"
 
 # you may pay {1}. If you do, tap the creature, remove it from combat, … If you don't, destroy this

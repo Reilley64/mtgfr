@@ -2,7 +2,6 @@
 # Retrace (You may cast this card from your graveyard by discarding a land card in addition to paying its other costs.)
 name = "Call the Skybreaker"
 otags = ["castable-from-graveyard", "cycle-ema-r-two-color", "discard-outlet-land", "evasion", "repeatable-creature-tokens"]
-sets = ["c15", "c21", "cmd", "ema", "eve", "ncc"]
 id = "a7213bef-0e9c-44e1-97cb-d1da0ef370bf"
 default_print = "e52586f2-dcf2-4605-b354-3ab441a43638"
 oracle = "Create a 5/5 blue and red Elemental creature token with flying.\nRetrace (You may cast this card from your graveyard by discarding a land card in addition to paying its other costs.)"
@@ -23,6 +22,7 @@ type = "sorcery"
 
 # Create a 5/5 blue and red Elemental creature token with flying.
 [[abilities]]
+oracle = "Create a 5/5 blue and red Elemental creature token with flying."
 timing = "spell"
 
 # Create a 5/5 blue and red Elemental creature token with flying.

@@ -1,7 +1,6 @@
 # Other Kobold creatures you control get +0/+1 and have trample.
 name = "Kobold Drill Sergeant"
 otags = ["anthem", "gives-trample", "keyword-anthem", "toughness-boost-to-all", "typal-kobold", "type-errata", "unique-type-line"]
-sets = ["leg", "me3"]
 id = "a6409aa6-035c-4859-8135-90d34d67f72c"
 default_print = "2e918e64-66dd-4037-ba1a-1c569a9907f7"
 oracle = "Other Kobold creatures you control get +0/+1 and have trample."
@@ -18,6 +17,7 @@ toughness = 2
 
 # Other Kobold creatures you control get +0/+1 and have trample.
 [[abilities]]
+oracle = "Other Kobold creatures you control get +0/+1 and have trample."
 timing = "static"
 
 # Other Kobold creatures you control get +0/+1 and have trample.

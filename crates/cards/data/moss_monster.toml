@@ -1,7 +1,6 @@
 # (no rules text — vanilla creature)
 name = "Moss Monster"
 otags = ["alliteration", "creature-type-monster"]
-sets = ["8ed", "leg"]
 id = "60efa8a2-6903-4756-92fd-29f6ba6ef67a"
 default_print = "15511fda-92ae-4d27-8a83-37e821ec3adf"
 subtypes = ["Elemental"]

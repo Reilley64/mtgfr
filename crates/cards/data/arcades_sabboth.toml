@@ -4,7 +4,6 @@
 # {W}: Arcades Sabboth gets +0/+1 until end of turn.
 name = "Arcades Sabboth"
 otags = ["activated-ability", "anthem", "armoring", "cycle-dmr-tricolor-legend", "cycle-leg-elder-dragon", "deprecated-legend-type", "drawback", "evasion", "synergy-untapped", "toughness-boost-to-all", "triggered-ability", "unique-mana-cost"]
-sets = ["bchr", "chr", "dmr", "leg", "me3", "sld"]
 id = "8ead94c5-8447-4f20-87ec-efdccde689fc"
 default_print = "175695bb-2630-4269-a407-9138c7008e81"
 oracle = "Flying\nAt the beginning of your upkeep, sacrifice Arcades Sabboth unless you pay {G}{W}{U}.\nEach untapped creature you control gets +0/+2 as long as it's not attacking.\n{W}: Arcades Sabboth gets +0/+1 until end of turn."
@@ -25,6 +24,7 @@ toughness = 7
 
 # At the beginning of your upkeep, sacrifice Arcades Sabboth unless you pay {G}{W}{U}.
 [[abilities]]
+oracle = "At the beginning of your upkeep, sacrifice Arcades Sabboth unless you pay {G}{W}{U}."
 timing = "upkeep"
 
 # sacrifice Arcades Sabboth unless you pay {G}{W}{U}
@@ -36,6 +36,7 @@ otherwise = [{ type = "sacrifice", mode = "source" }]
 
 # Each untapped creature you control gets +0/+2 as long as it's not attacking.
 [[abilities]]
+oracle = "Each untapped creature you control gets +0/+2 as long as it's not attacking."
 timing = "static"
 
 # Each untapped creature you control gets +0/+2 as long as it's not attacking.
@@ -51,6 +52,7 @@ filter = { types = "creature", tapped = false, not_attacking = true }
 
 # {W}: Arcades Sabboth gets +0/+1 until end of turn.
 [[abilities]]
+oracle = "{W}: Arcades Sabboth gets +0/+1 until end of turn."
 timing = "activated"
 activation_cost = { white = 1 }
 

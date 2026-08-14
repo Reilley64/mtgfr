@@ -2,7 +2,6 @@
 # {2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand.
 name = "Time Elemental"
 otags = ["attack-trigger", "block-trigger", "delayed-trigger", "removal-bounce", "repeatable-removal", "spot-removal"]
-sets = ["4bb", "4ed", "5ed", "leg", "me1", "ren"]
 id = "d89075a3-4413-4796-a055-eef51fddb7f3"
 default_print = "720672dc-d75a-44c3-a48d-d2fe3993fbbf"
 oracle = "When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to you.\n{2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand."
@@ -20,6 +19,7 @@ toughness = 2
 # When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to
 # you.
 [[abilities]]
+oracle = "When this creature attacks or blocks, at end of combat, sacrifice it and it deals 5 damage to you."
 timing = "attacks_or_blocks"
 
 # at end of combat, sacrifice it and it deals 5 damage to you.
@@ -35,6 +35,7 @@ then = { type = "sequence", steps = [
 
 # {2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand.
 [[abilities]]
+oracle = "{2}{U}{U}, {T}: Return target permanent that isn't enchanted to its owner's hand."
 timing = "activated"
 taps_self = true
 

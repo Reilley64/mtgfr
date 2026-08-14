@@ -25,6 +25,13 @@ pub struct DeltaEnvelope {
     /// styling, so a forced play is never mistaken for the player's own move.
     #[serde(default)]
     pub auto_actions: Vec<MessageRef>,
+    /// Printed words for cards in `state` that are not in the viewer's own deck — an opponent's
+    /// spell on the stack, their permanent on the battlefield, a card exiled from another library
+    /// that this viewer may cast. Only ever cards whose `card_id` this same frame already shows
+    /// them, so it widens no visibility (see `server::stream::public_card_text`). The client
+    /// merges this into the book the snapshot opened with; it never replaces it.
+    #[serde(default)]
+    pub card_text: Vec<crate::dto::CardTextView>,
 }
 
 /// An [`engine::Event`] after per-viewer redaction. Public facts pass through
@@ -903,6 +910,30 @@ mod tests {
     }
 
     #[test]
+    fn accepted_counter_delta_projects_exactly_and_zero_delta_has_no_event_to_project() {
+        let accepted = Event::CountersPlaced {
+            object: 7,
+            count: 1,
+            source_name: "bounded",
+        };
+        assert_eq!(
+            spectator_redact(&accepted),
+            VisibleEvent::CountersPlaced {
+                object: 7,
+                count: 1
+            }
+        );
+        let authoritative_zero_delta_batch: Vec<Event> = Vec::new();
+        assert!(
+            authoritative_zero_delta_batch
+                .iter()
+                .map(spectator_redact)
+                .next()
+                .is_none()
+        );
+    }
+
+    #[test]
     fn a_poison_counter_is_public_to_every_viewer() {
         // Ten or more poison counters lose the game (CR 704.5c). A total nobody but the poisoned
         // seat could see would be an invisible win condition, so this event is never redacted —
@@ -928,12 +959,14 @@ mod tests {
         let snap = StreamFrame::Snapshot {
             seq: 0,
             state: snapshot(&game, PlayerId(0)),
+            card_text: vec![],
         };
         let delta = StreamFrame::Delta(DeltaEnvelope {
             seq: 1,
             events: vec![VisibleEvent::PriorityPassed { player: 0 }],
             state: snapshot(&game, PlayerId(0)),
             auto_actions: vec![MessageRef::key("auto.test")],
+            card_text: vec![],
         });
         for frame in [snap, delta, StreamFrame::Heartbeat] {
             let line = serde_json::to_string(&frame).expect("frame serializes");
@@ -956,6 +989,7 @@ mod tests {
             events: vec![],
             state: snapshot(&game, PlayerId(0)),
             auto_actions: vec![MessageRef::key("auto.test")],
+            card_text: vec![],
         };
         let line = serde_json::to_string(&with_labels).expect("envelope serializes");
         assert!(line.contains("auto.test"));

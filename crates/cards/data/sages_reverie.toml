@@ -2,7 +2,6 @@
 # When this Aura enters, draw a card for each Aura you control that's attached to a creature.
 # Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature.
 name = "Sage's Reverie"
-sets = ["c18", "frf", "j22", "pio", "plst", "soc", "woc"]
 id = "bd92cacd-c7d8-43a2-a261-ea4754fefdc5"
 default_print = "5515393a-7d4d-454f-a550-156862ab02f1"
 otags = ["burst-draw", "cantrip", "ethereal-armor", "hand-positive", "triggered-ability", "uril-ability"]
@@ -18,6 +17,7 @@ type = "aura"
 
 # When this Aura enters, draw a card for each Aura you control that's attached to a creature.
 [[abilities]]
+oracle = "When this Aura enters, draw a card for each Aura you control that's attached to a creature."
 timing = "etb"
 
 # draw a card for each Aura you control that's attached to a creature.
@@ -28,6 +28,7 @@ count = { per_permanent = { subtypes = ["Aura"], controller = "you", attached_to
 
 # Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature.
 [[abilities]]
+oracle = "Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature."
 timing = "static"
 
 # Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature.

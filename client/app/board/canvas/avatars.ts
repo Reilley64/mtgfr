@@ -33,6 +33,21 @@ export function clockChips(player: PlayerView): Array<{ label: string; fill: str
 }
 
 export type AvatarScreenPositions = Record<number, { x: number; y: number }>;
+export type AvatarWorldPositions = Readonly<Record<number, { x: number; y: number }>>;
+
+export function projectAvatarScreenPositions(
+  players: ReadonlyArray<PlayerView>,
+  positions: AvatarWorldPositions,
+  camera: Camera,
+): AvatarScreenPositions {
+  const out: AvatarScreenPositions = {};
+  for (const player of players) {
+    const position = positions[player.player];
+    if (position == null) continue;
+    out[player.player] = worldToScreen(camera, position.x, position.y);
+  }
+  return out;
+}
 
 export function avatarScreenPositions(
   players: ReadonlyArray<PlayerView>,
@@ -40,12 +55,11 @@ export function avatarScreenPositions(
   count: number,
   camera: Camera,
 ): AvatarScreenPositions {
-  const out: AvatarScreenPositions = {};
+  const positions: Record<number, { x: number; y: number }> = {};
   for (const player of players) {
-    const pos = avatarPos(player.player, viewer, count);
-    out[player.player] = worldToScreen(camera, pos.x, pos.y);
+    positions[player.player] = avatarPos(player.player, viewer, count);
   }
-  return out;
+  return projectAvatarScreenPositions(players, positions, camera);
 }
 
 export function avatarShapes(

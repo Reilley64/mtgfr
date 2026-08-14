@@ -2,7 +2,6 @@
 # Whenever a player casts a black spell, you gain 1 life.
 name = "Sol'kanar the Swamp King"
 otags = ["alliteration", "cast-trigger", "cycle-dmr-tricolor-legend", "deprecated-legend-type", "evasion", "hate-black", "repeatable-lifegain", "synergy-black", "toll"]
-sets = ["bchr", "chr", "dmr", "leg", "olep", "tsb"]
 id = "b8aac8e8-4588-4cb9-8b95-5c4abab1c48b"
 default_print = "88b4cb6a-ac4f-48ac-8c94-ba2b8e6b32a8"
 oracle = "Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.)\nWhenever a player casts a black spell, you gain 1 life."
@@ -23,6 +22,7 @@ toughness = 5
 
 # Whenever a player casts a black spell, you gain 1 life.
 [[abilities]]
+oracle = "Whenever a player casts a black spell, you gain 1 life."
 timing = "cast_spell"
 spell_filter = { color = "black" }
 caster = "any_player"

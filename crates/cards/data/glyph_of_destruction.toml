@@ -1,7 +1,6 @@
 # Target blocking Wall you control gets +10/+0 until end of combat. Prevent all damage that would
 # be dealt to it this turn. Destroy it at the beginning of the next end step.
 name = "Glyph of Destruction"
-sets = ["leg"]
 id = "cca68900-2093-4cae-b757-efc7dd807e18"
 default_print = "8e9c153c-9224-491b-bc84-8a9f0a83ee5a"
 oracle = "Target blocking Wall you control gets +10/+0 until end of combat. Prevent all damage that would be dealt to it this turn. Destroy it at the beginning of the next end step."
@@ -15,6 +14,7 @@ type = "instant"
 # Target blocking Wall you control gets +10/+0 until end of combat. Prevent all damage that would be
 # dealt to it this turn. Destroy it at the beginning of the next end step.
 [[abilities]]
+oracle = "Target blocking Wall you control gets +10/+0 until end of combat. Prevent all damage that would be dealt to it this turn. Destroy it at the beginning of the next end step."
 timing = "spell"
 
 # Target blocking Wall you control gets +10/+0 until end of combat.

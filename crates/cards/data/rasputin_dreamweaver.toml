@@ -5,7 +5,6 @@
 # At the beginning of your upkeep, if Rasputin started the turn untapped, put a dream counter on it.
 # Rasputin can't have more than seven dream counters on it.
 name = "Rasputin Dreamweaver"
-sets = ["leg", "me3"]
 id = "fef452ee-9018-4175-bb79-476544e48433"
 default_print = "78418809-f048-4611-88cb-369f427d9c44"
 oracle = "Rasputin enters with seven dream counters on it.\nRemove a dream counter from Rasputin: Add {C}.\nRemove a dream counter from Rasputin: Prevent the next 1 damage that would be dealt to Rasputin this turn.\nAt the beginning of your upkeep, if Rasputin started the turn untapped, put a dream counter on it.\nRasputin can't have more than seven dream counters on it."
@@ -32,6 +31,7 @@ toughness = 1
 
 # Rasputin enters with seven dream counters on it.
 [[abilities]]
+oracle = "Rasputin enters with seven dream counters on it."
 timing = "static"
 
 # Rasputin enters with seven dream counters on it.
@@ -43,6 +43,7 @@ kind = "dream"
 
 # Remove a dream counter from Rasputin: Add {C}.
 [[abilities]]
+oracle = "Remove a dream counter from Rasputin: Add {C}."
 timing = "activated"
 remove_counters = 1
 remove_counters_kind = "dream"
@@ -56,6 +57,7 @@ mana = ["colorless"]
 # Remove a dream counter from Rasputin: Prevent the next 1 damage that would be dealt to Rasputin
 # this turn.
 [[abilities]]
+oracle = "Remove a dream counter from Rasputin: Prevent the next 1 damage that would be dealt to Rasputin this turn."
 timing = "activated"
 remove_counters = 1
 remove_counters_kind = "dream"
@@ -69,6 +71,7 @@ shield_source = true
 
 # At the beginning of your upkeep, if Rasputin started the turn untapped, put a dream counter on it.
 [[abilities]]
+oracle = "At the beginning of your upkeep, if Rasputin started the turn untapped, put a dream counter on it."
 timing = "upkeep"
 condition = { type = "source_started_the_turn_untapped" }
 
@@ -82,6 +85,7 @@ kind = "dream"
 
 # Rasputin can't have more than seven dream counters on it.
 [[abilities]]
+oracle = "Rasputin can't have more than seven dream counters on it."
 timing = "static"
 
 # Rasputin can't have more than seven dream counters on it.

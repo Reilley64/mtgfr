@@ -2,7 +2,6 @@
 # {B}: Regenerate this creature.
 name = "Sedge Troll"
 otags = ["activated-ability", "cycle-lea-red-escalate", "cycle-lea-slush-art", "offcolor-ability", "regenerates-self", "synergy-swamp"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "prm", "sum"]
 id = "a6a43190-cca2-4f07-afe9-8af681d777da"
 default_print = "5a30ed3f-0b21-45ea-83af-339249b4e93e"
 oracle = "This creature gets +1/+1 as long as you control a Swamp.\n{B}: Regenerate this creature."
@@ -19,6 +18,7 @@ toughness = 2
 
 # This creature gets +1/+1 as long as you control a Swamp.
 [[abilities]]
+oracle = "This creature gets +1/+1 as long as you control a Swamp."
 timing = "static"
 
 # This creature gets +1/+1 as long as you control a Swamp.
@@ -32,6 +32,7 @@ condition = { type = "controls_lands_with_subtype", subtypes = ["Swamp"], count 
 
 # {B}: Regenerate this creature.
 [[abilities]]
+oracle = "{B}: Regenerate this creature."
 timing = "activated"
 
 [abilities.activation_cost]

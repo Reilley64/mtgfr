@@ -6,7 +6,6 @@ id = "482bd55a-ba73-4722-8643-94fa12818515"
 default_print = "dce72636-08e4-484e-ad81-4d1597a31ffb"
 otags = ["counters-matter", "proliferate", "triggered-ability", "activated-ability"]
 oracle = "When this artifact enters, put a -1/-1 counter on each creature target player controls.\n{4}, {T}: Proliferate twice. (Choose any number of permanents and/or players, then give each another counter of each kind already there. Then do it again.)"
-sets = ["som"]
 
 [cost]
 generic = 6
@@ -16,6 +15,7 @@ type = "artifact"
 
 # When this artifact enters, put a -1/-1 counter on each creature target player controls.
 [[abilities]]
+oracle = "When this artifact enters, put a -1/-1 counter on each creature target player controls."
 timing = "etb"
 
 # put a -1/-1 counter on each creature target player controls
@@ -29,6 +29,7 @@ target_player = true
 
 # {4}, {T}: Proliferate twice.
 [[abilities]]
+oracle = "{4}, {T}: Proliferate twice."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 4 }

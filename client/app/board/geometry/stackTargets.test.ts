@@ -5,6 +5,7 @@ import { formatStackTargetSuffix, stackEntryTargets } from "./stackTargets";
 
 const entry = (over: Partial<StackObjectView> = {}): StackObjectView => ({
   controller: 0,
+  entry_id: 1n,
   kind: "spell",
   label: testMessageRef("Bolt"),
   source: 1,
@@ -47,6 +48,8 @@ function bearObject(): ObjectView {
     has_haste: false,
     id: 22,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { generic: 2, colored: [0, 0, 0, 0, 0] },
     marked_damage: 0,
@@ -82,6 +85,18 @@ test("stackEntryTargets prefers non-empty targets list", () => {
 
 test("stackEntryTargets falls back to singular target", () => {
   expect(stackEntryTargets(entry({ target: { kind: "object", id: 9 } }))).toEqual([{ kind: "object", id: 9 }]);
+});
+
+test("stackEntryTargets ignores malformed targets on a source-less public entry", () => {
+  expect(
+    stackEntryTargets(
+      entry({
+        source: undefined,
+        target: { kind: "object", id: 9 },
+        targets: [{ kind: "player", player: 1 }],
+      }),
+    ),
+  ).toEqual([]);
 });
 
 test("stackEntryTargets is empty when targetless", () => {

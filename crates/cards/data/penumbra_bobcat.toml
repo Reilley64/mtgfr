@@ -1,6 +1,5 @@
 # When this creature dies, create a 2/1 black Cat creature token.
 name = "Penumbra Bobcat"
-sets = ["apc", "dmr", "jmp", "td0"]
 otags = ["cycle-apc-penumbra-vertical", "leaves-body-behind", "out-of-color-token"]
 oracle = "When this creature dies, create a 2/1 black Cat creature token."
 subtypes = ["Cat"]
@@ -18,6 +17,7 @@ toughness = 1
 
 # When this creature dies, create a 2/1 black Cat creature token.
 [[abilities]]
+oracle = "When this creature dies, create a 2/1 black Cat creature token."
 timing = "dies"
 
 # create a 2/1 black Cat creature token.

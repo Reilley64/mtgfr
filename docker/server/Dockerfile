@@ -6,7 +6,7 @@ WORKDIR /src
 
 # tonic-build needs `protoc` for ADR 0032 stubs (OUT_DIR; never committed).
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends protobuf-compiler \
+  && apt-get install -y --no-install-recommends protobuf-compiler python3 \
   && rm -rf /var/lib/apt/lists/*
 
 COPY Cargo.toml Cargo.lock ./
@@ -15,11 +15,11 @@ COPY proto ./proto
 COPY config ./config
 COPY Toasty.toml ./
 COPY toasty ./toasty
+COPY scripts/check_debug_release_absence.sh ./scripts/check_debug_release_absence.sh
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
-    cargo build -p server --release \
-    && cp target/release/server /server
+    MTGFR_RELEASE_BINARY_OUTPUT=/server ./scripts/check_debug_release_absence.sh
 
 # Empty dir for COPY --chown into the distroless image (nonroot uid 65532).
 RUN mkdir -p /logs_placeholder

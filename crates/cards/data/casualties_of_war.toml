@@ -5,7 +5,6 @@
 # • Destroy target land.
 # • Destroy target planeswalker.
 name = "Casualties of War"
-sets = ["blc", "khc", "pip", "pwar", "soc", "tdc", "war"]
 id = "5c6c8fe7-3520-423b-a224-1c0af516871a"
 default_print = "2467f50a-bf45-4046-9086-1bfcf3438af4"
 otags = ["cycle-war-r-two-color", "modal", "multi-removal", "multiple-targets", "removal-artifact", "removal-creature", "removal-destroy", "removal-enchantment", "removal-land", "removal-planeswalker", "single-target-instant-sorcery", "spot-removal"]

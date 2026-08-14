@@ -3,7 +3,6 @@
 # creature's controller.
 name = "Backfire"
 otags = ["burn-player", "parasitic-aura", "punisher", "triggered-ability"]
-sets = ["4bb", "4ed", "leg", "ren"]
 subtypes = ["Aura"]
 id = "e04fa58e-be7a-4c9c-98d0-48241742a41b"
 default_print = "04bc57aa-d4d9-4bd9-ba09-984370c7e23b"

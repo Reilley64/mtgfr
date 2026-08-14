@@ -1,7 +1,6 @@
 # {T}: This creature deals 2 damage to any target and 3 damage to you.
 name = "Orcish Artillery"
 otags = ["activated-ability", "burn-any", "burn-you", "drawback", "pinger", "repeatable-crime", "repeatable-removal", "spot-removal", "type-errata"]
-sets = ["10e", "2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "ced", "cei", "fbb", "itp", "lea", "leb", "plst", "rqs", "sum"]
 id = "c000811e-bde7-4840-a3bb-9714d5c977eb"
 default_print = "da899c3d-c424-4901-ae5a-2a8e0c66e631"
 oracle = "{T}: This creature deals 2 damage to any target and 3 damage to you."
@@ -18,6 +17,7 @@ toughness = 3
 
 # {T}: This creature deals 2 damage to any target and 3 damage to you.
 [[abilities]]
+oracle = "{T}: This creature deals 2 damage to any target and 3 damage to you."
 timing = "activated"
 taps_self = true
 

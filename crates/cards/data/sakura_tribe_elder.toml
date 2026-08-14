@@ -4,7 +4,6 @@
 #   "Sacrifice this creature: Search your library for a basic land card, put that card onto
 #    the battlefield tapped, then shuffle."
 name = "Sakura-Tribe Elder"
-sets = ["arc", "blc", "c13", "c15", "c16", "c18", "c19", "c20", "chk", "clb", "cma", "cmd", "cns", "dsc", "f09", "m3c", "mb2", "mkc", "ncc", "nec", "pjas", "pjjt", "pjse", "pl25", "plg24", "plst", "prm", "psus", "pz1", "scd", "sld", "soc", "td0", "tdc"]
 id = "e3afc704-220f-498f-9eaa-0821b17dc24c"
 default_print = "7a8b1c49-8594-426d-b585-41140235bb0e"
 otags = ["activated-ability", "land-ramp", "martyr", "tutor-land-basic", "tutor-land-to-battlefield"]
@@ -23,6 +22,7 @@ toughness = 1
 # Sacrifice this creature: Search your library for a basic land card, put that card onto the
 # battlefield tapped, then shuffle.
 [[abilities]]
+oracle = "Sacrifice this creature: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."
 timing = "activated"
 sacrifice = "this"
 

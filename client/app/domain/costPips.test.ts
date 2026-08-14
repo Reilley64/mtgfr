@@ -11,6 +11,13 @@ describe("costPips", () => {
     ]);
   });
 
+  it("emits one X pip for each printed X symbol", () => {
+    expect(costPips({ has_x: true, x_symbols: 2, generic: 0, colored: [0, 0, 0, 0, 0] }).map((p) => p.code)).toEqual([
+      "X",
+      "X",
+    ]);
+  });
+
   it("expands colored counts into one pip each", () => {
     expect(costPips({ generic: 0, colored: [0, 0, 3, 0, 0] }).map((p) => p.code)).toEqual(["B", "B", "B"]);
   });
@@ -21,6 +28,28 @@ describe("costPips", () => {
 
   it("shows {0} when showZero is set and the cost is otherwise empty", () => {
     expect(costPips({ generic: 0, colored: [0, 0, 0, 0, 0] }, { showZero: true }).map((p) => p.code)).toEqual(["0"]);
+  });
+
+  it("draws a hybrid pip per symbol instead of reading as a free cost", () => {
+    // Boros Guildmage is {R/W}{R/W} — no generic, no mono pips. mana-font names the pair `rw`.
+    const hybrid = [0, 0, 2, 0, 0, 0, 0, 0, 0, 0];
+    expect(costPips({ generic: 0, colored: [0, 0, 0, 0, 0], hybrid })).toEqual([
+      { ms: "rw", code: "W/R" },
+      { ms: "rw", code: "W/R" },
+    ]);
+  });
+
+  it("keeps a {0} off a cost that is nothing but hybrid pips", () => {
+    const hybrid = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    expect(costPips({ generic: 0, colored: [0, 0, 0, 0, 0], hybrid }, { showZero: true }).map((p) => p.code)).toEqual([
+      "W/U",
+    ]);
+  });
+
+  it("draws a Phyrexian pip after the mono pips — Vraska's {4}{B}{B}{B/P}", () => {
+    const cost = { generic: 4, colored: [0, 0, 2, 0, 0], phyrexian: [0, 0, 1, 0, 0] };
+    expect(costPips(cost).map((p) => p.code)).toEqual(["4", "B", "B", "B/P"]);
+    expect(costPips(cost).at(-1)?.ms).toBe("bp");
   });
 
   it("maps codes to mana-font class names", () => {

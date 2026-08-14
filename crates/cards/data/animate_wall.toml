@@ -2,7 +2,6 @@
 # Enchanted Wall can attack as though it didn't have defender.
 name = "Animate Wall"
 otags = ["turns-off-defender", "typal-wall", "unique-enchant-target"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "ced", "cei", "fbb", "lea", "leb", "me1", "sum"]
 id = "c7a6a165-b709-46e0-ae42-6f69a17c0621"
 default_print = "05d7bed4-950a-4a4e-b79a-50e4aa416fe9"
 oracle = "Enchant Wall\nEnchanted Wall can attack as though it didn't have defender."
@@ -17,6 +16,7 @@ type = "aura"
 
 # Enchanted Wall can attack as though it didn't have defender.
 [[abilities]]
+oracle = "Enchanted Wall can attack as though it didn't have defender."
 timing = "static"
 
 # Enchanted Wall can attack as though it didn't have defender.

@@ -3,7 +3,6 @@
 #   "Exile X target creatures. For each creature exiled this way, its controller creates a 2/2 green
 #    Boar creature token."
 name = "Curse of the Swine"
-sets = ["c21", "clb", "khc", "lcc", "m3c", "otc", "soc", "tdc", "ths"]
 id = "5669ea7c-c4fc-494c-896b-4bce9b494817"
 default_print = "91eb9067-0bc7-4497-ba9c-c1ea41e5a379"
 otags = ["donate-token", "multi-removal", "multiple-targets", "out-of-color-token", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal", "strive", "swap-removal"]
@@ -19,6 +18,7 @@ type = "sorcery"
 # Exile X target creatures. For each creature exiled this way, its controller creates a 2/2 green
 # Boar creature token.
 [[abilities]]
+oracle = "Exile X target creatures. For each creature exiled this way, its controller creates a 2/2 green Boar creature token."
 timing = "spell"
 
 # Exile X target creatures.

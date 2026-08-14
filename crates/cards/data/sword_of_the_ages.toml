@@ -3,7 +3,6 @@
 # damage to any target, where X is the total power of the creatures sacrificed this way, then
 # exile this artifact and those creature cards.
 name = "Sword of the Ages"
-sets = ["leg", "me3"]
 id = "201f2434-96b3-408c-a5ce-74d0675920ed"
 default_print = "aad10ff3-6d8d-4de4-9c30-1ae1aec85e5e"
 oracle = "This artifact enters tapped.\n{T}, Sacrifice this artifact and any number of creatures you control: This artifact deals X damage to any target, where X is the total power of the creatures sacrificed this way, then exile this artifact and those creature cards."
@@ -19,6 +18,7 @@ type = "artifact"
 # damage to any target, where X is the total power of the creatures sacrificed this way, then
 # exile this artifact and those creature cards.
 [[abilities]]
+oracle = "{T}, Sacrifice this artifact and any number of creatures you control: This artifact deals X damage to any target, where X is the total power of the creatures sacrificed this way, then exile this artifact and those creature cards."
 timing = "activated"
 taps_self = true
 sacrifice = { this_and_any_number = { types = "creature" } }

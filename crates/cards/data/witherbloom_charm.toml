@@ -3,7 +3,6 @@
 # • You gain 5 life.
 # • Destroy target nonland permanent with mana value 2 or less.
 name = "Witherbloom Charm"
-sets = ["sos"]
 id = "ee1db746-f5c1-4dce-82eb-24b273cc9507"
 default_print = "254437f7-7a8a-4b11-9cea-e8e7ea23c59e"
 otags = ["cycle-sos-charm", "hand-positive", "lifegain", "mana-value-matters", "plunder", "removal-destroy", "removal-nonland", "sacrifice-outlet-permanent", "single-target-instant-sorcery", "spot-removal"]

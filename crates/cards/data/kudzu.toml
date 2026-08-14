@@ -3,7 +3,6 @@
 # to a land of their choice.
 name = "Kudzu"
 otags = ["hate-tapped", "removal-destroy", "removal-land", "single-english-word-name", "spot-removal", "transferrable-aura", "triggered-ability", "uninspired"]
-sets = ["2ed", "30a", "3ed", "ced", "cei", "fbb", "lea", "leb", "me4", "sum"]
 id = "51ca5965-ae39-4e51-8948-9a230a03f906"
 default_print = "f92ec34e-e374-462f-aa9c-257558defb1f"
 oracle = "Enchant land\nWhen enchanted land becomes tapped, destroy it. That land's controller may attach this Aura to a land of their choice."
@@ -22,6 +21,7 @@ type = "aura"
 # When enchanted land becomes tapped, destroy it. That land's controller may attach this Aura
 # to a land of their choice.
 [[abilities]]
+oracle = "When enchanted land becomes tapped, destroy it. That land's controller may attach this Aura to a land of their choice."
 timing = "enchanted_permanent_becomes_tapped"
 
 # destroy it

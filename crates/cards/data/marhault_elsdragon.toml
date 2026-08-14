@@ -2,7 +2,6 @@
 # beyond the first.)
 name = "Marhault Elsdragon"
 otags = ["block-trigger", "deprecated-legend-type", "french-vanilla", "rampage", "unique-mana-cost"]
-sets = ["bchr", "chr", "leg", "me3"]
 id = "c202f124-4283-48f6-aef1-470ad9ded22b"
 default_print = "2e805883-081b-478a-aa58-172b659571c2"
 oracle = "Rampage 1 (Whenever this creature becomes blocked, it gets +1/+1 until end of turn for each creature blocking it beyond the first.)"

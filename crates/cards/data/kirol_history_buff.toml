@@ -11,7 +11,6 @@
 #   ceases to exist on resolve, so it's functionally identical to a copy here — unobservable for the
 #   pool. (The prepared copy also doesn't fire cast-spell/magecraft triggers; no prepare card cares.)
 name = "Kirol, History Buff"
-sets = ["sos"]
 id = "df1c0d06-2109-4297-9271-8a003fc892bc"
 default_print = "676ba521-66e4-42cf-a315-70d03cb7334e"
 otags = ["alliteration", "cycle-sos-student", "gives-castable-from-exile", "gives-pp-counters", "gives-trample", "leaves-graveyard-trigger", "mill-self", "repeatable-crime", "repeatable-pp-counters", "single-target-instant-sorcery"]
@@ -55,6 +54,7 @@ type = "sorcery"
 
 # Mill a card. Put two +1/+1 counters on target creature.
 [[back.abilities]]
+oracle = "Mill a card. Put two +1/+1 counters on target creature."
 timing = "spell"
 
 # Mill a card.

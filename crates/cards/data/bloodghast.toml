@@ -2,7 +2,6 @@
 # This creature has haste as long as an opponent has 10 or less life.
 # Landfall — Whenever a land you control enters, you may return this card from your graveyard to the battlefield.
 name = "Bloodghast"
-sets = ["dft", "ha7", "ima", "lcc", "pdft", "plst", "sld", "soc", "zen"]
 id = "e97f9c2b-b41e-4f36-9245-77c0ac125647"
 default_print = "cee85485-598f-4dfc-aa0b-7b1de86c7788"
 otags = ["drawback", "gains-haste", "landfall", "manaless-value", "reanimate-self", "trigger-from-graveyard"]
@@ -21,6 +20,7 @@ toughness = 1
 
 # This creature has haste as long as an opponent has 10 or less life.
 [[abilities]]
+oracle = "This creature has haste as long as an opponent has 10 or less life."
 timing = "static"
 
 # This creature has haste
@@ -34,6 +34,7 @@ condition = { type = "an_opponent_has_life_at_most", at_most = 10 }
 # Landfall — Whenever a land you control enters, you may return this card from your graveyard to
 # the battlefield.
 [[abilities]]
+oracle = "Landfall — Whenever a land you control enters, you may return this card from your graveyard to the battlefield."
 timing = "permanent_enters"
 filter = "land"
 controller = "you"

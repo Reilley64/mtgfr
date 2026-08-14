@@ -4,7 +4,6 @@
 # When this artifact leaves the battlefield, put all cards exiled with it into their owner's
 # graveyard.
 name = "Knowledge Vault"
-sets = ["leg", "me3"]
 id = "77d3cc31-837a-408a-b7f8-5aa9de78e1b7"
 default_print = "c416fca6-e201-4dbc-b9c7-248d70967746"
 oracle = "{2}, {T}: Exile the top card of your library face down.\n{0}: Sacrifice this artifact. If you do, discard your hand, then put all cards exiled with this artifact into their owner's hand.\nWhen this artifact leaves the battlefield, put all cards exiled with it into their owner's graveyard."
@@ -17,6 +16,7 @@ type = "artifact"
 
 # {2}, {T}: Exile the top card of your library face down.
 [[abilities]]
+oracle = "{2}, {T}: Exile the top card of your library face down."
 timing = "activated"
 taps_self = true
 activation_cost = { generic = 2 }
@@ -52,6 +52,7 @@ mode = "return_all_exiled_with_this"
 # When this artifact leaves the battlefield, put all cards exiled with it into their owner's
 # graveyard.
 [[abilities]]
+oracle = "When this artifact leaves the battlefield, put all cards exiled with it into their owner's graveyard."
 timing = "this_leaves_battlefield"
 
 # put all cards exiled with it into their owner's graveyard

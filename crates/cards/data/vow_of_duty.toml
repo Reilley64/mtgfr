@@ -2,7 +2,6 @@
 # Enchanted creature gets +2/+2, has vigilance, and can't attack you or planeswalkers you control.
 name = "Vow of Duty"
 otags = ["cycle-cmd-vow", "cycle-cmr-vow", "gives-vigilance", "multiplayer", "prevent-attack", "removal-creature", "synergy-planeswalker"]
-sets = ["c15", "c21", "cma", "cmd", "cmr", "cns", "e02", "gn3", "mkc", "pz1", "scd"]
 id = "1e7bddbd-e448-4aea-9d18-b44bd45837c5"
 default_print = "210920ef-917b-4e2c-a5da-1180baa37959"
 oracle = "Enchant creature\nEnchanted creature gets +2/+2, has vigilance, and can't attack you or planeswalkers you control."
@@ -17,6 +16,7 @@ type = "aura"
 
 # Enchanted creature gets +2/+2, has vigilance, and can't attack you or planeswalkers you control.
 [[abilities]]
+oracle = "Enchanted creature gets +2/+2, has vigilance, and can't attack you or planeswalkers you control."
 timing = "static"
 
 # Enchanted creature gets +2/+2, has vigilance, and can't attack you or planeswalkers you control.

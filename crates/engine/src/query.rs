@@ -110,16 +110,16 @@ impl Game {
                     }
                     // Encore (CR 702.140) — a keyword activated ability that functions from the
                     // graveyard, offered right here beside the `functions_in_graveyard` scan.
-                    if self.encore_listable(player, id, available) {
+                    if self.encore_listable(player, id, &available) {
                         actions.push(MeaningfulAction::Encore { card: id });
                     }
                     let Some(zone) = self.playable_zone(id, player) else {
                         // Still offer cycling from hand even when the card isn't otherwise playable (CR 702.28, CR 402.5)
                         // (e.g. a land after the land drop is used).
-                        if self.cycle_listable(player, id, available) {
+                        if self.cycle_listable(player, id, &available) {
                             actions.push(MeaningfulAction::Cycle { card: id });
                         }
-                        self.push_hand_ability_actions(&mut actions, player, id, available);
+                        self.push_hand_ability_actions(&mut actions, player, id, &available);
                         continue;
                     };
                     // Lands are *played* (a land drop), not cast — their `Cost::FREE` would
@@ -132,24 +132,24 @@ impl Game {
                         {
                             actions.push(MeaningfulAction::PlayLand { card: id, zone });
                         }
-                        if self.cycle_listable(player, id, available) {
+                        if self.cycle_listable(player, id, &available) {
                             actions.push(MeaningfulAction::Cycle { card: id });
                         }
-                        self.push_hand_ability_actions(&mut actions, player, id, available);
+                        self.push_hand_ability_actions(&mut actions, player, id, &available);
                         continue;
                     }
                     if let Some(zone) = self.cast_listable(player, id) {
                         actions.push(MeaningfulAction::Cast { card: id, zone });
                     }
                     self.push_split_half_actions(&mut actions, player, id);
-                    if self.cycle_listable(player, id, available) {
+                    if self.cycle_listable(player, id, &available) {
                         actions.push(MeaningfulAction::Cycle { card: id });
                     }
-                    self.push_hand_ability_actions(&mut actions, player, id, available);
-                    if self.suspend_listable(player, id, available) {
+                    self.push_hand_ability_actions(&mut actions, player, id, &available);
+                    if self.suspend_listable(player, id, &available) {
                         actions.push(MeaningfulAction::Suspend { card: id });
                     }
-                    if self.cast_face_down_listable(player, id, available) {
+                    if self.cast_face_down_listable(player, id, &available) {
                         actions.push(MeaningfulAction::CastFaceDown { card: id });
                     }
                 }
@@ -160,7 +160,7 @@ impl Game {
                     if self.cast_prepared_listable(player, id) {
                         actions.push(MeaningfulAction::CastPrepared { source: id });
                     }
-                    if self.turn_face_up_listable(player, id, available) {
+                    if self.turn_face_up_listable(player, id, &available) {
                         actions.push(MeaningfulAction::TurnFaceUp { permanent: id });
                     }
                 }
@@ -200,7 +200,7 @@ impl Game {
         // outside the per-object loop, gated only on priority and affordability.
         if player == self.priority {
             for (index, offer) in self.standing_preventions.iter().enumerate() {
-                if offer.player == player && Self::affordable_from(available, offer.cost, None) {
+                if offer.player == player && Self::affordable_from(&available, offer.cost, None) {
                     actions.push(MeaningfulAction::PayStandingPrevention { index });
                 }
             }
@@ -211,7 +211,12 @@ impl Game {
 
     /// Whether `card` may be offered as a Cycle action: priority holder, in hand with cycling,
     /// and the cycling cost is affordable.
-    fn cycle_listable(&self, player: PlayerId, card: ObjectId, available: ManaPool) -> bool {
+    fn cycle_listable(
+        &self,
+        player: PlayerId,
+        card: ObjectId,
+        available: &WidenedManaPool,
+    ) -> bool {
         if player != self.priority {
             return false;
         }
@@ -240,7 +245,7 @@ impl Game {
         actions: &mut Vec<MeaningfulAction>,
         player: PlayerId,
         card: ObjectId,
-        available: ManaPool,
+        available: &WidenedManaPool,
     ) {
         if player != self.priority {
             return;
@@ -281,7 +286,12 @@ impl Game {
 
     /// Whether `card` may be offered as a Suspend action (CR 702.62): priority holder, in hand
     /// with a suspend cost the player can afford, at a time the card could be cast (CR 702.62b).
-    fn suspend_listable(&self, player: PlayerId, card: ObjectId, available: ManaPool) -> bool {
+    fn suspend_listable(
+        &self,
+        player: PlayerId,
+        card: ObjectId,
+        available: &WidenedManaPool,
+    ) -> bool {
         if player != self.priority {
             return false;
         }
@@ -313,7 +323,7 @@ impl Game {
         &self,
         player: PlayerId,
         card: ObjectId,
-        available: ManaPool,
+        available: &WidenedManaPool,
     ) -> bool {
         if player != self.priority {
             return false;
@@ -338,7 +348,12 @@ impl Game {
     /// Whether `card` may be offered as an Encore action (CR 702.140): priority holder, in the
     /// owner's graveyard with an affordable encore cost, at sorcery speed (CR 702.140b — active
     /// player, a main phase, empty stack).
-    fn encore_listable(&self, player: PlayerId, card: ObjectId, available: ManaPool) -> bool {
+    fn encore_listable(
+        &self,
+        player: PlayerId,
+        card: ObjectId,
+        available: &WidenedManaPool,
+    ) -> bool {
         if player != self.priority {
             return false;
         }
@@ -367,7 +382,7 @@ impl Game {
         &self,
         player: PlayerId,
         permanent: ObjectId,
-        available: ManaPool,
+        available: &WidenedManaPool,
     ) -> bool {
         if player != self.priority {
             return false;
@@ -1080,8 +1095,8 @@ impl Game {
             TargetSpec::InstantOrSorcerySpellOnStack => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Spell(id)
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Spell(id)
                         if matches!(self.def_of(*id).kind, CardKind::Spell { .. }) =>
                     {
                         Some(Target::Object(*id))
@@ -1095,8 +1110,8 @@ impl Game {
             TargetSpec::SpellOnStack(filter) => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Spell(id) => Some(*id),
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Spell(id) => Some(*id),
                     _ => None,
                 })
                 .filter(|&id| {
@@ -1165,8 +1180,8 @@ impl Game {
             TargetSpec::SpellOrPermanent => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Spell(id) => Some(*id),
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Spell(id) => Some(*id),
                     _ => None,
                 })
                 .chain(self.battlefield())
@@ -1178,8 +1193,8 @@ impl Game {
             TargetSpec::SingleTargetSpellOnStack => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Spell(id) => Some(*id),
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Spell(id) => Some(*id),
                     _ => None,
                 })
                 .filter(|&id| self.spell_has_single_target(id))
@@ -1193,8 +1208,8 @@ impl Game {
             TargetSpec::ActivatedAbilityOnStack { artifact_source } => self
                 .stack
                 .iter()
-                .filter_map(|item| match item {
-                    StackItem::Ability {
+                .filter_map(|item| match &item.payload {
+                    StackPayload::Ability {
                         source,
                         activated: true,
                         ..
@@ -1524,6 +1539,17 @@ impl Game {
             Object::Permanent(p) => p.commander,
             Object::Moved { to } => self.is_commander(*to),
             Object::Removed { .. } => false,
+        }
+    }
+
+    /// Whether this object is a token (CR 111) rather than a card. A token on the battlefield
+    /// carries the flag; anywhere else — a token that has left the battlefield ceases to exist —
+    /// the answer is `false`.
+    pub fn is_token(&self, id: ObjectId) -> bool {
+        match &self.objects[id as usize] {
+            Object::Permanent(p) => p.token,
+            Object::Moved { to } => self.is_token(*to),
+            _ => false,
         }
     }
 

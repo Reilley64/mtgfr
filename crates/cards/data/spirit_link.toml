@@ -3,7 +3,6 @@
 # Whenever enchanted creature deals damage, you gain that much life.
 name = "Spirit Link"
 otags = ["combat-neutral-damage-trigger", "old-lifelink", "repeatable-lifegain"]
-sets = ["10e", "4bb", "4ed", "5ed", "6ed", "7ed", "8ed", "9ed", "dmr", "leg", "plst", "psal", "ren", "wc98"]
 id = "c77ff526-c0a8-45c7-9730-2e306a0d01b8"
 default_print = "fc046a97-4699-438d-8da4-022560a18564"
 oracle = "Enchant creature (Target a creature as you cast this. This card enters attached to that creature.)\nWhenever enchanted creature deals damage, you gain that much life."
@@ -17,6 +16,7 @@ type = "aura"
 
 # Whenever enchanted creature deals damage, you gain that much life.
 [[abilities]]
+oracle = "Whenever enchanted creature deals damage, you gain that much life."
 timing = "enchanted_creature_deals_damage"
 
 # you gain that much life

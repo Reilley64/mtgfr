@@ -2,7 +2,6 @@
 # Enchanted creature can't be the target of spells and can't be enchanted by other Auras.
 name = "Anti-Magic Aura"
 otags = ["gives-shroud", "hate-aura", "parasitic-aura"]
-sets = ["5ed", "leg"]
 id = "6f78c1e2-e38f-431b-8864-8aad982e9912"
 default_print = "54642f0e-2d5f-49eb-8181-054c84038072"
 oracle = "Enchant creature\nEnchanted creature can't be the target of spells and can't be enchanted by other Auras."
@@ -17,6 +16,7 @@ type = "aura"
 
 # Enchanted creature can't be the target of spells and can't be enchanted by other Auras.
 [[abilities]]
+oracle = "Enchanted creature can't be the target of spells and can't be enchanted by other Auras."
 timing = "static"
 
 # Enchanted creature can't be the target of spells ...

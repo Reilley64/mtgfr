@@ -248,6 +248,9 @@ pub(crate) struct PlayPermissions {
     /// entry can never re-match; drop it in the stack-exit paths if a game ever runs long enough
     /// for the list's length to matter.
     pub split_halves_on_stack: Vec<(ObjectId, CardId)>,
+    /// Prepared back-face copies currently on the stack, keyed to the physical front definition.
+    /// Object ids retire on leave, so stale entries cannot match a later spell.
+    pub prepared_spell_fronts: Vec<(ObjectId, CardId)>,
 }
 
 /// Transient per-batch scratch for trigger enqueueing — not event-sourced.

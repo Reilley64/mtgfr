@@ -1,7 +1,6 @@
 # Whenever this creature is dealt damage, put a +1/+1 counter on it.
 name = "Fungusaur"
 otags = ["creature-type-fungusaur", "gains-pp-counters", "repeatable-pp-counters", "triggered-ability", "type-errata-dinosaur", "type-errata-name-self", "fungusaur-effect"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "8ed", "ced", "cei", "fbb", "lea", "leb", "plst", "sum"]
 id = "3e771f5b-2de3-4a1b-8281-ab1f7491e5a1"
 default_print = "1a34fc9e-96cf-40f2-adb9-ac5085d140af"
 oracle = "Whenever this creature is dealt damage, put a +1/+1 counter on it."
@@ -18,6 +17,7 @@ toughness = 2
 
 # Whenever this creature is dealt damage, put a +1/+1 counter on it.
 [[abilities]]
+oracle = "Whenever this creature is dealt damage, put a +1/+1 counter on it."
 timing = "this_is_dealt_damage"
 
 # put a +1/+1 counter on it.

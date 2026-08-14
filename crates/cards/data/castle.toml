@@ -1,7 +1,6 @@
 # Untapped creatures you control get +0/+2.
 name = "Castle"
 otags = ["anthem", "single-english-word-name", "synergy-untapped", "toughness-boost-to-all"]
-sets = ["2ed", "30a", "3ed", "4bb", "4ed", "5ed", "6ed", "7ed", "ced", "cei", "fbb", "lea", "leb", "sum"]
 id = "f3179c3c-7e53-44d2-b579-b9e677efe9d9"
 default_print = "2ea3db44-85c5-4201-a5c9-ec14a9d244d6"
 oracle = "Untapped creatures you control get +0/+2."
@@ -15,6 +14,7 @@ type = "enchantment"
 
 # Untapped creatures you control get +0/+2.
 [[abilities]]
+oracle = "Untapped creatures you control get +0/+2."
 timing = "static"
 
 # Untapped creatures you control get +0/+2.

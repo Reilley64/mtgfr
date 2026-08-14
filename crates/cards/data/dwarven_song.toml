@@ -1,7 +1,6 @@
 # One or more target creatures become red until end of turn.
 name = "Dwarven Song"
 otags = ["color-change", "cycle-leg-color-wash-instant", "multiple-targets", "single-target-instant-sorcery"]
-sets = ["leg"]
 id = "29b7a220-cfcf-4b44-a5fb-737fd47d46cb"
 default_print = "29a50f72-9524-4440-9380-9d3e0b693351"
 oracle = "One or more target creatures become red until end of turn."
@@ -14,6 +13,7 @@ type = "instant"
 
 # One or more target creatures become red until end of turn.
 [[abilities]]
+oracle = "One or more target creatures become red until end of turn."
 timing = "spell"
 
 # One or more target creatures become red until end of turn.

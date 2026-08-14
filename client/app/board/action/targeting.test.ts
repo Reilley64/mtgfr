@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testMessageRef } from "~/i18n/testMessageRef";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
+import { stackFaceScreenOrigin } from "../geometry/stackLayout";
 import type { StagedAction } from "./execution";
 import { emptyCostPicks } from "./execution";
 import {
@@ -40,6 +41,8 @@ function object(over: Partial<ObjectView> = {}): ObjectView {
     has_haste: false,
     id: 1,
     is_commander: false,
+    is_token: false,
+    legendary: false,
     kind: { kind: "creature", power: 2, toughness: 2 },
     mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
     marked_damage: 0,
@@ -200,10 +203,11 @@ describe("stagedPickTargets", () => {
 });
 
 describe("stackAimOrigin", () => {
-  it("anchors the staged spell ghost at the right-edge stack pile center", () => {
-    const origin = stackAimOrigin(1440, 900, 2);
-    expect(origin.x).toBe(1440 - 16 - 180 / 2);
-    expect(origin.y).toBeCloseTo(900 / 2 - 34 / 2);
+  it("uses the exact top visible compact face origin", () => {
+    const viewport = { width: 1440, height: 900 };
+    expect(stackAimOrigin(viewport.width, viewport.height, 7)).toEqual(
+      stackFaceScreenOrigin({ presentation: "pile", viewport, count: 7, row: 6 }),
+    );
   });
 });
 
@@ -294,7 +298,7 @@ describe("pendingTargetingOverlay", () => {
     const bolt = object({ id: 42, zone: ZONE.Stack, name: "Bolt", print: "bolt-print" });
     const bear = object({ id: 7 });
     const game = state([bolt, bear]);
-    game.stack = [{ controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 42 }];
+    game.stack = [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Bolt"), source: 42 }];
     game.pending_choice = {
       kind: "choose_target",
       label: testMessageRef("Bolt"),
@@ -350,7 +354,7 @@ describe("pendingTargetingOverlay", () => {
     });
     const infected = object({ id: 7, plus_counters: 1 });
     const game = state([atomize, infected]);
-    game.stack = [{ controller: 0, kind: "spell", label: testMessageRef("Atomize"), source: 42 }];
+    game.stack = [{ entry_id: 1n, controller: 0, kind: "spell", label: testMessageRef("Atomize"), source: 42 }];
     game.pending_choice = {
       kind: "proliferate",
       player: 0,
@@ -370,7 +374,7 @@ describe("pendingTargetingOverlay", () => {
     const veyran = object({ id: 3, name: "Veyran, Voice of Duality", print: "veyran-print" });
     const bear = object({ id: 7 });
     const game = state([veyran, bear]);
-    game.stack = [{ controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: 3 }];
+    game.stack = [{ entry_id: 1n, controller: 0, kind: "ability", label: testMessageRef("Draw a card"), source: 3 }];
     game.pending_choice = {
       kind: "choose_target",
       label: testMessageRef("Target creature gets +1/+1"),

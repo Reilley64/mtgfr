@@ -1,6 +1,5 @@
 # When this creature enters, you may return target enchantment card from your graveyard to your hand.
 name = "Auramancer"
-sets = ["a25", "dci", "ddl", "dmr", "dsc", "j22", "m12", "m14", "ody", "ori", "pc2", "pca", "prm", "td0"]
 otags = ["cycle-ody-retriever", "regrowth-enchantment", "triggered-ability", "type-addition-human", "virtual-vanilla"]
 subtypes = ["Human", "Wizard"]
 id = "bd5eb181-6a69-4dc2-93a0-fa000291bc3d"
@@ -19,6 +18,7 @@ toughness = 2
 # When this creature enters, you may return target enchantment card from your graveyard to your
 # hand.
 [[abilities]]
+oracle = "When this creature enters, you may return target enchantment card from your graveyard to your hand."
 timing = "etb"
 optional = true
 

@@ -5,7 +5,6 @@
 # [Braingeyser]
 # Target player draws X cards.
 name = "Dirgur Focusmage"
-sets = ["soc"]
 id = "655ee0db-1913-464f-bd06-072c6bf446bd"
 default_print = "7bdabeba-0cfb-4953-b725-50a48164a044"
 otags = ["burst-draw", "cast-trigger-you", "cost-reducer-instant-sorcery", "cycle-soc-guest-lecturer", "draw-engine", "force-draw", "gives-castable-from-exile", "hand-positive", "mana-value-matters", "repeatable-pure-draw"]
@@ -23,6 +22,7 @@ toughness = 4
 
 # Instant and sorcery spells you cast cost {1} less to cast.
 [[abilities]]
+oracle = "Instant and sorcery spells you cast cost {1} less to cast."
 timing = "static"
 
 # Instant and sorcery spells you cast cost {1} less to cast.
@@ -35,6 +35,7 @@ filter = "instant_or_sorcery"
 # Whenever you cast an instant or sorcery spell with mana value 5 or greater from your hand, this
 # creature becomes prepared.
 [[abilities]]
+oracle = "Whenever you cast an instant or sorcery spell with mana value 5 or greater from your hand, this creature becomes prepared."
 timing = "cast_spell"
 spell_filter = "instant_or_sorcery"
 caster = "you"
@@ -64,6 +65,7 @@ type = "sorcery"
 
 # Target player draws X cards.
 [[back.abilities]]
+oracle = "Target player draws X cards."
 timing = "spell"
 
 # Target player draws X cards.

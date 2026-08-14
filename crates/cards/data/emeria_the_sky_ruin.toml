@@ -3,7 +3,6 @@
 # graveyard to the battlefield.
 # {T}: Add {W}.
 name = "Emeria, the Sky Ruin"
-sets = ["c14", "plst", "sld", "soc", "zen"]
 id = "cc999cf2-c99b-4911-8c52-6cc4a99fcc7b"
 default_print = "90f148e6-1a5e-46fc-9557-40c5c0038069"
 otags = ["activated-ability", "cycle-zen-namedland", "intervening-if-clause", "reanimate-creature", "synergy-plains", "utility-land", "virtual-legendary"]
@@ -18,6 +17,7 @@ produces = "white"
 # At the beginning of your upkeep, if you control seven or more Plains, you may return target
 # creature card from your graveyard to the battlefield.
 [[abilities]]
+oracle = "At the beginning of your upkeep, if you control seven or more Plains, you may return target creature card from your graveyard to the battlefield."
 timing = "upkeep"
 optional = true
 

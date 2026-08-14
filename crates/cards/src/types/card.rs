@@ -709,6 +709,10 @@ pub enum Timing {
 pub struct Ability {
     pub timing: Timing,
     pub effect: Effect,
+    /// This one ability's printed sentence, quoted verbatim from [`CardDef::oracle`]. An ability
+    /// on the stack is not its whole source card, so this is what the stack shows while it waits
+    /// to resolve; `None` falls back to the effect's generated message.
+    pub oracle: Option<&'static str>,
     /// The minimum Class level this ability requires to function (CR 717.5 — a Class's
     /// level-gated triggered/static/activated abilities). An ability functions only while its
     /// source permanent's [`Permanent::level`] is at least `min_level`; `0` (every ordinary
@@ -995,9 +999,11 @@ pub struct CardDef {
     /// engine never parses it (behavior comes from `abilities`/`keywords`). A DFC joins its faces'
     /// text. `oracle = "…"` in TOML; `None` for a card whose text isn't recorded (or a vanilla).
     pub oracle: Option<&'static str>,
-    /// Scryfall set codes for every known printing of this card. Pure catalog + coverage
-    /// metadata — the engine never consults it for rules. `sets = ["soc", …]` in TOML; empty
-    /// for a card whose printings are not recorded yet.
+    /// Scryfall set codes for every known printing of this card, alphabetical. Pure catalog +
+    /// coverage metadata — the engine never consults it for rules. Not authored: derived at pool
+    /// load from `data/prints/<slug>.toml` (see [`crate::print_flavor`]), so it is empty for a
+    /// [`CardDef`] built outside the pool. Flavor text lives there too — it is per printing, and
+    /// a card has no one flavor.
     pub sets: Arc<[&'static str]>,
     /// The card's printed subtypes (the segment after the "—": creature types like "Goblin",
     /// "Wizard"; also artifact/enchantment subtypes). Gameplay-relevant, not just catalog
@@ -1603,6 +1609,7 @@ fn treasure_token_builtin() -> CardDef {
             persist_until_end_of_turn: false,
             recipient: None,
         }),
+        oracle: None,
         optional: false,
         min_level: 0,
         cost: Cost::FREE,

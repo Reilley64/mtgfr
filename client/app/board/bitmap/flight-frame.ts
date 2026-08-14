@@ -1,4 +1,5 @@
 import type { ActionView, PlayerView, StackObjectView, WireAttack, WireBlock } from "~/wire/types";
+import { faceKey } from "../../domain/card-render/cache";
 import type { RenderCard } from "../geometry/layout";
 import type { StackPresentation } from "../geometry/stackLayout";
 import type { ExitFx } from "../motion/exit-fx";
@@ -37,6 +38,7 @@ function cardPaintKey(card: RenderCard): Record<string, unknown> {
     owner: card.owner ?? 0,
     controller: card.controller ?? 0,
     name: card.name ?? "",
+    face: card.face == null ? null : faceKey(card.face, "permanent"),
   };
 }
 
@@ -76,7 +78,7 @@ function stackEntryPaintKey(entry: StackObjectView): string {
   const targets = (entry.targets ?? (entry.target != null ? [entry.target] : []))
     .map((t) => (t.kind === "player" ? `p${t.player}` : `o${t.id}`))
     .join(",");
-  return `${entry.source}:${entry.kind}:${targets}`;
+  return `${String(entry.entry_id)}:${entry.source ?? "source-less"}:${entry.kind}:${targets}`;
 }
 
 export function restingPaintSnapshot(
@@ -92,6 +94,7 @@ export function restingPaintSnapshot(
     camera: frame.camera,
     viewer: frame.viewer,
     priority: frame.priority,
+    hoveredAttachmentId: frame.hoveredAttachmentId,
     hideCardIds: sortedSetValues(frame.hideCardIds),
     targetObjects: sortedSetValues(frame.targetObjects),
     pickedObjects: sortedSetValues(frame.pickedObjects),
@@ -101,6 +104,9 @@ export function restingPaintSnapshot(
       .map(([id, amount]) => `${id}:${amount}`),
     targetPlayers: sortedSetValues(frame.targetPlayers),
     pickedPlayers: sortedSetValues(frame.pickedPlayers),
+    avatarPositions: Object.entries(frame.avatarPositions ?? {})
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([seat, position]) => `${seat}:${position.x}:${position.y}`),
     paymentPreviewIds: sortedSetValues(frame.paymentPreviewIds),
     cards: [...frame.cards].sort((a, b) => a.id - b.id).map(cardPaintKey),
     players: [...frame.players].sort((a, b) => a.player - b.player).map(playerPaintKey),

@@ -2,7 +2,6 @@
 # This creature gets +1/+1 as long as an opponent controls a nontoken white permanent.
 name = "Beasts of Bogardan"
 otags = ["alliteration", "evasion", "hate-red", "hate-white"]
-sets = ["bchr", "chr", "leg"]
 id = "9b0bc2d3-d64b-455a-a258-d3c91892f1a7"
 default_print = "cec0fe2c-e7e6-42d1-8128-58d70a7f1177"
 oracle = "Protection from red\nThis creature gets +1/+1 as long as an opponent controls a nontoken white permanent."
@@ -20,6 +19,7 @@ toughness = 3
 
 # This creature gets +1/+1 as long as an opponent controls a nontoken white permanent.
 [[abilities]]
+oracle = "This creature gets +1/+1 as long as an opponent controls a nontoken white permanent."
 timing = "static"
 
 # This creature gets +1/+1 as long as an opponent controls a nontoken white permanent.

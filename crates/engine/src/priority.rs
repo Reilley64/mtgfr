@@ -123,7 +123,7 @@ impl Game {
             .then(|| self.pending_choice.take())
             .flatten();
         let mut events = vec![Event::PlayerLost { player }];
-        self.apply_all(&events);
+        self.apply_all_recorded(&mut events);
         // The combat damage step's turn-based action is not the quitter's to forfeit, though: it
         // belongs to the game, and the other seats' attackers and blockers are waiting on it. Finish
         // the batch for whoever is left rather than skipping every point of damage in it (CR 510.1).
@@ -194,7 +194,7 @@ impl Game {
                 persist: false,
             });
         }
-        self.apply_all(&events);
+        self.apply_all_recorded(&mut events);
         // Fertile Ground / Mirari's Wake fire off the same tap (CR 605.3 — inline, no stack).
         self.land_tapped_for_mana(object, player, &mut events);
         Ok(events)
@@ -337,7 +337,7 @@ impl Game {
         if self.life(player) < 1 {
             return Err(Reject::CannotProduceMana);
         }
-        let events = vec![
+        let mut events = vec![
             Event::LifeChanged {
                 player,
                 amount: -1,
@@ -350,7 +350,7 @@ impl Game {
                 persist: false,
             },
         ];
-        self.apply_all(&events);
+        self.apply_all_recorded(&mut events);
         Ok(events)
     }
 
@@ -469,8 +469,12 @@ impl Game {
     /// [`Game::activation_mana_payable`] do) so exclusive modes cannot invent a second pip.
     /// Optimistic over-count remains acceptable for upper bounds such as [`Game::max_payable_x`].
     /// (CR 605, CR 108.3, CR 113)
-    pub(crate) fn available_mana(&self, player: PlayerId) -> ManaPool {
-        let mut mana = self.players[player.0 as usize].mana_pool;
+    pub(crate) fn available_mana(&self, player: PlayerId) -> WidenedManaPool {
+        let substitutions = self.mana_substitutions(player);
+        let mut mana = WidenedManaPool::from_sources(
+            [self.players[player.0 as usize].mana_pool],
+            &substitutions,
+        );
         let mut used = vec![false; self.objects.len()];
         let mut paid: Vec<(ObjectId, Cost, ManaPool)> = Vec::new();
 
@@ -510,7 +514,7 @@ impl Game {
                 } = &printed.kind
                 && let Some(credit) = self.land_mana_credit(id, player)
             {
-                mana.add(credit, 1);
+                mana.add_source(ManaPool::of(credit, 1));
                 contributed_free = true;
             }
             for (i, a) in printed.abilities.iter().enumerate() {
@@ -539,16 +543,16 @@ impl Game {
                     if has_paid_mana {
                         continue;
                     }
-                    mana.merge(&batch.restricted_by(restriction));
+                    mana.add_source(batch.restricted_by(restriction));
                     if identity > 0
                         && let Some(credit) = self.commander_identity_credit(player)
                     {
-                        mana.add(credit, 1);
+                        mana.add_source(ManaPool::of(credit, 1));
                     }
                     if opponent_colors > 0
                         && let Some(credit) = self.opponent_producible_colors_credit(player)
                     {
-                        mana.add(credit, 1);
+                        mana.add_source(ManaPool::of(credit, 1));
                     }
                     contributed_free = true;
                     continue;
@@ -585,7 +589,7 @@ impl Game {
                     // of "any" credits would overstate reachable colors — skip it like an own
                     // `single_color` ability.
                     if cost.taps_self && cost.mana == Cost::FREE && !single_color {
-                        mana.merge(&batch);
+                        mana.add_source(batch);
                         contributed_free = true;
                     }
                 }
@@ -603,31 +607,16 @@ impl Game {
                 if used[idx] || !mana.can_pay(activation, None) {
                     continue;
                 }
-                let Some(spend) = mana.spend_plan(activation, None) else {
+                let mut after = mana.clone();
+                if !after.spend(activation) {
                     continue;
-                };
-                let mut after = mana;
-                after.subtract(&spend);
-                after.merge(credit);
+                }
+                after.add_source(*credit);
                 // Only take a paid outlet when it does not drop coverage of any color the
                 // pre-activation pool could pay (Ferrous must not burn a lone {{W}} into {{U}}{{R}}).
                 let preserves = (0..Color::COUNT).all(|c| {
-                    let before_cov = mana.colored[c]
-                        + mana.any
-                        + COLOR_PAIRS
-                            .iter()
-                            .zip(mana.either.iter())
-                            .filter(|((a, b), _)| a.index() == c || b.index() == c)
-                            .map(|(_, &n)| n)
-                            .sum::<u8>();
-                    let after_cov = after.colored[c]
-                        + after.any
-                        + COLOR_PAIRS
-                            .iter()
-                            .zip(after.either.iter())
-                            .filter(|((a, b), _)| a.index() == c || b.index() == c)
-                            .map(|(_, &n)| n)
-                            .sum::<u8>();
+                    let before_cov = mana.color_coverage(c);
+                    let after_cov = after.color_coverage(c);
                     after_cov >= before_cov || before_cov == 0
                 });
                 // Net-positive or color-preserving conversion with more total mana.
@@ -662,7 +651,7 @@ impl Game {
             } = &printed.kind
                 && let Some(credit) = self.land_mana_credit(idx as ObjectId, player)
             {
-                mana.add(credit, 1);
+                mana.add_source(ManaPool::of(credit, 1));
                 used[idx] = true;
                 continue;
             }
@@ -689,30 +678,28 @@ impl Game {
                 {
                     continue;
                 }
-                mana.merge(&batch.restricted_by(restriction));
+                mana.add_source(batch.restricted_by(restriction));
                 if identity > 0
                     && let Some(credit) = self.commander_identity_credit(player)
                 {
-                    mana.add(credit, 1);
+                    mana.add_source(ManaPool::of(credit, 1));
                 }
                 if opponent_colors > 0
                     && let Some(credit) = self.opponent_producible_colors_credit(player)
                 {
-                    mana.add(credit, 1);
+                    mana.add_source(ManaPool::of(credit, 1));
                 }
                 used[idx] = true;
             }
         }
-        // Widen last, so the estimate offers the same colors the payment planners will accept
-        // (Sunglasses of Urza) — the merges above compare colors and want the printed ones.
-        mana.substituted(&self.mana_substitutions(player))
+        mana
     }
 
     /// Whether `cost` can be paid from `available` mana — `spell` is the spell being cast
     /// (`None` for an ability activation), read by [`ManaPool::spend_plan`] against any
     /// spend-restricted credit in `available`.
     pub(crate) fn affordable_from(
-        available: ManaPool,
+        available: &WidenedManaPool,
         cost: Cost,
         spell: Option<SpellCharacteristics>,
     ) -> bool {
@@ -756,7 +743,7 @@ impl Game {
                 0
             };
         }
-        if !Self::affordable_from(available, at_zero, spell) {
+        if !Self::affordable_from(&available, at_zero, spell) {
             return 0;
         }
 
@@ -766,10 +753,10 @@ impl Game {
             255
         };
         let mut upper = 1.min(cap);
-        while upper < cap && Self::affordable_from(available, cost_at(upper), spell) {
+        while upper < cap && Self::affordable_from(&available, cost_at(upper), spell) {
             upper = upper.saturating_mul(2).min(cap);
         }
-        if Self::affordable_from(available, cost_at(upper), spell) {
+        if Self::affordable_from(&available, cost_at(upper), spell) {
             return upper;
         }
 
@@ -777,7 +764,7 @@ impl Game {
         let mut best = 0;
         while lower <= upper {
             let middle = lower + (upper - lower) / 2;
-            if Self::affordable_from(available, cost_at(middle), spell) {
+            if Self::affordable_from(&available, cost_at(middle), spell) {
                 best = middle;
                 lower = middle + 1;
             } else if middle == 0 {
@@ -799,8 +786,7 @@ impl Game {
     ) -> Option<ManaPool> {
         let subs = self.mana_substitutions(player);
         let pool = self.players[player.0 as usize].mana_pool;
-        let spend = pool.substituted(&subs).spend_plan(&cost, spell)?;
-        Some(pool.unsubstitute(&subs, spend))
+        pool.spend_plan_with_substitutions(&cost, spell, &subs)
     }
 
     /// Can `player` still pay `cost`? The same planner [`Game::settle_payment`] runs, so a `false`
@@ -838,18 +824,13 @@ impl Game {
         // that widened space; the plan is a list of taps, and the real spend is re-planned (and
         // mapped back to real credits) by [`Game::plan_payment`].
         let subs = self.mana_substitutions(player);
-        let mut pool = self.players[player.0 as usize].mana_pool.substituted(&subs);
+        let mut pool =
+            WidenedManaPool::from_sources([self.players[player.0 as usize].mana_pool], &subs);
         if pool.can_pay(&cost, spell) {
             return Some(Vec::new());
         }
 
         let (mut free, mut paid) = self.auto_tap_candidates(player, exclude);
-        for candidate in &mut free {
-            candidate.credit = candidate.credit.substituted(&subs);
-        }
-        for candidate in &mut paid {
-            candidate.credit = candidate.credit.substituted(&subs);
-        }
         let mut taps = Vec::new();
 
         while !pool.can_pay(&cost, spell) {
@@ -864,8 +845,8 @@ impl Game {
             // A free tap that alone completes payment (e.g. Fetid Heath's {C} for leftover generic)
             // before we spend a permanent on its paid filter mode.
             if let Some(i) = Self::pick_free_tap(&free, &pool, &cost, /*completing_only*/ true) {
-                let mut trial = pool;
-                trial.merge(&free[i].credit);
+                let mut trial = pool.clone();
+                trial.add_source(free[i].credit);
                 if trial.can_pay(&cost, spell) {
                     let chosen = free.swap_remove(i);
                     Self::commit_free_tap(&mut pool, &mut free, &mut paid, &mut taps, chosen);
@@ -911,9 +892,10 @@ impl Game {
                     Self::commit_free_tap(&mut pool, &mut free, &mut paid, &mut taps, chosen);
                 }
                 let chosen = paid.swap_remove(paid_i);
-                let spend = pool.spend_plan(&chosen.activation, None)?;
-                pool.subtract(&spend);
-                pool.merge(&chosen.credit);
+                if !pool.spend(&chosen.activation) {
+                    return None;
+                }
+                pool.add_source(chosen.credit);
                 free.retain(|k| match k.tap {
                     PlannedTap::Base(l) | PlannedTap::Ability(l, _) => l != chosen.source,
                 });
@@ -928,33 +910,18 @@ impl Game {
     }
 
     /// Whether `pool` can cover `need` pips of `color` from mono, either, any, or of_colors.
-    fn pool_covers_color(pool: &ManaPool, color: usize, need: u8) -> bool {
-        if need == 0 {
-            return true;
-        }
-        let mut have = pool.colored[color];
-        have = have.saturating_add(pool.any);
-        for (&(a, b), &n) in COLOR_PAIRS.iter().zip(pool.either.iter()) {
-            if a.index() == color || b.index() == color {
-                have = have.saturating_add(n);
-            }
-        }
-        for (mask, &n) in pool.of_colors.iter().enumerate() {
-            if n > 0 && (mask & (1 << color)) != 0 {
-                have = have.saturating_add(n);
-            }
-        }
-        have >= need
+    fn pool_covers_color(pool: &WidenedManaPool, color: usize, need: u8) -> bool {
+        pool.covers_color(color, need)
     }
 
     fn commit_free_tap(
-        pool: &mut ManaPool,
+        pool: &mut WidenedManaPool,
         free: &mut Vec<FreeTapCandidate>,
         paid: &mut Vec<PaidTapCandidate>,
         taps: &mut Vec<PlannedTap>,
         chosen: FreeTapCandidate,
     ) {
-        pool.merge(&chosen.credit);
+        pool.add_source(chosen.credit);
         let source = match chosen.tap {
             PlannedTap::Base(l) | PlannedTap::Ability(l, _) => l,
         };
@@ -970,7 +937,7 @@ impl Game {
     /// from `pool` (lookahead for preferring free {C} over a filter mode).
     fn pick_free_tap(
         free: &[FreeTapCandidate],
-        pool: &ManaPool,
+        pool: &WidenedManaPool,
         cost: &Cost,
         completing_only: bool,
     ) -> Option<usize> {
@@ -984,21 +951,23 @@ impl Game {
                     if !completing_only {
                         return true;
                     }
-                    let mut trial = *pool;
-                    trial.merge(&k.credit);
+                    let mut trial = pool.clone();
+                    trial.add_source(k.credit);
                     trial.can_pay(cost, None)
                 })
                 .min_by_key(|(_, k)| (k.nonland, k.pain, k.breadth))
                 .map(|(i, _)| i)
         };
         let scarcest = (0..Color::COUNT)
-            .filter(|&c| cost.colored[c] > pool.colored[c])
+            .filter(|&c| usize::from(cost.colored[c]) > pool.colored(c))
             .filter(|&c| free.iter().any(|k| mana_serves(&k.credit, c)))
             .min_by_key(|&c| free.iter().filter(|k| mana_serves(&k.credit, c)).count());
         if let Some(c) = scarcest {
             return best(&|k: &FreeTapCandidate| mana_serves(&k.credit, c));
         }
-        if cost.colorless > pool.colorless && free.iter().any(|k| k.credit.colorless > 0) {
+        if usize::from(cost.colorless) > pool.colorless()
+            && free.iter().any(|k| k.credit.colorless > 0)
+        {
             return best(&|k: &FreeTapCandidate| k.credit.colorless > 0);
         }
         if completing_only {
@@ -1013,7 +982,7 @@ impl Game {
     fn pick_paid_tap(
         free: &[FreeTapCandidate],
         paid: &[PaidTapCandidate],
-        pool: &ManaPool,
+        pool: &WidenedManaPool,
         cost: &Cost,
         spell: Option<SpellCharacteristics>,
     ) -> Option<(Vec<PlannedTap>, usize)> {
@@ -1057,11 +1026,11 @@ impl Game {
 
     fn simulate_paid_activation(
         free: &[FreeTapCandidate],
-        pool: &ManaPool,
+        pool: &WidenedManaPool,
         paid: &PaidTapCandidate,
         exclude_source: ObjectId,
-    ) -> Option<(Vec<PlannedTap>, ManaPool)> {
-        let mut sim = *pool;
+    ) -> Option<(Vec<PlannedTap>, WidenedManaPool)> {
+        let mut sim = pool.clone();
         let mut feed = Vec::new();
         let mut remaining: Vec<&FreeTapCandidate> = free
             .iter()
@@ -1072,7 +1041,7 @@ impl Game {
 
         while !sim.can_pay(&paid.activation, None) {
             let scarcest = (0..Color::COUNT)
-                .filter(|&c| paid.activation.colored[c] > sim.colored[c])
+                .filter(|&c| usize::from(paid.activation.colored[c]) > sim.colored(c))
                 .filter(|&c| remaining.iter().any(|k| mana_serves(&k.credit, c)))
                 .min_by_key(|&c| {
                     remaining
@@ -1104,7 +1073,7 @@ impl Game {
                     })
                     .min_by_key(|(_, k)| (k.nonland, k.pain, k.breadth))
                     .map(|(i, _)| i)
-            } else if paid.activation.colorless > sim.colorless
+            } else if usize::from(paid.activation.colorless) > sim.colorless()
                 && remaining.iter().any(|k| k.credit.colorless > 0)
             {
                 remaining
@@ -1122,12 +1091,13 @@ impl Game {
             };
             let i = pick?;
             let chosen = remaining.swap_remove(i);
-            sim.merge(&chosen.credit);
+            sim.add_source(chosen.credit);
             feed.push(chosen.tap);
         }
-        let spend = sim.spend_plan(&paid.activation, None)?;
-        sim.subtract(&spend);
-        sim.merge(&paid.credit);
+        if !sim.spend(&paid.activation) {
+            return None;
+        }
+        sim.add_source(paid.credit);
         Some((feed, sim))
     }
 
@@ -1518,7 +1488,7 @@ impl Game {
         }
 
         let mut events = vec![Event::PriorityPassed { player }];
-        self.apply_all(&events);
+        self.apply_all_recorded(&mut events);
         self.consecutive_passes += 1;
         self.priority = self.next_player(player);
 
@@ -1534,7 +1504,13 @@ impl Game {
     /// Apply `event`, recording it into `events`. Used where turn-based actions must
     /// see the effect of the previous event (e.g. untap reads the just-entered step).
     pub(crate) fn push_apply(&mut self, events: &mut Vec<Event>, event: Event) {
-        self.apply(&event);
+        let Some(event) = self.normalize_event(event) else {
+            return;
+        };
+        if self.apply(&event).is_err() {
+            self.stack_entry_id_error = Some(StackEntryIdExhausted);
+            return;
+        }
         events.push(event);
     }
 
@@ -2152,7 +2128,7 @@ impl Game {
             return;
         }
 
-        let milled = self.mill_events(player, rad as u32);
+        let mut milled = self.mill_events(player, rad as u32);
         let nonland = milled
             .iter()
             .filter(|event| match event {
@@ -2162,7 +2138,7 @@ impl Game {
                 _ => false,
             })
             .count() as i32;
-        self.apply_all(&milled);
+        self.apply_all_recorded(&mut milled);
         events.extend(milled);
         if nonland == 0 {
             return;
@@ -2172,7 +2148,7 @@ impl Game {
             events,
             Event::LifeChanged {
                 player,
-                amount: -nonland,
+                amount: -i64::from(nonland),
                 source: None,
             },
         );
@@ -2209,6 +2185,7 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
+    use super::PlannedTap;
     use crate::*;
 
     const P0: PlayerId = PlayerId(0);
@@ -2303,7 +2280,7 @@ mod tests {
         let mut game = Game::new();
         game.spawn_on_battlefield(P0, forest());
         let mana = game.available_mana(P0);
-        assert_eq!(mana.colored[Color::Green.index()], 1);
+        assert_eq!(mana.colored(Color::Green.index()), 1);
         assert_eq!(mana.total(), 1);
     }
 
@@ -2314,7 +2291,7 @@ mod tests {
     fn an_eliminated_active_player_skips_their_turn_based_actions() {
         let mut game = Game::with_players(4, 0);
         game.spawn_in_library(P0, forest());
-        game.apply(&Event::PlayerLost { player: P0 });
+        game.apply_recorded(&Event::PlayerLost { player: P0 });
 
         let mut events = Vec::new();
         game.perform_turn_based_actions(Step::Draw, P0, &mut events);
@@ -2329,5 +2306,89 @@ mod tests {
         game.tap_for_mana(P0, forest).unwrap();
         assert_eq!(game.mana_in_pool(P0, Color::Green), 1);
         assert!(game.is_tapped(forest));
+    }
+
+    fn sunglasses() -> CardDef {
+        CardDef {
+            name: "Sunglasses of Urza",
+            kind: CardKind::Artifact,
+            abilities: vec![Ability {
+                timing: Timing::Static,
+                effect: Effect::Static(StaticEffect::SpendManaAsThoughAnotherColor {
+                    from: Color::White,
+                    to: Color::Red,
+                }),
+                oracle: None,
+                min_level: 0,
+                optional: false,
+                cost: Cost::FREE,
+                condition: None,
+                once_each_turn: false,
+            }]
+            .into(),
+            ..forest()
+        }
+    }
+
+    fn plains() -> CardDef {
+        CardDef {
+            name: "Plains",
+            kind: CardKind::Land {
+                produces: Some(LandProduces::Mana(Mana::Color(Color::White))),
+                subtypes: &["Plains"],
+                basic: true,
+            },
+            ..forest()
+        }
+    }
+
+    #[test]
+    fn available_mana_keeps_widened_supply_above_one_bucket_exact() {
+        let mut game = Game::new();
+        game.spawn_on_battlefield(P0, sunglasses());
+        let mask = (1 << Color::White.index()) | (1 << Color::Red.index());
+        game.players[P0.0 as usize]
+            .mana_pool
+            .add(Mana::OfColors(mask as u8), u8::MAX);
+        game.players[P0.0 as usize]
+            .mana_pool
+            .add(Mana::Color(Color::White), 1);
+        let cost = Cost {
+            generic: 1,
+            colored: {
+                let mut pips = [0; Color::COUNT];
+                pips[Color::Red.index()] = u8::MAX;
+                pips
+            },
+            ..Cost::FREE
+        };
+
+        assert!(game.available_mana(P0).can_pay(&cost, None));
+    }
+
+    #[test]
+    fn auto_tap_merges_candidate_with_full_widened_bucket_without_loss() {
+        let mut game = Game::new();
+        game.spawn_on_battlefield(P0, sunglasses());
+        let forest = game.spawn_on_battlefield(P0, plains());
+        let mask = (1 << Color::White.index()) | (1 << Color::Red.index());
+        game.players[P0.0 as usize]
+            .mana_pool
+            .add(Mana::OfColors(mask as u8), u8::MAX);
+        let cost = Cost {
+            generic: 1,
+            colored: {
+                let mut pips = [0; Color::COUNT];
+                pips[Color::Red.index()] = u8::MAX;
+                pips
+            },
+            ..Cost::FREE
+        };
+
+        let taps = game
+            .plan_auto_taps(P0, cost, None, None)
+            .expect("255 set credits plus widened Plains credit cover 256 mana");
+
+        assert_eq!(taps, vec![PlannedTap::Base(forest)]);
     }
 }
